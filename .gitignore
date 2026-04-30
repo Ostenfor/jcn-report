@@ -1,0 +1,5 @@
+node_modules/
+.env
+creds.json
+reporte/
+testb.js

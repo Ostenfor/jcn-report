@@ -1,0 +1,68 @@
+name: Generate JCN Report
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    - cron: '0 11 * * *'
+    - cron: '0 16 * * *'
+    - cron: '0 21 * * *'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  generate-report:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run JCN report
+        env:
+          JCN_USER: ${{ secrets.JCN_USER }}
+          JCN_PASS: ${{ secrets.JCN_PASS }}
+          CI: true
+        run: node testa.js
+
+      - name: Prepare Pages folder
+        run: |
+          if [ ! -d "reporte" ]; then
+            mkdir reporte
+            echo "<h1>No report generated</h1>" > reporte/index.html
+          fi
+
+          latest_file=$(ls -t reporte/*.html | head -n 1)
+
+          if [ -n "$latest_file" ]; then
+            cp "$latest_file" reporte/index.html
+          fi
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: reporte
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
