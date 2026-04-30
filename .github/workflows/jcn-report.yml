@@ -4,10 +4,7 @@ on:
   workflow_dispatch:
 
   schedule:
-  - cron: '0 11 * * *' # 7:00 AM RD
-  - cron: '0 14 * * *' # 10:00 AM RD
-  - cron: '0 16 * * *' # 12:00 PM RD
-  - cron: '0 21 * * *' # 5:00 PM RD
+    - cron: '*/5 * * * *'
 
 permissions:
   contents: read
@@ -23,6 +20,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Debug schedule trigger
+        run: |
+          echo "Workflow triggered"
+          echo "Event name: ${{ github.event_name }}"
+          echo "UTC time:"
+          date -u
+          echo "Runner local time:"
+          date
+
       - name: Checkout repo
         uses: actions/checkout@v4
 
