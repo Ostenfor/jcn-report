@@ -448,7 +448,7 @@ const { chromium } = require('playwright');
   // ==================================================
 
 
-    // ==================================================
+  // ==================================================
   // MODULE 11 - HTML
   // ==================================================
   const generateIntegratedHtmlReportByPublisher = ({
@@ -532,8 +532,6 @@ const { chromium } = require('playwright');
 
     const renderSection = (sectionKey, sectionTitle, rows, defaultMessage, options = {}) => {
       const groupedByPublisher = {};
-      const confirmSourceKey = options.confirmSourceKey || sectionKey;
-      const sentSourceKey = options.sentSourceKey || sectionKey;
 
       rows.forEach(row => {
         if (!groupedByPublisher[row.website]) groupedByPublisher[row.website] = [];
@@ -544,13 +542,15 @@ const { chromium } = require('playwright');
         groupedByPublisher[publisher].sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
       });
 
+      const sectionPublisherCount = Object.keys(groupedByPublisher).length;
+
       const cardsHtml = Object.keys(groupedByPublisher)
         .sort((a, b) => a.localeCompare(b))
         .map((publisher, index) => {
           const items = groupedByPublisher[publisher];
 
-          const sentKey = `${sentSourceKey}|||${publisher}`;
-          const confirmKey = `${confirmSourceKey}|||${publisher}`;
+          const sentKey = `${sectionKey}|||${publisher}`;
+          const confirmKey = `${sectionKey}|||${publisher}`;
           const whatsappGroupName = getWhatsappGroupName(publisher);
           const hasWhatsappGroup = whatsappGroupName && whatsappGroupName !== 'N/A';
 
@@ -667,9 +667,39 @@ const { chromium } = require('playwright');
 
       const controls = options.removedSection ? '' : renderControls(sectionKey, defaultMessage);
 
+      const sectionProgressBox = options.removedSection
+        ? ''
+        : `
+          <div class="section-progress-box">
+            <div class="section-progress-row">
+              <div class="section-progress-card">
+                <div class="section-progress-number">
+                  <span id="confirmed-count-${sectionKey}">0</span>/<span id="confirmed-total-${sectionKey}">${sectionPublisherCount}</span>
+                </div>
+                <div class="section-progress-label">Confirmados en este tab</div>
+                <div class="progress-track">
+                  <div class="progress-fill" id="confirmed-fill-${sectionKey}"></div>
+                </div>
+                <div class="progress-text" id="confirmed-text-${sectionKey}">0% completado</div>
+              </div>
+
+              <div class="section-progress-card">
+                <div class="section-progress-number sended-progress-number">
+                  <span id="sended-count-${sectionKey}">0</span>/<span id="sended-total-${sectionKey}">${sectionPublisherCount}</span>
+                </div>
+                <div class="section-progress-label">Sended en este tab</div>
+                <div class="progress-track">
+                  <div class="progress-fill" id="sended-fill-${sectionKey}"></div>
+                </div>
+                <div class="progress-text" id="sended-text-${sectionKey}">0% completado</div>
+              </div>
+            </div>
+          </div>
+        `;
+
       const summaryText = options.removedSection
         ? `Total registros: ${rows.length}`
-        : `Total registros: ${rows.length} | Clientes pendientes confirmación: <span id="pending-confirm-count-${sectionKey}">${getPublisherCount(rows)}</span>`;
+        : `Total registros: ${rows.length} | Clientes del tab: ${sectionPublisherCount} | Clientes pendientes confirmación: <span id="pending-confirm-count-${sectionKey}">${sectionPublisherCount}</span>`;
 
       const pendingConfirmBox = options.removedSection
         ? ''
@@ -700,6 +730,7 @@ const { chromium } = require('playwright');
         <div class="section-body" id="section-body-${sectionKey}">
           <div class="section-summary">${summaryText}</div>
           ${controls}
+          ${sectionProgressBox}
           ${pendingConfirmBox}
           ${emptyMessage}
           ${cardsHtml}
@@ -774,7 +805,7 @@ const { chromium } = require('playwright');
 
     .top-summary {
       display: grid;
-      grid-template-columns: repeat(6, minmax(130px, 1fr));
+      grid-template-columns: repeat(5, minmax(140px, 1fr));
       gap: 12px;
       margin-bottom: 20px;
     }
@@ -785,10 +816,7 @@ const { chromium } = require('playwright');
       border-radius: 10px;
       padding: 14px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.06);
-    }
-
-    .summary-progress {
-      grid-column: span 2;
+      min-width: 0;
     }
 
     .summary-number {
@@ -810,34 +838,6 @@ const { chromium } = require('playwright');
 
     .summary-removed .summary-number {
       color: #c62828;
-    }
-
-    .summary-confirmed .summary-number {
-      color: #16a34a;
-    }
-
-    .progress-track {
-      width: 100%;
-      height: 10px;
-      background: #e5e7eb;
-      border-radius: 999px;
-      overflow: hidden;
-      margin-top: 10px;
-    }
-
-    .progress-fill {
-      height: 100%;
-      width: 0%;
-      background: #dc2626;
-      border-radius: 999px;
-      transition: width 0.25s ease, background 0.25s ease;
-    }
-
-    .progress-text {
-      margin-top: 6px;
-      font-size: 12px;
-      color: #555;
-      font-weight: bold;
     }
 
     .tabs {
@@ -968,6 +968,66 @@ const { chromium } = require('playwright');
       height: 18px;
       cursor: pointer;
       margin: 0;
+    }
+
+    .section-progress-box {
+      margin-bottom: 14px;
+    }
+
+    .section-progress-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .section-progress-card {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    }
+
+    .section-progress-number {
+      font-size: 24px;
+      font-weight: bold;
+      line-height: 1;
+      color: #16a34a;
+      margin-bottom: 4px;
+    }
+
+    .sended-progress-number {
+      color: #1565c0;
+    }
+
+    .section-progress-label {
+      color: #555;
+      font-size: 13px;
+      line-height: 1.25;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 10px;
+      background: #e5e7eb;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: #dc2626;
+      border-radius: 999px;
+      transition: width 0.25s ease, background 0.25s ease;
+    }
+
+    .progress-text {
+      margin-top: 6px;
+      font-size: 12px;
+      color: #555;
+      font-weight: bold;
     }
 
     .pending-confirm-box {
@@ -1313,10 +1373,6 @@ const { chromium } = require('playwright');
         margin-bottom: 14px;
       }
 
-      .summary-progress {
-        grid-column: span 2;
-      }
-
       .summary-card {
         padding: 10px;
         border-radius: 9px;
@@ -1328,6 +1384,10 @@ const { chromium } = require('playwright');
 
       .summary-label {
         font-size: 11px;
+      }
+
+      .section-progress-row {
+        grid-template-columns: 1fr;
       }
 
       .progress-track {
@@ -1522,10 +1582,6 @@ const { chromium } = require('playwright');
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
-      .summary-progress {
-        grid-column: span 2;
-      }
-
       .summary-card {
         padding: 9px;
       }
@@ -1593,7 +1649,7 @@ const { chromium } = require('playwright');
 
     <div class="summary-card">
       <div class="summary-number">${totalPublishersCount}</div>
-      <div class="summary-label">Clientes</div>
+      <div class="summary-label">Clientes total día</div>
     </div>
 
     <div class="summary-card">
@@ -1610,22 +1666,6 @@ const { chromium } = require('playwright');
       <div class="summary-number">${removedRows.length}</div>
       <div class="summary-label">Removidos</div>
     </div>
-
-    <div class="summary-card summary-confirmed">
-      <div class="summary-number" id="dashboard-confirmed-clients-simple">0</div>
-      <div class="summary-label">Clientes confirmados</div>
-    </div>
-
-    <div class="summary-card summary-progress">
-      <div class="summary-number">
-        <span id="dashboard-confirmed-clients">0</span>/<span id="dashboard-total-clients">${totalPublishersCount}</span>
-      </div>
-      <div class="summary-label">Progreso de confirmación</div>
-      <div class="progress-track">
-        <div class="progress-fill" id="dashboard-progress-fill"></div>
-      </div>
-      <div class="progress-text" id="dashboard-progress-text">0% completado</div>
-    </div>
   </div>
 
   <div class="tabs">
@@ -1635,26 +1675,26 @@ const { chromium } = require('playwright');
   </div>
 
   ${renderSection(
-    'todos',
-    '1. Reporte completo del día',
-    allRows,
-    'hello'
-  )}
+      'todos',
+      '1. Reporte completo del día',
+      allRows,
+      'hello'
+    )}
 
   ${renderSection(
-    '5pm',
-    '2. Last friendly reminder - 5PM en adelante',
-    reminderRows,
-    'reminder'
-  )}
+      '5pm',
+      '2. Last friendly reminder - 5PM en adelante',
+      reminderRows,
+      'reminder'
+    )}
 
   ${renderSection(
-    'removed',
-    '3. Removidos en esta versión',
-    removedRows,
-    '',
-    { removedSection: true }
-  )}
+      'removed',
+      '3. Removidos en esta versión',
+      removedRows,
+      '',
+      { removedSection: true }
+    )}
 
   <div class="toast" id="toast"></div>
 
@@ -1727,9 +1767,8 @@ const { chromium } = require('playwright');
 
       if (sectionId !== 'removed') {
         updateSectionMessages(sectionId);
+        updateSectionStatus(sectionId);
       }
-
-      updateConfirmationCounts();
     }
 
     function toggleSectionBody(sectionKey) {
@@ -1779,6 +1818,11 @@ const { chromium } = require('playwright');
       if (checkbox) checkbox.checked = checked;
     }
 
+    function updateAllSectionStatuses() {
+      updateSectionStatus('todos');
+      updateSectionStatus('5pm');
+    }
+
     function applySendedState(sentKey, checked) {
       document.querySelectorAll('[data-sent-key="' + CSS.escape(sentKey) + '"]').forEach(card => {
         const sectionKey = card.dataset.sectionKey;
@@ -1792,6 +1836,8 @@ const { chromium } = require('playwright');
           card.classList.remove('sended');
         }
       });
+
+      updateAllSectionStatuses();
     }
 
     function applyConfirmedState(confirmKey, checked) {
@@ -1808,7 +1854,7 @@ const { chromium } = require('playwright');
         }
       });
 
-      updateConfirmationCounts();
+      updateAllSectionStatuses();
     }
 
     function toggleSendedByCard(sectionKey, index, checked) {
@@ -1839,7 +1885,6 @@ const { chromium } = require('playwright');
       }
 
       applyConfirmedState(confirmKey, checked);
-      updateConfirmationCounts();
     }
 
     function markSendedAfterCopy(sectionKey, index) {
@@ -1859,65 +1904,92 @@ const { chromium } = require('playwright');
       return '#16a34a';
     }
 
-    function updateConfirmationCounts() {
-      ['todos', '5pm'].forEach(sectionKey => {
-        const cards = document.querySelectorAll('#' + sectionKey + ' .publisher-card');
-        const pendingPublishers = [];
+    function getProgressColorSended(progressPercent) {
+      if (progressPercent < 35) return '#2563eb';
+      if (progressPercent < 70) return '#1d4ed8';
+      if (progressPercent < 90) return '#1e40af';
+      return '#0f766e';
+    }
 
-        cards.forEach(card => {
-          const checkbox = card.querySelector('.confirm-area input[type="checkbox"]');
-          const isConfirmed = checkbox ? checkbox.checked : false;
+    function updateSectionStatus(sectionKey) {
+      const cards = document.querySelectorAll('#' + sectionKey + ' .publisher-card');
+      const totalClients = cards.length;
 
-          if (!isConfirmed) {
-            const title = card.querySelector('.publisher-title span');
-            const publisherName = title ? title.innerText.trim() : 'Unknown publisher';
-            pendingPublishers.push(publisherName);
-          }
-        });
+      let confirmedClients = 0;
+      let sendedClients = 0;
+      const pendingPublishers = [];
 
-        const counter = document.getElementById('pending-confirm-count-' + sectionKey);
+      cards.forEach(card => {
+        const confirmKey = card.dataset.confirmKey;
+        const sentKey = card.dataset.sentKey;
 
-        if (counter) {
-          counter.innerText = pendingPublishers.length;
+        const isConfirmed = localStorage.getItem(CONFIRMED_PREFIX + confirmKey) === '1';
+        const isSended = localStorage.getItem(SENDED_PREFIX + sentKey) === '1';
+
+        if (isConfirmed) {
+          confirmedClients += 1;
+        } else {
+          const title = card.querySelector('.publisher-title span');
+          const publisherName = title ? title.innerText.trim() : 'Unknown publisher';
+          pendingPublishers.push(publisherName);
         }
 
-        const list = document.getElementById('pending-confirm-list-' + sectionKey);
-
-        if (list) {
-          if (pendingPublishers.length === 0) {
-            list.innerHTML = '<span class="pending-pill">Todo confirmado ✅</span>';
-          } else {
-            list.innerHTML = pendingPublishers
-              .map(name => '<span class="pending-pill">' + escapeForHtml(name) + '</span>')
-              .join('');
-          }
+        if (isSended) {
+          sendedClients += 1;
         }
       });
 
-      const totalClients = ${totalPublishersCount};
-      const confirmedClients = document.querySelectorAll('#todos .confirm-area input[type="checkbox"]:checked').length;
-      const progressPercent = totalClients === 0
+      const confirmedPercent = totalClients === 0
         ? 0
         : Math.round((confirmedClients / totalClients) * 100);
 
-      const confirmedSimpleEl = document.getElementById('dashboard-confirmed-clients-simple');
-      const confirmedEl = document.getElementById('dashboard-confirmed-clients');
-      const totalEl = document.getElementById('dashboard-total-clients');
-      const progressFill = document.getElementById('dashboard-progress-fill');
-      const progressText = document.getElementById('dashboard-progress-text');
+      const sendedPercent = totalClients === 0
+        ? 0
+        : Math.round((sendedClients / totalClients) * 100);
 
-      if (confirmedSimpleEl) confirmedSimpleEl.innerText = confirmedClients;
-      if (confirmedEl) confirmedEl.innerText = confirmedClients;
-      if (totalEl) totalEl.innerText = totalClients;
+      const pendingCounter = document.getElementById('pending-confirm-count-' + sectionKey);
+      if (pendingCounter) pendingCounter.innerText = pendingPublishers.length;
 
-      if (progressFill) {
-        progressFill.style.width = progressPercent + '%';
-        progressFill.style.background = getProgressColor(progressPercent);
+      const list = document.getElementById('pending-confirm-list-' + sectionKey);
+      if (list) {
+        if (pendingPublishers.length === 0) {
+          list.innerHTML = '<span class="pending-pill">Todo confirmado ✅</span>';
+        } else {
+          list.innerHTML = pendingPublishers
+            .map(name => '<span class="pending-pill">' + escapeForHtml(name) + '</span>')
+            .join('');
+        }
       }
 
-      if (progressText) {
-        progressText.innerText = progressPercent + '% completado';
+      const confirmedCount = document.getElementById('confirmed-count-' + sectionKey);
+      const confirmedTotal = document.getElementById('confirmed-total-' + sectionKey);
+      const confirmedFill = document.getElementById('confirmed-fill-' + sectionKey);
+      const confirmedText = document.getElementById('confirmed-text-' + sectionKey);
+
+      if (confirmedCount) confirmedCount.innerText = confirmedClients;
+      if (confirmedTotal) confirmedTotal.innerText = totalClients;
+
+      if (confirmedFill) {
+        confirmedFill.style.width = confirmedPercent + '%';
+        confirmedFill.style.background = getProgressColor(confirmedPercent);
       }
+
+      if (confirmedText) confirmedText.innerText = confirmedPercent + '% completado';
+
+      const sendedCount = document.getElementById('sended-count-' + sectionKey);
+      const sendedTotal = document.getElementById('sended-total-' + sectionKey);
+      const sendedFill = document.getElementById('sended-fill-' + sectionKey);
+      const sendedText = document.getElementById('sended-text-' + sectionKey);
+
+      if (sendedCount) sendedCount.innerText = sendedClients;
+      if (sendedTotal) sendedTotal.innerText = totalClients;
+
+      if (sendedFill) {
+        sendedFill.style.width = sendedPercent + '%';
+        sendedFill.style.background = getProgressColorSended(sendedPercent);
+      }
+
+      if (sendedText) sendedText.innerText = sendedPercent + '% completado';
     }
 
     function restoreSavedStates() {
@@ -1934,7 +2006,7 @@ const { chromium } = require('playwright');
         }
       });
 
-      updateConfirmationCounts();
+      updateAllSectionStatuses();
     }
 
     function fallbackCopyText(text) {
@@ -2012,7 +2084,7 @@ const { chromium } = require('playwright');
     updateSectionMessages('todos');
     updateSectionMessages('5pm');
     restoreSavedStates();
-    updateConfirmationCounts();
+    updateAllSectionStatuses();
   </script>
 </body>
 </html>
