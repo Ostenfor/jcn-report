@@ -64,6 +64,20 @@ const { chromium } = require('playwright');
     return new Date(cleaned);
   };
 
+  const rowKey = (row) => {
+    return [
+      row.scheduled,
+      row.website,
+      row.type,
+      row.user
+    ].join('|||');
+  };
+
+  const keyToRow = (key) => {
+    const [scheduled, website, type, user] = String(key).split('|||');
+    return { scheduled, website, type, user };
+  };
+
   const isAtOrAfter5PM = (scheduledText) => {
     const date = parseDate(scheduledText);
     if (isNaN(date.getTime())) return false;
@@ -136,7 +150,8 @@ const { chromium } = require('playwright');
     }
 
     list.forEach((r, index) => {
-      console.log(`${index + 1}. ${r.scheduled} - ${r.website} - ${r.type} - ${r.user}`);
+      const marker = r.isNew ? ' [NUEVO]' : '';
+      console.log(`${index + 1}. ${r.scheduled} - ${r.website} - ${r.type} - ${r.user}${marker}`);
     });
   };
 
@@ -199,7 +214,8 @@ const { chromium } = require('playwright');
       console.log('');
 
       items.forEach(item => {
-        console.log(`${item.scheduled} - ${item.website} - ${item.type} - ${item.user}`);
+        const marker = item.isNew ? '  [NUEVO]' : '';
+        console.log(`${item.scheduled} - ${item.website} - ${item.type} - ${item.user}${marker}`);
       });
 
       console.log('');
@@ -212,6 +228,15 @@ const { chromium } = require('playwright');
       year: 'numeric',
       month: '2-digit',
       day: '2-digit'
+    }).format(new Date());
+  };
+
+  const getTodayStringRD = () => {
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Santo_Domingo',
+      month: '2-digit',
+      day: '2-digit',
+      year: 'numeric'
     }).format(new Date());
   };
 
@@ -246,12 +271,129 @@ const { chromium } = require('playwright');
     }
   };
 
+  const loadPreviousSnapshot = async (reportsFolder, reportDate) => {
+    const snapshotFileName = `snapshot-${reportDate}.json`;
+    const localSnapshotPath = path.join(reportsFolder, snapshotFileName);
+
+    if (fs.existsSync(localSnapshotPath)) {
+      try {
+        const data = JSON.parse(fs.readFileSync(localSnapshotPath, 'utf8'));
+
+        console.log('');
+        console.log('==================================================');
+        console.log('SNAPSHOT LOCAL ENCONTRADO');
+        console.log('==================================================');
+        console.log(`Archivo: ${localSnapshotPath}`);
+        console.log(`Registros anteriores: ${Array.isArray(data.rows) ? data.rows.length : 0}`);
+
+        return Array.isArray(data.rows) ? data.rows : [];
+      } catch (error) {
+        console.log('Snapshot local inválido. Se ignorará.');
+        return [];
+      }
+    }
+
+    const pagesBaseUrl = (process.env.PAGES_BASE_URL || '').replace(/\/$/, '');
+
+    if (!pagesBaseUrl) {
+      console.log('');
+      console.log('==================================================');
+      console.log('NO HAY SNAPSHOT ANTERIOR');
+      console.log('==================================================');
+      console.log('PAGES_BASE_URL no está configurado. Este run será baseline.');
+      return [];
+    }
+
+    const snapshotUrl = `${pagesBaseUrl}/${snapshotFileName}`;
+
+    try {
+      console.log('');
+      console.log('==================================================');
+      console.log('BUSCANDO SNAPSHOT EN GITHUB PAGES');
+      console.log('==================================================');
+      console.log(`URL: ${snapshotUrl}`);
+
+      const response = await fetch(snapshotUrl, {
+        cache: 'no-store'
+      });
+
+      if (!response.ok) {
+        console.log(`No se encontró snapshot publicado. Status: ${response.status}`);
+        return [];
+      }
+
+      const data = await response.json();
+
+      console.log(`Snapshot encontrado en Pages.`);
+      console.log(`Registros anteriores: ${Array.isArray(data.rows) ? data.rows.length : 0}`);
+
+      return Array.isArray(data.rows) ? data.rows : [];
+
+    } catch (error) {
+      console.log('No se pudo leer snapshot desde Pages.');
+      console.log(error.message);
+      return [];
+    }
+  };
+
+  const saveSnapshot = (reportsFolder, reportDate, rows) => {
+    const snapshotFileName = `snapshot-${reportDate}.json`;
+    const snapshotPath = path.join(reportsFolder, snapshotFileName);
+
+    const payload = {
+      reportDate,
+      generatedAt: new Date().toISOString(),
+      rows: rows.map(rowKey)
+    };
+
+    fs.writeFileSync(snapshotPath, JSON.stringify(payload, null, 2), 'utf8');
+
+    console.log('');
+    console.log('==================================================');
+    console.log('SNAPSHOT GUARDADO');
+    console.log('==================================================');
+    console.log(`Archivo: ${snapshotPath}`);
+    console.log(`Registros guardados: ${payload.rows.length}`);
+  };
+
+  const buildDiff = (currentRows, previousKeys) => {
+    const previousSet = new Set(previousKeys);
+    const currentSet = new Set(currentRows.map(rowKey));
+
+    const rowsWithStatus = currentRows.map(row => {
+      return {
+        ...row,
+        isNew: !previousSet.has(rowKey(row))
+      };
+    });
+
+    const newRows = rowsWithStatus.filter(row => row.isNew);
+
+    const removedRows = previousKeys
+      .filter(key => !currentSet.has(key))
+      .map(keyToRow)
+      .filter(row => row.scheduled && row.website && row.type && row.user);
+
+    const sameRows = rowsWithStatus.filter(row => !row.isNew);
+
+    return {
+      rowsWithStatus,
+      newRows,
+      removedRows,
+      sameRows
+    };
+  };
+
   const generateIntegratedHtmlReportByPublisher = ({
     allRows,
     reminderRows,
-    generatedAtRD
+    removedRows,
+    newRows,
+    sameRows,
+    generatedAtRD,
+    reportDate
   }) => {
-    const renderSection = (sectionKey, sectionTitle, rows, messageHeader) => {
+    const renderSection = (sectionKey, sectionTitle, rows, messageHeader, options = {}) => {
       const groupedByPublisher = {};
 
       rows.forEach(row => {
@@ -271,20 +413,42 @@ const { chromium } = require('playwright');
         .map((publisher, index) => {
           const items = groupedByPublisher[publisher];
 
-          const copyText = [
-            messageHeader,
-            '',
-            ...items.map(item => `${item.scheduled} - ${item.website} - ${item.type} - ${item.user}`)
-          ].join('\n');
+          const copyLines = items.map(item => `${item.scheduled} - ${item.website} - ${item.type} - ${item.user}`);
+
+          const copyText = options.removedSection
+            ? copyLines.join('\n')
+            : [
+                messageHeader,
+                '',
+                ...copyLines
+              ].join('\n');
 
           const visibleLines = items
             .map(item => {
-              return `<div class="line">${escapeHtml(item.scheduled)} - ${escapeHtml(item.website)} - ${escapeHtml(item.type)} - ${escapeHtml(item.user)}</div>`;
+              const cssClass = item.isNew ? 'line new-line' : 'line';
+              const badge = item.isNew ? `<span class="badge-new">NUEVO</span>` : '';
+              const removedBadge = options.removedSection ? `<span class="badge-removed">REMOVIDO</span>` : '';
+
+              return `
+                <div class="${cssClass}">
+                  ${escapeHtml(item.scheduled)} - ${escapeHtml(item.website)} - ${escapeHtml(item.type)} - ${escapeHtml(item.user)}
+                  ${badge}
+                  ${removedBadge}
+                </div>
+              `;
             })
             .join('');
 
+          const messageBlockContent = options.removedSection
+            ? visibleLines
+            : `
+                <div class="hello">${escapeHtml(messageHeader)}</div>
+                <br>
+                ${visibleLines}
+              `;
+
           return `
-            <div class="publisher-card" id="card-${sectionKey}-${index}">
+            <div class="publisher-card ${options.removedSection ? 'removed-card' : ''}" id="card-${sectionKey}-${index}">
               <div class="publisher-header">
                 <div class="publisher-title" onclick="copyPublisher('${sectionKey}', ${index})">
                   <span>${escapeHtml(publisher)}</span>
@@ -301,9 +465,7 @@ const { chromium } = require('playwright');
               <pre class="copy-text" id="copy-text-${sectionKey}-${index}">${escapeHtml(copyText)}</pre>
 
               <div class="message-block" onclick="copyPublisher('${sectionKey}', ${index})">
-                <div class="hello">${escapeHtml(messageHeader)}</div>
-                <br>
-                ${visibleLines}
+                ${messageBlockContent}
               </div>
             </div>
           `;
@@ -315,7 +477,7 @@ const { chromium } = require('playwright');
         : '';
 
       return `
-        <section class="report-section">
+        <section class="report-section" id="${sectionKey}">
           <h2>${escapeHtml(sectionTitle)}</h2>
           <div class="section-summary">Total registros: ${rows.length}</div>
           ${emptyMessage}
@@ -353,7 +515,71 @@ const { chromium } = require('playwright');
 
     .subtitle {
       color: #555;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
+    }
+
+    .top-summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .summary-card {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 14px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    }
+
+    .summary-number {
+      font-size: 28px;
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+
+    .summary-label {
+      color: #555;
+      font-size: 13px;
+    }
+
+    .summary-new .summary-number {
+      color: #0a8f3c;
+    }
+
+    .summary-removed .summary-number {
+      color: #c62828;
+    }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 16px 0 22px 0;
+    }
+
+    .tab-button {
+      border: 1px solid #ccc;
+      background: #fff;
+      border-radius: 999px;
+      padding: 10px 14px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .tab-button.active {
+      background: #111;
+      color: #fff;
+      border-color: #111;
+    }
+
+    .report-section {
+      display: none;
+    }
+
+    .report-section.active {
+      display: block;
     }
 
     .section-summary {
@@ -383,6 +609,11 @@ const { chromium } = require('playwright');
     .publisher-card.done {
       background: #eef9ee;
       border-color: #8bc58b;
+    }
+
+    .removed-card {
+      border-color: #f0b8b8;
+      background: #fffafa;
     }
 
     .publisher-header {
@@ -454,16 +685,81 @@ const { chromium } = require('playwright');
       margin-bottom: 4px;
     }
 
+    .new-line {
+      color: #0a8f3c;
+      font-weight: bold;
+      background: #ecfff3;
+      border-left: 4px solid #0a8f3c;
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+
+    .badge-new {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: #0a8f3c;
+      color: #fff;
+      font-size: 11px;
+      font-weight: bold;
+    }
+
+    .badge-removed {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: #c62828;
+      color: #fff;
+      font-size: 11px;
+      font-weight: bold;
+    }
+
     .copy-text {
       display: none;
       white-space: pre-wrap;
+    }
+
+    @media (max-width: 800px) {
+      .top-summary {
+        grid-template-columns: 1fr 1fr;
+      }
     }
   </style>
 </head>
 
 <body>
   <h1>Reporte Integrado de Publishers</h1>
-  <div class="subtitle">Generado en RD: ${escapeHtml(generatedAtRD)}</div>
+  <div class="subtitle">Generado en RD: ${escapeHtml(generatedAtRD)} | Día: ${escapeHtml(reportDate)}</div>
+
+  <div class="top-summary">
+    <div class="summary-card">
+      <div class="summary-number">${allRows.length}</div>
+      <div class="summary-label">Total actual</div>
+    </div>
+
+    <div class="summary-card summary-new">
+      <div class="summary-number">${newRows.length}</div>
+      <div class="summary-label">Agregados nuevos</div>
+    </div>
+
+    <div class="summary-card summary-removed">
+      <div class="summary-number">${removedRows.length}</div>
+      <div class="summary-label">Removidos</div>
+    </div>
+
+    <div class="summary-card">
+      <div class="summary-number">${sameRows.length}</div>
+      <div class="summary-label">Sin cambios</div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-button active" onclick="showTab('todos', this)">Reporte completo (${allRows.length})</button>
+    <button class="tab-button" onclick="showTab('5pm', this)">5PM en adelante (${reminderRows.length})</button>
+    <button class="tab-button" onclick="showTab('removed', this)">Removidos (${removedRows.length})</button>
+  </div>
 
   ${renderSection(
       'todos',
@@ -479,7 +775,30 @@ const { chromium } = require('playwright');
       'last friendly reminder @'
     )}
 
+  ${renderSection(
+      'removed',
+      '3. Removidos en esta versión',
+      removedRows,
+      '',
+      { removedSection: true }
+    )}
+
   <script>
+    document.getElementById('todos').classList.add('active');
+
+    function showTab(sectionId, button) {
+      document.querySelectorAll('.report-section').forEach(section => {
+        section.classList.remove('active');
+      });
+
+      document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.classList.remove('active');
+      });
+
+      document.getElementById(sectionId).classList.add('active');
+      button.classList.add('active');
+    }
+
     function fallbackCopyText(text) {
       const textarea = document.createElement('textarea');
       textarea.value = text;
@@ -535,7 +854,6 @@ const { chromium } = require('playwright');
 `;
 
     const reportsFolder = getReportsFolderPath();
-    const reportDate = getReportDateForFileName();
 
     const filePath = getUniqueReportFilePath(
       reportsFolder,
@@ -647,12 +965,7 @@ const { chromium } = require('playwright');
 
     printRawList('2. RAW SCRAPING', rows);
 
-    const todayString = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'America/Santo_Domingo',
-      month: '2-digit',
-      day: '2-digit',
-      year: 'numeric'
-    }).format(new Date());
+    const todayString = getTodayStringRD();
 
     const rowsToday = rows.filter(r => {
       const datePart = r.scheduled.split(',')[0]?.trim();
@@ -686,16 +999,43 @@ const { chromium } = require('playwright');
 
     rowsFiltered.sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
 
-    const rowsFilteredAfter5PM = rowsFiltered.filter(row => isAtOrAfter5PM(row.scheduled));
+    const reportsFolder = getReportsFolderPath();
+    const reportDate = getReportDateForFileName();
+
+    const previousKeys = await loadPreviousSnapshot(reportsFolder, reportDate);
+
+    const {
+      rowsWithStatus,
+      newRows,
+      removedRows,
+      sameRows
+    } = buildDiff(rowsFiltered, previousKeys);
+
+    rowsWithStatus.sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
+    removedRows.sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
+
+    const rowsFilteredAfter5PM = rowsWithStatus.filter(row => isAtOrAfter5PM(row.scheduled));
+
+    printRawList('11. AGREGADOS NUEVOS VS ÚLTIMA VERSIÓN DEL MISMO DÍA', newRows);
+    printRawList('12. REMOVIDOS VS ÚLTIMA VERSIÓN DEL MISMO DÍA', removedRows);
+
+    console.log('');
+    console.log('==================================================');
+    console.log('RESUMEN DE CAMBIOS');
+    console.log('==================================================');
+    console.log(`Total actual: ${rowsWithStatus.length}`);
+    console.log(`Agregados nuevos: ${newRows.length}`);
+    console.log(`Removidos: ${removedRows.length}`);
+    console.log(`Sin cambios: ${sameRows.length}`);
 
     printFinalGroupedByPublisher(
-      '11. RESULTADO FINAL AGRUPADO - TODOS',
-      rowsFiltered,
+      '13. RESULTADO FINAL AGRUPADO - TODOS',
+      rowsWithStatus,
       'hello @ for today we have'
     );
 
     printFinalGroupedByPublisher(
-      '12. RESULTADO FINAL AGRUPADO - 5PM EN ADELANTE',
+      '14. RESULTADO FINAL AGRUPADO - 5PM EN ADELANTE',
       rowsFilteredAfter5PM,
       'last friendly reminder @'
     );
@@ -712,10 +1052,16 @@ const { chromium } = require('playwright');
     }).format(new Date());
 
     generateIntegratedHtmlReportByPublisher({
-      allRows: rowsFiltered,
+      allRows: rowsWithStatus,
       reminderRows: rowsFilteredAfter5PM,
-      generatedAtRD
+      removedRows,
+      newRows,
+      sameRows,
+      generatedAtRD,
+      reportDate
     });
+
+    saveSnapshot(reportsFolder, reportDate, rowsFiltered);
 
   } catch (error) {
     console.error('');
