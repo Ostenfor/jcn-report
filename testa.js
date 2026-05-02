@@ -1,10 +1,20 @@
+// ==================================================
+// MODULE 01 - BOOT
+// ==================================================
 require('dotenv').config();
 
 const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
 const { chromium } = require('playwright');
+// ==================================================
+// END MODULE 01 - BOOT
+// ==================================================
 
+
+// ==================================================
+// MODULE 02 - APP START
+// ==================================================
 (async () => {
   const browser = await chromium.launch({
     headless: true
@@ -14,7 +24,14 @@ const { chromium } = require('playwright');
 
   page.setDefaultTimeout(60000);
   page.setDefaultNavigationTimeout(60000);
+  // ==================================================
+  // END MODULE 02 - APP START
+  // ==================================================
 
+
+  // ==================================================
+  // MODULE 03 - PUBLISHERS
+  // ==================================================
   const allowedPublishers = new Set([
     'KolHaolam',
     'Lakewood Scoop',
@@ -49,7 +66,14 @@ const { chromium } = require('playwright');
     'JDN',
     'Rockland Daily'
   ]);
+  // ==================================================
+  // END MODULE 03 - PUBLISHERS
+  // ==================================================
 
+
+  // ==================================================
+  // MODULE 04 - HELPERS
+  // ==================================================
   const normalize = (text) => (text || '')
     .replace(/\s+/g, '')
     .trim()
@@ -92,7 +116,14 @@ const { chromium } = require('playwright');
       .replaceAll('"', '&quot;')
       .replaceAll("'", '&#039;');
   };
+  // ==================================================
+  // END MODULE 04 - HELPERS
+  // ==================================================
 
+
+  // ==================================================
+  // MODULE 05 - NAVIGATION
+  // ==================================================
   const safeGoto = async (url) => {
     try {
       await page.goto(url, {
@@ -111,7 +142,14 @@ const { chromium } = require('playwright');
       }
     }
   };
+  // ==================================================
+  // END MODULE 05 - NAVIGATION
+  // ==================================================
 
+
+  // ==================================================
+  // MODULE 06 - LOCAL OPEN
+  // ==================================================
   const openHtmlFile = (filePath) => {
     const fileUrl = `file:///${filePath.replace(/\\/g, '/')}`;
 
@@ -135,7 +173,14 @@ const { chromium } = require('playwright');
       }
     });
   };
+  // ==================================================
+  // END MODULE 06 - LOCAL OPEN
+  // ==================================================
 
+
+  // ==================================================
+  // MODULE 07 - CONSOLE
+  // ==================================================
   const printRawList = (title, list) => {
     console.log('');
     console.log('==================================================');
@@ -221,7 +266,14 @@ const { chromium } = require('playwright');
       console.log('');
     }
   };
+  // ==================================================
+  // END MODULE 07 - CONSOLE
+  // ==================================================
 
+
+  // ==================================================
+  // MODULE 08 - FILES
+  // ==================================================
   const getReportDateForFileName = () => {
     return new Intl.DateTimeFormat('en-CA', {
       timeZone: 'America/Santo_Domingo',
@@ -270,7 +322,14 @@ const { chromium } = require('playwright');
       counter++;
     }
   };
+  // ==================================================
+  // END MODULE 08 - FILES
+  // ==================================================
 
+
+  // ==================================================
+  // MODULE 09 - SNAPSHOT
+  // ==================================================
   const loadPreviousSnapshot = async (reportsFolder, reportDate) => {
     const snapshotFileName = `snapshot-${reportDate}.json`;
     const localSnapshotPath = path.join(reportsFolder, snapshotFileName);
@@ -355,7 +414,14 @@ const { chromium } = require('playwright');
     console.log(`Archivo: ${snapshotPath}`);
     console.log(`Registros guardados: ${payload.rows.length}`);
   };
+  // ==================================================
+  // END MODULE 09 - SNAPSHOT
+  // ==================================================
 
+
+  // ==================================================
+  // MODULE 10 - DIFF
+  // ==================================================
   const buildDiff = (currentRows, previousKeys) => {
     const previousSet = new Set(previousKeys);
     const currentSet = new Set(currentRows.map(rowKey));
@@ -383,18 +449,25 @@ const { chromium } = require('playwright');
       sameRows
     };
   };
+  // ==================================================
+  // END MODULE 10 - DIFF
+  // ==================================================
 
-  const generateIntegratedHtmlReportByPublisher = ({
-    allRows,
-    reminderRows,
-    removedRows,
-    newRows,
-    sameRows,
-    generatedAtRD,
-    reportDate
-  }) => {
-    const renderControls = (sectionKey, defaultMessage) => {
-      return `
+
+  // ==================================================
+// MODULE 11 - HTML
+// ==================================================
+const generateIntegratedHtmlReportByPublisher = ({
+  allRows,
+  reminderRows,
+  removedRows,
+  newRows,
+  sameRows,
+  generatedAtRD,
+  reportDate
+}) => {
+  const renderControls = (sectionKey, defaultMessage) => {
+    return `
       <div class="message-controls" data-section="${sectionKey}">
         <label>
           Mensaje:
@@ -412,52 +485,52 @@ const { chromium } = require('playwright');
         </label>
       </div>
     `;
-    };
+  };
 
-    const renderSection = (sectionKey, sectionTitle, rows, defaultMessage, options = {}) => {
-      const groupedByPublisher = {};
+  const renderSection = (sectionKey, sectionTitle, rows, defaultMessage, options = {}) => {
+    const groupedByPublisher = {};
 
-      rows.forEach(row => {
-        if (!groupedByPublisher[row.website]) groupedByPublisher[row.website] = [];
-        groupedByPublisher[row.website].push(row);
-      });
+    rows.forEach(row => {
+      if (!groupedByPublisher[row.website]) groupedByPublisher[row.website] = [];
+      groupedByPublisher[row.website].push(row);
+    });
 
-      Object.keys(groupedByPublisher).forEach(publisher => {
-        groupedByPublisher[publisher].sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
-      });
+    Object.keys(groupedByPublisher).forEach(publisher => {
+      groupedByPublisher[publisher].sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
+    });
 
-      const cardsHtml = Object.keys(groupedByPublisher)
-        .sort((a, b) => a.localeCompare(b))
-        .map((publisher, index) => {
-          const items = groupedByPublisher[publisher];
+    const cardsHtml = Object.keys(groupedByPublisher)
+      .sort((a, b) => a.localeCompare(b))
+      .map((publisher, index) => {
+        const items = groupedByPublisher[publisher];
 
-          const copyLines = items.map(item =>
-            `${item.scheduled} - ${item.website} - ${item.type} - ${item.user}`
-          );
+        const copyLines = items.map(item =>
+          `${item.scheduled} - ${item.website} - ${item.type} - ${item.user}`
+        );
 
-          const visibleLines = items.map(item => {
-            const cssClass = item.isNew ? 'line new-line' : 'line';
-            const badge = item.isNew ? `<span class="badge-new">NUEVO</span>` : '';
-            const removedBadge = options.removedSection ? `<span class="badge-removed">REMOVIDO</span>` : '';
+        const visibleLines = items.map(item => {
+          const cssClass = item.isNew ? 'line new-line' : 'line';
+          const badge = item.isNew ? `<span class="badge-new">NUEVO</span>` : '';
+          const removedBadge = options.removedSection ? `<span class="badge-removed">REMOVIDO</span>` : '';
 
-            return `
+          return `
             <div class="${cssClass}">
               ${escapeHtml(item.scheduled)} - ${escapeHtml(item.website)} - ${escapeHtml(item.type)} - ${escapeHtml(item.user)}
               ${badge}
               ${removedBadge}
             </div>
           `;
-          }).join('');
+        }).join('');
 
-          const messageBlockContent = options.removedSection
-            ? visibleLines
-            : `
+        const messageBlockContent = options.removedSection
+          ? visibleLines
+          : `
               <div class="hello dynamic-message" data-section="${sectionKey}"></div>
               <br>
               ${visibleLines}
             `;
 
-          return `
+        return `
           <div class="publisher-card ${options.removedSection ? 'removed-card' : ''}" id="card-${sectionKey}-${index}">
             <div class="publisher-header">
               <div class="publisher-title" onclick="copyPublisher('${sectionKey}', ${index})">
@@ -479,15 +552,15 @@ const { chromium } = require('playwright');
             </div>
           </div>
         `;
-        }).join('');
+      }).join('');
 
-      const emptyMessage = rows.length === 0
-        ? `<div class="empty">No hay registros para esta sección.</div>`
-        : '';
+    const emptyMessage = rows.length === 0
+      ? `<div class="empty">No hay registros para esta sección.</div>`
+      : '';
 
-      const controls = options.removedSection ? '' : renderControls(sectionKey, defaultMessage);
+    const controls = options.removedSection ? '' : renderControls(sectionKey, defaultMessage);
 
-      return `
+    return `
       <section class="report-section" id="${sectionKey}">
         <div class="section-title-row">
           <h2>${escapeHtml(sectionTitle)}</h2>
@@ -504,9 +577,9 @@ const { chromium } = require('playwright');
         </div>
       </section>
     `;
-    };
+  };
 
-    const html = `
+  const html = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -619,40 +692,49 @@ const { chromium } = require('playwright');
 
     .section-summary {
       color: #555;
-      margin-bottom: 12px;
-      font-size: 14px;
+      margin-bottom: 8px;
+      font-size: 13px;
     }
 
     .message-controls {
-      background: #fff;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(255, 255, 255, 0.96);
       border: 1px solid #ddd;
       border-radius: 10px;
-      padding: 12px;
-      margin-bottom: 16px;
+      padding: 6px 10px;
+      margin-bottom: 12px;
       display: flex;
       flex-wrap: wrap;
-      gap: 18px;
+      gap: 10px;
       align-items: center;
+      font-size: 13px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      backdrop-filter: blur(4px);
     }
 
     .message-controls select {
-      padding: 8px 10px;
-      border-radius: 8px;
+      padding: 5px 8px;
+      border-radius: 7px;
       border: 1px solid #bbb;
-      margin-left: 6px;
+      margin-left: 4px;
       font-weight: bold;
+      font-size: 13px;
+      max-width: 260px;
     }
 
     .switch-row {
       display: flex;
-      gap: 8px;
+      gap: 6px;
       align-items: center;
       font-weight: bold;
+      font-size: 13px;
     }
 
     .switch-row input {
-      width: 22px;
-      height: 22px;
+      width: 17px;
+      height: 17px;
       cursor: pointer;
     }
 
@@ -790,6 +872,21 @@ const { chromium } = require('playwright');
         flex-direction: column;
         align-items: flex-start;
       }
+
+      .message-controls {
+        top: 0;
+        gap: 8px;
+        font-size: 12px;
+      }
+
+      .message-controls select {
+        max-width: 220px;
+        font-size: 12px;
+      }
+
+      .switch-row {
+        font-size: 12px;
+      }
     }
   </style>
 </head>
@@ -832,26 +929,26 @@ const { chromium } = require('playwright');
   </div>
 
   ${renderSection(
-      'todos',
-      '1. Reporte completo del día',
-      allRows,
-      'hello'
-    )}
+    'todos',
+    '1. Reporte completo del día',
+    allRows,
+    'hello'
+  )}
 
   ${renderSection(
-      '5pm',
-      '2. Last friendly reminder - 5PM en adelante',
-      reminderRows,
-      'reminder'
-    )}
+    '5pm',
+    '2. Last friendly reminder - 5PM en adelante',
+    reminderRows,
+    'reminder'
+  )}
 
   ${renderSection(
-      'removed',
-      '3. Removidos en esta versión',
-      removedRows,
-      '',
-      { removedSection: true }
-    )}
+    'removed',
+    '3. Removidos en esta versión',
+    removedRows,
+    '',
+    { removedSection: true }
+  )}
 
   <script>
     document.getElementById('todos').classList.add('active');
@@ -900,6 +997,8 @@ const { chromium } = require('playwright');
 
       document.getElementById(sectionId).classList.add('active');
       button.classList.add('active');
+
+      updateSectionMessages(sectionId);
     }
 
     function toggleSectionBody(sectionKey) {
@@ -973,30 +1072,37 @@ const { chromium } = require('playwright');
 </html>
 `;
 
-    const reportsFolder = getReportsFolderPath();
+  const reportsFolder = getReportsFolderPath();
 
-    const filePath = getUniqueReportFilePath(
-      reportsFolder,
-      'reporte-publishers-integrado',
-      reportDate
-    );
+  const filePath = getUniqueReportFilePath(
+    reportsFolder,
+    'reporte-publishers-integrado',
+    reportDate
+  );
 
-    fs.writeFileSync(filePath, html, 'utf8');
+  fs.writeFileSync(filePath, html, 'utf8');
 
-    const fileUrl = `file:///${filePath.replace(/\\/g, '/')}`;
+  const fileUrl = `file:///${filePath.replace(/\\/g, '/')}`;
 
-    console.log('');
-    console.log('==================================================');
-    console.log('13. HTML INTEGRADO GENERADO');
-    console.log('==================================================');
-    console.log(`Archivo creado: ${filePath}`);
-    console.log(`Link directo: ${fileUrl}`);
+  console.log('');
+  console.log('==================================================');
+  console.log('13. HTML INTEGRADO GENERADO');
+  console.log('==================================================');
+  console.log(`Archivo creado: ${filePath}`);
+  console.log(`Link directo: ${fileUrl}`);
 
-    if (!process.env.CI) {
-      openHtmlFile(filePath);
-    }
-  };
+  if (!process.env.CI) {
+    openHtmlFile(filePath);
+  }
+};
+// ==================================================
+// END MODULE 11 - HTML
+// ==================================================
 
+
+  // ==================================================
+  // MODULE 12 - MAIN
+  // ==================================================
   try {
     console.log('');
     console.log('Entrando al login...');
@@ -1182,7 +1288,14 @@ const { chromium } = require('playwright');
     });
 
     saveSnapshot(reportsFolder, reportDate, rowsFiltered);
+    // ==================================================
+    // END MODULE 12 - MAIN
+    // ==================================================
 
+
+  // ==================================================
+  // MODULE 13 - CLEANUP
+  // ==================================================
   } catch (error) {
     console.error('');
     console.error('==================================================');
@@ -1197,4 +1310,7 @@ const { chromium } = require('playwright');
   } finally {
     await browser.close();
   }
+  // ==================================================
+  // END MODULE 13 - CLEANUP
+  // ==================================================
 })();
