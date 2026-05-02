@@ -448,7 +448,7 @@ const { chromium } = require('playwright');
   // ==================================================
 
 
-    // ==================================================
+  // ==================================================
   // MODULE 11 - HTML
   // ==================================================
   const generateIntegratedHtmlReportByPublisher = ({
@@ -462,6 +462,7 @@ const { chromium } = require('playwright');
   }) => {
     const whatsappGroupNames = {
       'KolHaolam': 'KOL Haolam JCN',
+      'Kol Haolam': 'KOL Haolam JCN',
       'Lakewood Scoop': 'TLS JCN Ads',
       'Jewish News 24': 'Jewish News 24 - JCN',
       'Meaningful Minute': 'MM /JCN FAMILY',
@@ -473,17 +474,20 @@ const { chromium } = require('playwright');
       'Five Towns Central': '5T x JCN 2025',
       'Just My Israel': 'JustMyIsrael & JCN',
       "N'Shei News": 'Updated N’shei News X JCN',
+      'N’Shei News': 'Updated N’shei News X JCN',
+      'Simcha Spot': 'SimchaSpot Ads - JCN',
       'Belaaz': 'Belaaz / JCN UPDATED',
       'Arutz Sheva': 'JCN NEW GROUP A7',
       'Chez Chaya': 'Chef Chaya / JCN',
       'Kosher.com': 'Kosher.com ad sales',
+      'Kosher. com': 'Kosher.com ad sales',
       'Zemel': 'JD media and Zemel',
       'The Perlowitz Show': 'Perlowitz Show // JCN',
       'Mommy Deals': 'MommyDeals + JCN',
       'Raizys Cooking': 'Raizy’s Cooking / JCN',
       'Israel Breaking News': 'Israel Breaking News🇮🇱 & JCN',
       'Baltimore Jewish Life': 'Baltimore Jewish Life / JCN',
-      'Israel Live News': 'Israel Live News  x JCN (Yehuda)',
+      'Israel Live News': 'Israel Live News x JCN (Yehuda)',
       'Meira K.': 'Meira K x JCN 2025',
       'Efraim Feder in Lakewood Status': 'JCN Feder 2025',
       'Matzav': 'N/A',
@@ -558,70 +562,50 @@ const { chromium } = require('playwright');
             const removedBadge = options.removedSection ? `<span class="badge-removed">REMOVIDO</span>` : '';
 
             return `
-            <div class="${cssClass}">
-              ${escapeHtml(item.scheduled)} - ${escapeHtml(item.website)} - ${escapeHtml(item.type)} - ${escapeHtml(item.user)}
-              ${badge}
-              ${removedBadge}
-            </div>
-          `;
-          }).join('');
-
-          const groupInfo = options.removedSection
-            ? ''
-            : `
-              <div class="whatsapp-group-box">
-                <span class="group-label">Grupo WhatsApp:</span>
-                <span class="group-name">${escapeHtml(whatsappGroupName)}</span>
+              <div class="${cssClass}">
+                ${escapeHtml(item.scheduled)} - ${escapeHtml(item.website)} - ${escapeHtml(item.type)} - ${escapeHtml(item.user)}
+                ${badge}
+                ${removedBadge}
               </div>
             `;
+          }).join('');
 
           const messageBlockContent = options.removedSection
             ? visibleLines
             : `
               <div class="hello dynamic-message" data-section="${sectionKey}"></div>
               <div class="message-spacer"></div>
-              ${groupInfo}
-              <div class="message-spacer small"></div>
               ${visibleLines}
             `;
 
-          const confirmedCheckbox = options.removedSection
-            ? ''
-            : `
-              <label class="check-area confirm-area">
-                <input
-                  id="confirmed-${sectionKey}-${index}"
-                  type="checkbox"
-                  onchange="togglePublisherConfirmedByCard('${sectionKey}', ${index}, this.checked)"
-                >
-                <span>Publisher Confirmed</span>
-              </label>
-            `;
+          const confirmedCheckbox = options.removedSection ? '' : `
+            <label class="header-check confirm-area">
+              <input
+                id="confirmed-${sectionKey}-${index}"
+                type="checkbox"
+                onchange="togglePublisherConfirmedByCard('${sectionKey}', ${index}, this.checked)"
+              >
+              <span>Publisher Confirmed</span>
+            </label>
+          `;
 
-          const sentCheckbox = options.removedSection
-            ? ''
-            : `
-              <label class="check-area sent-area">
-                <input
-                  id="sended-${sectionKey}-${index}"
-                  type="checkbox"
-                  onchange="toggleSendedByCard('${sectionKey}', ${index}, this.checked)"
-                >
-                <span>Sended</span>
-              </label>
-            `;
+          const sentCheckbox = options.removedSection ? '' : `
+            <label class="header-check sent-area">
+              <input
+                id="sended-${sectionKey}-${index}"
+                type="checkbox"
+                onchange="toggleSendedByCard('${sectionKey}', ${index}, this.checked)"
+              >
+              <span>Sended</span>
+            </label>
+          `;
 
-          const whatsAppButton = options.removedSection
-            ? ''
-            : `
+          const actionButtons = options.removedSection ? '' : `
+            <div class="action-buttons">
               <button class="whatsapp-btn" onclick="openWhatsAppTest(event, '${sectionKey}', ${index})">
                 WhatsApp
               </button>
-            `;
 
-          const copyGroupButton = options.removedSection
-            ? ''
-            : `
               <button
                 class="copy-group-btn ${hasWhatsappGroup ? '' : 'disabled-btn'}"
                 onclick="copyWhatsappGroup(event, '${sectionKey}', ${index})"
@@ -629,11 +613,19 @@ const { chromium } = require('playwright');
               >
                 Copy Group
               </button>
-            `;
+            </div>
+          `;
+
+          const groupFooter = options.removedSection ? '' : `
+            <div class="group-footer">
+              <span class="group-footer-label">Grupo WhatsApp:</span>
+              <span class="group-footer-name">${escapeHtml(whatsappGroupName)}</span>
+            </div>
+          `;
 
           return `
           <div
-            class="publisher-card ${options.removedSection ? 'removed-card' : ''} ${options.confirmationSection ? 'confirmation-card' : ''}"
+            class="publisher-card ${options.removedSection ? 'removed-card' : ''}"
             id="card-${sectionKey}-${index}"
             data-section-key="${escapeHtml(sectionKey)}"
             data-card-index="${index}"
@@ -641,28 +633,30 @@ const { chromium } = require('playwright');
             data-confirm-key="${escapeHtml(confirmKey)}"
             data-whatsapp-group="${escapeHtml(whatsappGroupName)}"
           >
-            <div class="publisher-header">
+            <div class="publisher-topbar">
               <div class="publisher-title" onclick="copyPublisher('${sectionKey}', ${index})">
                 <span>${escapeHtml(publisher)}</span>
                 <span class="count">(${items.length})</span>
                 <span class="copied-msg" id="copied-${sectionKey}-${index}">Copiado ✅</span>
               </div>
 
-              <div class="status-checks">
-                ${whatsAppButton}
-                ${copyGroupButton}
+              <div class="header-checks">
                 ${sentCheckbox}
                 ${confirmedCheckbox}
               </div>
             </div>
+
+            ${actionButtons}
 
             <pre class="copy-lines" id="copy-lines-${sectionKey}-${index}">${escapeHtml(copyLines.join('\n'))}</pre>
 
             <div class="message-block" onclick="copyPublisher('${sectionKey}', ${index})">
               ${messageBlockContent}
             </div>
+
+            ${groupFooter}
           </div>
-        `;
+          `;
         }).join('');
 
       const emptyMessage = rows.length === 0
@@ -671,9 +665,26 @@ const { chromium } = require('playwright');
 
       const controls = options.removedSection ? '' : renderControls(sectionKey, defaultMessage);
 
-      const summaryText = options.confirmationSection
-        ? `Publishers pendientes por confirmación: <span id="remaining-section-count">${getPublisherCount(rows)}</span>`
-        : `Total registros: ${rows.length}`;
+      const summaryText = options.removedSection
+        ? `Total registros: ${rows.length}`
+        : `Total registros: ${rows.length} | Pendientes confirmación: <span id="pending-confirm-count-${sectionKey}">${getPublisherCount(rows)}</span>`;
+
+      const pendingConfirmBox = options.removedSection
+        ? ''
+        : `
+          <div class="pending-confirm-box">
+            <div class="pending-confirm-header">
+              <strong>Pendientes por confirmación</strong>
+              <button class="small-collapse-btn" onclick="togglePendingBox('${sectionKey}')">
+                Colapsar / Expandir
+              </button>
+            </div>
+
+            <div class="pending-confirm-body" id="pending-confirm-body-${sectionKey}">
+              <div class="pending-confirm-list" id="pending-confirm-list-${sectionKey}"></div>
+            </div>
+          </div>
+        `;
 
       return `
       <section class="report-section" id="${sectionKey}">
@@ -687,14 +698,13 @@ const { chromium } = require('playwright');
         <div class="section-body" id="section-body-${sectionKey}">
           <div class="section-summary">${summaryText}</div>
           ${controls}
+          ${pendingConfirmBox}
           ${emptyMessage}
           ${cardsHtml}
         </div>
       </section>
-    `;
+      `;
     };
-
-    const pendingPublisherCount = getPublisherCount(allRows);
 
     const html = `
 <!DOCTYPE html>
@@ -744,7 +754,7 @@ const { chromium } = require('playwright');
 
     .top-summary {
       display: grid;
-      grid-template-columns: repeat(6, minmax(130px, 1fr));
+      grid-template-columns: repeat(5, minmax(130px, 1fr));
       gap: 12px;
       margin-bottom: 20px;
     }
@@ -776,10 +786,6 @@ const { chromium } = require('playwright');
 
     .summary-removed .summary-number {
       color: #c62828;
-    }
-
-    .summary-pending .summary-number {
-      color: #d97706;
     }
 
     .tabs {
@@ -912,6 +918,55 @@ const { chromium } = require('playwright');
       margin: 0;
     }
 
+    .pending-confirm-box {
+      background: #fff8e6;
+      border: 1px solid #f0d28a;
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-bottom: 14px;
+    }
+
+    .pending-confirm-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .small-collapse-btn {
+      border: 1px solid #d6b65c;
+      background: #fff;
+      color: #7a5200;
+      border-radius: 999px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 12px;
+      min-height: 32px;
+      touch-action: manipulation;
+    }
+
+    .pending-confirm-body.collapsed {
+      display: none;
+    }
+
+    .pending-confirm-list {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .pending-pill {
+      background: #fff;
+      border: 1px solid #e6c875;
+      color: #6f4a00;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 13px;
+      font-weight: bold;
+    }
+
     .empty {
       background: #fff;
       border: 1px solid #ddd;
@@ -924,9 +979,9 @@ const { chromium } = require('playwright');
     .publisher-card {
       background: #fff;
       border: 1px solid #ddd;
-      border-radius: 10px;
+      border-radius: 12px;
       padding: 16px;
-      margin-bottom: 16px;
+      margin-bottom: 18px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.06);
     }
 
@@ -940,21 +995,17 @@ const { chromium } = require('playwright');
       background: #eef9ee;
     }
 
-    .publisher-card.hidden-by-confirmation {
-      display: none;
-    }
-
     .removed-card {
       border-color: #f0b8b8;
       background: #fffafa;
     }
 
-    .publisher-header {
+    .publisher-topbar {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      gap: 12px;
-      margin-bottom: 12px;
+      gap: 18px;
+      margin-bottom: 14px;
     }
 
     .publisher-title {
@@ -984,25 +1035,64 @@ const { chromium } = require('playwright');
       margin-left: 10px;
     }
 
-    .status-checks {
+    .header-checks {
       display: flex;
-      flex-direction: column;
+      flex-wrap: wrap;
+      gap: 18px;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    .header-check {
+      display: flex;
+      align-items: center;
       gap: 8px;
-      align-items: flex-end;
-      min-width: 180px;
+      font-size: 14px;
+      font-weight: bold;
+      white-space: nowrap;
+      user-select: none;
+      cursor: pointer;
+      min-height: 34px;
+    }
+
+    .header-check input {
+      width: 22px;
+      height: 22px;
+      margin: 0;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .sent-area {
+      color: #1565c0;
+    }
+
+    .confirm-area {
+      color: #2e7d32;
+    }
+
+    .action-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .whatsapp-btn,
+    .copy-group-btn {
+      border-radius: 999px;
+      padding: 10px 16px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 14px;
+      min-height: 42px;
+      touch-action: manipulation;
     }
 
     .whatsapp-btn {
       border: 1px solid #25d366;
       background: #eafff2;
       color: #075e54;
-      border-radius: 999px;
-      padding: 7px 10px;
-      cursor: pointer;
-      font-weight: bold;
-      font-size: 13px;
-      min-height: 34px;
-      touch-action: manipulation;
     }
 
     .whatsapp-btn:hover {
@@ -1013,13 +1103,6 @@ const { chromium } = require('playwright');
       border: 1px solid #7aa7ff;
       background: #eef4ff;
       color: #174ea6;
-      border-radius: 999px;
-      padding: 7px 10px;
-      cursor: pointer;
-      font-weight: bold;
-      font-size: 13px;
-      min-height: 34px;
-      touch-action: manipulation;
     }
 
     .copy-group-btn:hover {
@@ -1035,38 +1118,11 @@ const { chromium } = require('playwright');
       border-color: #ccc;
     }
 
-    .check-area {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 14px;
-      cursor: pointer;
-      user-select: none;
-      white-space: nowrap;
-      touch-action: manipulation;
-      font-weight: bold;
-    }
-
-    .sent-area {
-      color: #1565c0;
-    }
-
-    .confirm-area {
-      color: #2e7d32;
-    }
-
-    .check-area input {
-      width: 20px;
-      height: 20px;
-      cursor: pointer;
-      margin: 0;
-    }
-
     .message-block {
       cursor: pointer;
-      padding: 12px;
+      padding: 14px;
       background: #fafafa;
-      border-radius: 8px;
+      border-radius: 10px;
       border: 1px solid #eee;
       line-height: 1.45;
       font-size: 15px;
@@ -1087,30 +1143,6 @@ const { chromium } = require('playwright');
 
     .message-spacer {
       height: 10px;
-    }
-
-    .message-spacer.small {
-      height: 8px;
-    }
-
-    .whatsapp-group-box {
-      background: #fff;
-      border: 1px dashed #b7c7d9;
-      border-radius: 8px;
-      padding: 8px 10px;
-      margin-bottom: 4px;
-      line-height: 1.3;
-    }
-
-    .group-label {
-      font-weight: bold;
-      color: #555;
-      margin-right: 4px;
-    }
-
-    .group-name {
-      font-weight: bold;
-      color: #075e54;
     }
 
     .line {
@@ -1150,6 +1182,26 @@ const { chromium } = require('playwright');
       font-size: 11px;
       font-weight: bold;
       vertical-align: middle;
+    }
+
+    .group-footer {
+      margin-top: 12px;
+      padding: 10px 12px;
+      background: #fff;
+      border: 1px dashed #b7c7d9;
+      border-radius: 10px;
+      line-height: 1.35;
+    }
+
+    .group-footer-label {
+      color: #555;
+      font-weight: bold;
+      margin-right: 6px;
+    }
+
+    .group-footer-name {
+      color: #075e54;
+      font-weight: bold;
     }
 
     .copy-lines {
@@ -1284,72 +1336,87 @@ const { chromium } = require('playwright');
         height: 17px;
       }
 
-      .publisher-card {
-        padding: 10px;
+      .pending-confirm-box {
+        padding: 8px 10px;
         margin-bottom: 12px;
-        border-radius: 9px;
       }
 
-      .publisher-header {
+      .pending-confirm-header {
         align-items: flex-start;
-        gap: 8px;
-        margin-bottom: 8px;
+      }
+
+      .pending-pill {
+        font-size: 12px;
+        padding: 5px 8px;
+      }
+
+      .small-collapse-btn {
+        font-size: 11px;
+        min-height: 30px;
+      }
+
+      .publisher-card {
+        padding: 12px;
+        margin-bottom: 14px;
+      }
+
+      .publisher-topbar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
       }
 
       .publisher-title {
-        font-size: 15px;
-        line-height: 1.25;
+        font-size: 16px;
       }
 
       .count {
         font-size: 12px;
       }
 
-      .status-checks {
-        min-width: 135px;
-        gap: 6px;
+      .header-checks {
+        justify-content: flex-start;
+        gap: 16px;
+      }
+
+      .header-check {
+        font-size: 12px;
+      }
+
+      .header-check input {
+        width: 20px;
+        height: 20px;
+      }
+
+      .action-buttons {
+        gap: 10px;
       }
 
       .whatsapp-btn,
       .copy-group-btn {
-        font-size: 11px;
-        padding: 6px 8px;
-        min-height: 30px;
-      }
-
-      .check-area {
-        font-size: 11px;
-      }
-
-      .check-area input {
-        width: 18px;
-        height: 18px;
+        font-size: 12px;
+        padding: 9px 13px;
+        min-height: 38px;
       }
 
       .message-block {
-        padding: 9px;
+        padding: 10px;
         font-size: 13px;
         line-height: 1.35;
       }
 
       .hello {
         font-size: 15px;
-        line-height: 1.25;
       }
 
-      .message-spacer {
-        height: 8px;
-      }
-
-      .whatsapp-group-box {
-        padding: 7px 8px;
+      .group-footer {
         font-size: 12px;
+        padding: 8px 10px;
       }
 
       .line {
         font-size: 13px;
         line-height: 1.35;
-        margin-bottom: 5px;
       }
 
       .new-line {
@@ -1410,16 +1477,19 @@ const { chromium } = require('playwright');
         padding: 6px;
       }
 
-      .publisher-header {
+      .header-checks {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+
+      .action-buttons {
         flex-direction: column;
       }
 
-      .status-checks {
+      .whatsapp-btn,
+      .copy-group-btn {
         width: 100%;
-        min-width: 0;
-        align-items: flex-start;
-        flex-direction: row;
-        flex-wrap: wrap;
       }
 
       .message-block {
@@ -1466,18 +1536,12 @@ const { chromium } = require('playwright');
       <div class="summary-number">${sameRows.length}</div>
       <div class="summary-label">Sin cambios</div>
     </div>
-
-    <div class="summary-card summary-pending">
-      <div class="summary-number" id="pending-confirm-count">${pendingPublisherCount}</div>
-      <div class="summary-label">Pendiente confirmación</div>
-    </div>
   </div>
 
   <div class="tabs">
     <button class="tab-button active" onclick="showTab('todos', this)">Reporte completo (${allRows.length})</button>
     <button class="tab-button" onclick="showTab('5pm', this)">5PM en adelante (${reminderRows.length})</button>
     <button class="tab-button" onclick="showTab('removed', this)">Removidos (${removedRows.length})</button>
-    <button class="tab-button" onclick="showTab('remaining', this)">Restante confirmación (<span id="remaining-tab-count">${pendingPublisherCount}</span>)</button>
   </div>
 
   ${renderSection(
@@ -1502,18 +1566,6 @@ const { chromium } = require('playwright');
       { removedSection: true }
     )}
 
-  ${renderSection(
-      'remaining',
-      '4. Restante por confirmación',
-      allRows,
-      'hello',
-      {
-        confirmationSection: true,
-        confirmSourceKey: 'todos',
-        sentSourceKey: 'todos'
-      }
-    )}
-
   <div class="toast" id="toast"></div>
 
   <script>
@@ -1522,6 +1574,15 @@ const { chromium } = require('playwright');
     const CONFIRMED_PREFIX = 'jcn:publisher-confirmed:' + REPORT_DATE + ':';
 
     document.getElementById('todos').classList.add('active');
+
+    function escapeForHtml(text) {
+      return String(text || '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
 
     function getMention(sectionKey) {
       const checked = document.getElementById('mention-switch-' + sectionKey)?.checked;
@@ -1533,17 +1594,9 @@ const { chromium } = require('playwright');
       const value = select ? select.value : 'hello';
       const mention = getMention(sectionKey);
 
-      if (value === 'hello') {
-        return 'hello ' + mention + ' for today we have';
-      }
-
-      if (value === 'reminder') {
-        return 'last friendly reminder for today ' + mention;
-      }
-
-      if (value === 'updated') {
-        return 'List updated ' + mention;
-      }
+      if (value === 'hello') return 'hello ' + mention + ' for today we have';
+      if (value === 'reminder') return 'last friendly reminder for today ' + mention;
+      if (value === 'updated') return 'List updated ' + mention;
 
       return 'hello ' + mention + ' for today we have';
     }
@@ -1558,7 +1611,6 @@ const { chromium } = require('playwright');
 
     function showToast(message) {
       const toast = document.getElementById('toast');
-
       if (!toast) return;
 
       toast.innerHTML = message;
@@ -1587,14 +1639,18 @@ const { chromium } = require('playwright');
         updateSectionMessages(sectionId);
       }
 
-      updateRemainingConfirmation();
+      updateConfirmationCounts();
     }
 
     function toggleSectionBody(sectionKey) {
       const body = document.getElementById('section-body-' + sectionKey);
-
       if (!body) return;
+      body.classList.toggle('collapsed');
+    }
 
+    function togglePendingBox(sectionKey) {
+      const body = document.getElementById('pending-confirm-body-' + sectionKey);
+      if (!body) return;
       body.classList.toggle('collapsed');
     }
 
@@ -1605,7 +1661,6 @@ const { chromium } = require('playwright');
     function getWhatsappGroupFromCard(sectionKey, index) {
       const card = getCard(sectionKey, index);
       if (!card) return 'N/A';
-
       return card.dataset.whatsappGroup || 'N/A';
     }
 
@@ -1631,10 +1686,7 @@ const { chromium } = require('playwright');
 
     function setCheckboxState(id, checked) {
       const checkbox = document.getElementById(id);
-
-      if (checkbox) {
-        checkbox.checked = checked;
-      }
+      if (checkbox) checkbox.checked = checked;
     }
 
     function applySendedState(sentKey, checked) {
@@ -1666,7 +1718,7 @@ const { chromium } = require('playwright');
         }
       });
 
-      updateRemainingConfirmation();
+      updateConfirmationCounts();
     }
 
     function toggleSendedByCard(sectionKey, index, checked) {
@@ -1709,29 +1761,40 @@ const { chromium } = require('playwright');
       applySendedState(sentKey, true);
     }
 
-    function updateRemainingConfirmation() {
-      const remainingCards = document.querySelectorAll('#remaining .publisher-card');
-      let pendingCount = 0;
+    function updateConfirmationCounts() {
+      ['todos', '5pm'].forEach(sectionKey => {
+        const cards = document.querySelectorAll('#' + sectionKey + ' .publisher-card');
+        const pendingPublishers = [];
 
-      remainingCards.forEach(card => {
-        const confirmKey = card.dataset.confirmKey;
-        const isConfirmed = localStorage.getItem(CONFIRMED_PREFIX + confirmKey) === '1';
+        cards.forEach(card => {
+          const confirmKey = card.dataset.confirmKey;
+          const isConfirmed = localStorage.getItem(CONFIRMED_PREFIX + confirmKey) === '1';
 
-        if (isConfirmed) {
-          card.classList.add('hidden-by-confirmation');
-        } else {
-          card.classList.remove('hidden-by-confirmation');
-          pendingCount++;
+          if (!isConfirmed) {
+            const title = card.querySelector('.publisher-title span');
+            const publisherName = title ? title.innerText.trim() : 'Unknown publisher';
+            pendingPublishers.push(publisherName);
+          }
+        });
+
+        const counter = document.getElementById('pending-confirm-count-' + sectionKey);
+
+        if (counter) {
+          counter.innerText = pendingPublishers.length;
+        }
+
+        const list = document.getElementById('pending-confirm-list-' + sectionKey);
+
+        if (list) {
+          if (pendingPublishers.length === 0) {
+            list.innerHTML = '<span class="pending-pill">Todo confirmado ✅</span>';
+          } else {
+            list.innerHTML = pendingPublishers
+              .map(name => '<span class="pending-pill">' + escapeForHtml(name) + '</span>')
+              .join('');
+          }
         }
       });
-
-      const remainingTabCount = document.getElementById('remaining-tab-count');
-      const remainingSectionCount = document.getElementById('remaining-section-count');
-      const pendingConfirmCount = document.getElementById('pending-confirm-count');
-
-      if (remainingTabCount) remainingTabCount.innerText = pendingCount;
-      if (remainingSectionCount) remainingSectionCount.innerText = pendingCount;
-      if (pendingConfirmCount) pendingConfirmCount.innerText = pendingCount;
     }
 
     function restoreSavedStates() {
@@ -1748,7 +1811,7 @@ const { chromium } = require('playwright');
         }
       });
 
-      updateRemainingConfirmation();
+      updateConfirmationCounts();
     }
 
     function fallbackCopyText(text) {
@@ -1825,7 +1888,6 @@ const { chromium } = require('playwright');
 
     updateSectionMessages('todos');
     updateSectionMessages('5pm');
-    updateSectionMessages('remaining');
     restoreSavedStates();
   </script>
 </body>
