@@ -448,7 +448,7 @@ const { chromium } = require('playwright');
   // ==================================================
 
 
-    // ==================================================
+  // ==================================================
   // MODULE 11 - HTML
   // ==================================================
   const generateIntegratedHtmlReportByPublisher = ({
@@ -559,6 +559,14 @@ const { chromium } = require('playwright');
               </label>
             `;
 
+          const whatsAppButton = options.removedSection
+            ? ''
+            : `
+              <button class="whatsapp-btn" onclick="openWhatsAppTest(event)">
+                WhatsApp
+              </button>
+            `;
+
           return `
           <div
             class="publisher-card ${options.removedSection ? 'removed-card' : ''} ${options.confirmationSection ? 'confirmation-card' : ''}"
@@ -576,6 +584,7 @@ const { chromium } = require('playwright');
               </div>
 
               <div class="status-checks">
+                ${whatsAppButton}
                 ${sentCheckbox}
                 ${confirmedCheckbox}
               </div>
@@ -917,6 +926,23 @@ const { chromium } = require('playwright');
       min-width: 180px;
     }
 
+    .whatsapp-btn {
+      border: 1px solid #25d366;
+      background: #eafff2;
+      color: #075e54;
+      border-radius: 999px;
+      padding: 7px 10px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 13px;
+      min-height: 34px;
+      touch-action: manipulation;
+    }
+
+    .whatsapp-btn:hover {
+      background: #d9ffe9;
+    }
+
     .check-area {
       display: flex;
       align-items: center;
@@ -1140,6 +1166,12 @@ const { chromium } = require('playwright');
       .status-checks {
         min-width: 135px;
         gap: 6px;
+      }
+
+      .whatsapp-btn {
+        font-size: 11px;
+        padding: 6px 8px;
+        min-height: 30px;
       }
 
       .check-area {
@@ -1393,6 +1425,11 @@ const { chromium } = require('playwright');
       if (!body) return;
 
       body.classList.toggle('collapsed');
+    }
+
+    function openWhatsAppTest(event) {
+      event.stopPropagation();
+      window.open('https://web.whatsapp.com/', '_blank');
     }
 
     function getCard(sectionKey, index) {
