@@ -1428,9 +1428,17 @@ const { chromium } = require('playwright');
     }
 
     function openWhatsAppTest(event) {
-      event.stopPropagation();
-      window.open('https://web.whatsapp.com/', '_blank');
-    }
+  event.stopPropagation();
+
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  if (isMobile) {
+    window.location.href = 'whatsapp://send';
+    return;
+  }
+
+  window.open('https://web.whatsapp.com/', '_blank');
+}
 
     function getCard(sectionKey, index) {
       return document.getElementById('card-' + sectionKey + '-' + index);
