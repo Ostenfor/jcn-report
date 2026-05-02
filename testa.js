@@ -393,14 +393,32 @@ const { chromium } = require('playwright');
     generatedAtRD,
     reportDate
   }) => {
-    const renderSection = (sectionKey, sectionTitle, rows, messageHeader, options = {}) => {
+    const renderControls = (sectionKey, defaultMessage) => {
+      return `
+      <div class="message-controls" data-section="${sectionKey}">
+        <label>
+          Mensaje:
+          <select id="message-select-${sectionKey}" onchange="updateSectionMessages('${sectionKey}')">
+            <option value="hello" ${defaultMessage === 'hello' ? 'selected' : ''}>hello @ for today we have</option>
+            <option value="reminder" ${defaultMessage === 'reminder' ? 'selected' : ''}>last friendly reminder for today @</option>
+            <option value="updated" ${defaultMessage === 'updated' ? 'selected' : ''}>List updated @</option>
+          </select>
+        </label>
+
+        <label class="switch-row">
+          <span>Single @</span>
+          <input id="mention-switch-${sectionKey}" type="checkbox" onchange="updateSectionMessages('${sectionKey}')">
+          <span>Double @ @</span>
+        </label>
+      </div>
+    `;
+    };
+
+    const renderSection = (sectionKey, sectionTitle, rows, defaultMessage, options = {}) => {
       const groupedByPublisher = {};
 
       rows.forEach(row => {
-        if (!groupedByPublisher[row.website]) {
-          groupedByPublisher[row.website] = [];
-        }
-
+        if (!groupedByPublisher[row.website]) groupedByPublisher[row.website] = [];
         groupedByPublisher[row.website].push(row);
       });
 
@@ -413,77 +431,79 @@ const { chromium } = require('playwright');
         .map((publisher, index) => {
           const items = groupedByPublisher[publisher];
 
-          const copyLines = items.map(item => `${item.scheduled} - ${item.website} - ${item.type} - ${item.user}`);
+          const copyLines = items.map(item =>
+            `${item.scheduled} - ${item.website} - ${item.type} - ${item.user}`
+          );
 
-          const copyText = options.removedSection
-            ? copyLines.join('\n')
-            : [
-                messageHeader,
-                '',
-                ...copyLines
-              ].join('\n');
+          const visibleLines = items.map(item => {
+            const cssClass = item.isNew ? 'line new-line' : 'line';
+            const badge = item.isNew ? `<span class="badge-new">NUEVO</span>` : '';
+            const removedBadge = options.removedSection ? `<span class="badge-removed">REMOVIDO</span>` : '';
 
-          const visibleLines = items
-            .map(item => {
-              const cssClass = item.isNew ? 'line new-line' : 'line';
-              const badge = item.isNew ? `<span class="badge-new">NUEVO</span>` : '';
-              const removedBadge = options.removedSection ? `<span class="badge-removed">REMOVIDO</span>` : '';
-
-              return `
-                <div class="${cssClass}">
-                  ${escapeHtml(item.scheduled)} - ${escapeHtml(item.website)} - ${escapeHtml(item.type)} - ${escapeHtml(item.user)}
-                  ${badge}
-                  ${removedBadge}
-                </div>
-              `;
-            })
-            .join('');
+            return `
+            <div class="${cssClass}">
+              ${escapeHtml(item.scheduled)} - ${escapeHtml(item.website)} - ${escapeHtml(item.type)} - ${escapeHtml(item.user)}
+              ${badge}
+              ${removedBadge}
+            </div>
+          `;
+          }).join('');
 
           const messageBlockContent = options.removedSection
             ? visibleLines
             : `
-                <div class="hello">${escapeHtml(messageHeader)}</div>
-                <br>
-                ${visibleLines}
-              `;
+              <div class="hello dynamic-message" data-section="${sectionKey}"></div>
+              <br>
+              ${visibleLines}
+            `;
 
           return `
-            <div class="publisher-card ${options.removedSection ? 'removed-card' : ''}" id="card-${sectionKey}-${index}">
-              <div class="publisher-header">
-                <div class="publisher-title" onclick="copyPublisher('${sectionKey}', ${index})">
-                  <span>${escapeHtml(publisher)}</span>
-                  <span class="count">(${items.length})</span>
-                  <span class="copied-msg" id="copied-${sectionKey}-${index}">Copiado ✅</span>
-                </div>
-
-                <label class="check-area">
-                  <input type="checkbox" onchange="toggleDone('${sectionKey}', ${index}, this.checked)">
-                  <span>Done</span>
-                </label>
+          <div class="publisher-card ${options.removedSection ? 'removed-card' : ''}" id="card-${sectionKey}-${index}">
+            <div class="publisher-header">
+              <div class="publisher-title" onclick="copyPublisher('${sectionKey}', ${index})">
+                <span>${escapeHtml(publisher)}</span>
+                <span class="count">(${items.length})</span>
+                <span class="copied-msg" id="copied-${sectionKey}-${index}">Copiado ✅</span>
               </div>
 
-              <pre class="copy-text" id="copy-text-${sectionKey}-${index}">${escapeHtml(copyText)}</pre>
-
-              <div class="message-block" onclick="copyPublisher('${sectionKey}', ${index})">
-                ${messageBlockContent}
-              </div>
+              <label class="check-area">
+                <input type="checkbox" onchange="toggleDone('${sectionKey}', ${index}, this.checked)">
+                <span>Done</span>
+              </label>
             </div>
-          `;
-        })
-        .join('');
+
+            <pre class="copy-lines" id="copy-lines-${sectionKey}-${index}">${escapeHtml(copyLines.join('\n'))}</pre>
+
+            <div class="message-block" onclick="copyPublisher('${sectionKey}', ${index})">
+              ${messageBlockContent}
+            </div>
+          </div>
+        `;
+        }).join('');
 
       const emptyMessage = rows.length === 0
         ? `<div class="empty">No hay registros para esta sección.</div>`
         : '';
 
+      const controls = options.removedSection ? '' : renderControls(sectionKey, defaultMessage);
+
       return `
-        <section class="report-section" id="${sectionKey}">
+      <section class="report-section" id="${sectionKey}">
+        <div class="section-title-row">
           <h2>${escapeHtml(sectionTitle)}</h2>
+          <button class="collapse-btn" onclick="toggleSectionBody('${sectionKey}')">
+            Colapsar / Expandir
+          </button>
+        </div>
+
+        <div class="section-body" id="section-body-${sectionKey}">
           <div class="section-summary">Total registros: ${rows.length}</div>
+          ${controls}
           ${emptyMessage}
           ${cardsHtml}
-        </section>
-      `;
+        </div>
+      </section>
+    `;
     };
 
     const html = `
@@ -502,15 +522,11 @@ const { chromium } = require('playwright');
       margin: 0;
     }
 
-    h1 {
-      margin: 0 0 4px 0;
-    }
+    h1 { margin: 0 0 4px 0; }
 
     h2 {
-      margin-top: 34px;
-      margin-bottom: 6px;
+      margin: 0;
       padding-bottom: 8px;
-      border-bottom: 2px solid #ddd;
     }
 
     .subtitle {
@@ -520,7 +536,7 @@ const { chromium } = require('playwright');
 
     .top-summary {
       display: grid;
-      grid-template-columns: repeat(4, minmax(140px, 1fr));
+      grid-template-columns: repeat(5, minmax(130px, 1fr));
       gap: 12px;
       margin-bottom: 20px;
     }
@@ -544,13 +560,8 @@ const { chromium } = require('playwright');
       font-size: 13px;
     }
 
-    .summary-new .summary-number {
-      color: #0a8f3c;
-    }
-
-    .summary-removed .summary-number {
-      color: #c62828;
-    }
+    .summary-new .summary-number { color: #0a8f3c; }
+    .summary-removed .summary-number { color: #c62828; }
 
     .tabs {
       display: flex;
@@ -574,18 +585,75 @@ const { chromium } = require('playwright');
       border-color: #111;
     }
 
-    .report-section {
-      display: none;
+    .report-section { display: none; }
+    .report-section.active { display: block; }
+
+    .section-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-top: 34px;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #ddd;
     }
 
-    .report-section.active {
-      display: block;
+    .collapse-btn {
+      border: 1px solid #ccc;
+      background: #fff;
+      border-radius: 999px;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+
+    .collapse-btn:hover {
+      background: #f0f7ff;
+    }
+
+    .section-body.collapsed {
+      display: none;
     }
 
     .section-summary {
       color: #555;
-      margin-bottom: 16px;
+      margin-bottom: 12px;
       font-size: 14px;
+    }
+
+    .message-controls {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      align-items: center;
+    }
+
+    .message-controls select {
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid #bbb;
+      margin-left: 6px;
+      font-weight: bold;
+    }
+
+    .switch-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      font-weight: bold;
+    }
+
+    .switch-row input {
+      width: 22px;
+      height: 22px;
+      cursor: pointer;
     }
 
     .empty {
@@ -632,9 +700,7 @@ const { chromium } = require('playwright');
       user-select: none;
     }
 
-    .publisher-title.copied {
-      color: #0066cc;
-    }
+    .publisher-title.copied { color: #0066cc; }
 
     .count {
       color: #666;
@@ -673,17 +739,11 @@ const { chromium } = require('playwright');
       line-height: 1.5;
     }
 
-    .message-block:hover {
-      background: #f0f7ff;
-    }
+    .message-block:hover { background: #f0f7ff; }
 
-    .hello {
-      font-weight: bold;
-    }
+    .hello { font-weight: bold; }
 
-    .line {
-      margin-bottom: 4px;
-    }
+    .line { margin-bottom: 4px; }
 
     .new-line {
       color: #0a8f3c;
@@ -716,14 +776,19 @@ const { chromium } = require('playwright');
       font-weight: bold;
     }
 
-    .copy-text {
+    .copy-lines {
       display: none;
       white-space: pre-wrap;
     }
 
-    @media (max-width: 800px) {
+    @media (max-width: 900px) {
       .top-summary {
         grid-template-columns: 1fr 1fr;
+      }
+
+      .section-title-row {
+        flex-direction: column;
+        align-items: flex-start;
       }
     }
   </style>
@@ -736,7 +801,12 @@ const { chromium } = require('playwright');
   <div class="top-summary">
     <div class="summary-card">
       <div class="summary-number">${allRows.length}</div>
-      <div class="summary-label">Total actual</div>
+      <div class="summary-label">Total reporte completo</div>
+    </div>
+
+    <div class="summary-card">
+      <div class="summary-number">${reminderRows.length}</div>
+      <div class="summary-label">Total 5PM en adelante</div>
     </div>
 
     <div class="summary-card summary-new">
@@ -765,14 +835,14 @@ const { chromium } = require('playwright');
       'todos',
       '1. Reporte completo del día',
       allRows,
-      'hello @ for today we have'
+      'hello'
     )}
 
   ${renderSection(
       '5pm',
       '2. Last friendly reminder - 5PM en adelante',
       reminderRows,
-      'last friendly reminder @'
+      'reminder'
     )}
 
   ${renderSection(
@@ -786,6 +856,39 @@ const { chromium } = require('playwright');
   <script>
     document.getElementById('todos').classList.add('active');
 
+    function getMention(sectionKey) {
+      const checked = document.getElementById('mention-switch-' + sectionKey)?.checked;
+      return checked ? '@ @' : '@';
+    }
+
+    function getMessage(sectionKey) {
+      const select = document.getElementById('message-select-' + sectionKey);
+      const value = select ? select.value : 'hello';
+      const mention = getMention(sectionKey);
+
+      if (value === 'hello') {
+        return 'hello ' + mention + ' for today we have';
+      }
+
+      if (value === 'reminder') {
+        return 'last friendly reminder for today ' + mention;
+      }
+
+      if (value === 'updated') {
+        return 'List updated ' + mention;
+      }
+
+      return 'hello ' + mention + ' for today we have';
+    }
+
+    function updateSectionMessages(sectionKey) {
+      const message = getMessage(sectionKey);
+
+      document.querySelectorAll('.dynamic-message[data-section="' + sectionKey + '"]').forEach(el => {
+        el.innerText = message;
+      });
+    }
+
     function showTab(sectionId, button) {
       document.querySelectorAll('.report-section').forEach(section => {
         section.classList.remove('active');
@@ -797,6 +900,14 @@ const { chromium } = require('playwright');
 
       document.getElementById(sectionId).classList.add('active');
       button.classList.add('active');
+    }
+
+    function toggleSectionBody(sectionKey) {
+      const body = document.getElementById('section-body-' + sectionKey);
+
+      if (!body) return;
+
+      body.classList.toggle('collapsed');
     }
 
     function fallbackCopyText(text) {
@@ -816,9 +927,15 @@ const { chromium } = require('playwright');
     }
 
     async function copyPublisher(sectionKey, index) {
-      const text = document.getElementById('copy-text-' + sectionKey + '-' + index).innerText;
+      const lines = document.getElementById('copy-lines-' + sectionKey + '-' + index).innerText;
       const title = document.querySelector('#card-' + sectionKey + '-' + index + ' .publisher-title');
       const copiedMsg = document.getElementById('copied-' + sectionKey + '-' + index);
+
+      let text = lines;
+
+      if (sectionKey !== 'removed') {
+        text = getMessage(sectionKey) + '\\n\\n' + lines;
+      }
 
       try {
         if (navigator.clipboard && window.isSecureContext) {
@@ -848,6 +965,9 @@ const { chromium } = require('playwright');
         card.classList.remove('done');
       }
     }
+
+    updateSectionMessages('todos');
+    updateSectionMessages('5pm');
   </script>
 </body>
 </html>
