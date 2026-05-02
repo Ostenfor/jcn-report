@@ -812,8 +812,8 @@ const { chromium } = require('playwright');
       color: #c62828;
     }
 
-    .summary-pending .summary-number {
-      color: #d97706;
+    .summary-confirmed .summary-number {
+      color: #16a34a;
     }
 
     .progress-track {
@@ -1611,16 +1611,16 @@ const { chromium } = require('playwright');
       <div class="summary-label">Removidos</div>
     </div>
 
-    <div class="summary-card summary-pending">
-      <div class="summary-number" id="dashboard-pending-clients">${totalPublishersCount}</div>
-      <div class="summary-label">Faltan por confirmar</div>
+    <div class="summary-card summary-confirmed">
+      <div class="summary-number" id="dashboard-confirmed-clients-simple">0</div>
+      <div class="summary-label">Clientes confirmados</div>
     </div>
 
     <div class="summary-card summary-progress">
       <div class="summary-number">
         <span id="dashboard-confirmed-clients">0</span>/<span id="dashboard-total-clients">${totalPublishersCount}</span>
       </div>
-      <div class="summary-label">Clientes confirmados</div>
+      <div class="summary-label">Progreso de confirmación</div>
       <div class="progress-track">
         <div class="progress-fill" id="dashboard-progress-fill"></div>
       </div>
@@ -1839,6 +1839,7 @@ const { chromium } = require('playwright');
       }
 
       applyConfirmedState(confirmKey, checked);
+      updateConfirmationCounts();
     }
 
     function markSendedAfterCopy(sectionKey, index) {
@@ -1859,16 +1860,13 @@ const { chromium } = require('playwright');
     }
 
     function updateConfirmationCounts() {
-      const totalClients = ${totalPublishersCount};
-      let pendingClients = 0;
-
       ['todos', '5pm'].forEach(sectionKey => {
         const cards = document.querySelectorAll('#' + sectionKey + ' .publisher-card');
         const pendingPublishers = [];
 
         cards.forEach(card => {
-          const confirmKey = card.dataset.confirmKey;
-          const isConfirmed = localStorage.getItem(CONFIRMED_PREFIX + confirmKey) === '1';
+          const checkbox = card.querySelector('.confirm-area input[type="checkbox"]');
+          const isConfirmed = checkbox ? checkbox.checked : false;
 
           if (!isConfirmed) {
             const title = card.querySelector('.publisher-title span');
@@ -1876,10 +1874,6 @@ const { chromium } = require('playwright');
             pendingPublishers.push(publisherName);
           }
         });
-
-        if (sectionKey === 'todos') {
-          pendingClients = pendingPublishers.length;
-        }
 
         const counter = document.getElementById('pending-confirm-count-' + sectionKey);
 
@@ -1900,20 +1894,21 @@ const { chromium } = require('playwright');
         }
       });
 
-      const confirmedClients = Math.max(totalClients - pendingClients, 0);
+      const totalClients = ${totalPublishersCount};
+      const confirmedClients = document.querySelectorAll('#todos .confirm-area input[type="checkbox"]:checked').length;
       const progressPercent = totalClients === 0
         ? 0
         : Math.round((confirmedClients / totalClients) * 100);
 
+      const confirmedSimpleEl = document.getElementById('dashboard-confirmed-clients-simple');
       const confirmedEl = document.getElementById('dashboard-confirmed-clients');
       const totalEl = document.getElementById('dashboard-total-clients');
-      const pendingEl = document.getElementById('dashboard-pending-clients');
       const progressFill = document.getElementById('dashboard-progress-fill');
       const progressText = document.getElementById('dashboard-progress-text');
 
+      if (confirmedSimpleEl) confirmedSimpleEl.innerText = confirmedClients;
       if (confirmedEl) confirmedEl.innerText = confirmedClients;
       if (totalEl) totalEl.innerText = totalClients;
-      if (pendingEl) pendingEl.innerText = pendingClients;
 
       if (progressFill) {
         progressFill.style.width = progressPercent + '%';
