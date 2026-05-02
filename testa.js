@@ -327,7 +327,7 @@ const { chromium } = require('playwright');
   // ==================================================
 
 
-    // ==================================================
+  // ==================================================
   // MODULE 09 - SNAPSHOT
   // ==================================================
   const loadPreviousSnapshot = async (reportsFolder, reportDate) => {
@@ -448,20 +448,24 @@ const { chromium } = require('playwright');
   // ==================================================
 
 
+    // ==================================================
+  // MODULE 11 - HTML
   // ==================================================
-// MODULE 11 - HTML
-// ==================================================
-const generateIntegratedHtmlReportByPublisher = ({
-  allRows,
-  reminderRows,
-  removedRows,
-  newRows,
-  sameRows,
-  generatedAtRD,
-  reportDate
-}) => {
-  const renderControls = (sectionKey, defaultMessage) => {
-    return `
+  const generateIntegratedHtmlReportByPublisher = ({
+    allRows,
+    reminderRows,
+    removedRows,
+    newRows,
+    sameRows,
+    generatedAtRD,
+    reportDate
+  }) => {
+    const getPublisherCount = (rows) => {
+      return new Set(rows.map(row => row.website)).size;
+    };
+
+    const renderControls = (sectionKey, defaultMessage) => {
+      return `
       <div class="message-controls" data-section="${sectionKey}">
         <div class="control-group">
           <label class="control-label" for="message-select-${sectionKey}">Mensaje:</label>
@@ -479,53 +483,91 @@ const generateIntegratedHtmlReportByPublisher = ({
         </label>
       </div>
     `;
-  };
+    };
 
-  const renderSection = (sectionKey, sectionTitle, rows, defaultMessage, options = {}) => {
-    const groupedByPublisher = {};
+    const renderSection = (sectionKey, sectionTitle, rows, defaultMessage, options = {}) => {
+      const groupedByPublisher = {};
+      const confirmSourceKey = options.confirmSourceKey || sectionKey;
+      const sentSourceKey = options.sentSourceKey || sectionKey;
 
-    rows.forEach(row => {
-      if (!groupedByPublisher[row.website]) groupedByPublisher[row.website] = [];
-      groupedByPublisher[row.website].push(row);
-    });
+      rows.forEach(row => {
+        if (!groupedByPublisher[row.website]) groupedByPublisher[row.website] = [];
+        groupedByPublisher[row.website].push(row);
+      });
 
-    Object.keys(groupedByPublisher).forEach(publisher => {
-      groupedByPublisher[publisher].sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
-    });
+      Object.keys(groupedByPublisher).forEach(publisher => {
+        groupedByPublisher[publisher].sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
+      });
 
-    const cardsHtml = Object.keys(groupedByPublisher)
-      .sort((a, b) => a.localeCompare(b))
-      .map((publisher, index) => {
-        const items = groupedByPublisher[publisher];
+      const cardsHtml = Object.keys(groupedByPublisher)
+        .sort((a, b) => a.localeCompare(b))
+        .map((publisher, index) => {
+          const items = groupedByPublisher[publisher];
 
-        const copyLines = items.map(item =>
-          `${item.scheduled} - ${item.website} - ${item.type} - ${item.user}`
-        );
+          const sentKey = `${sentSourceKey}|||${publisher}`;
+          const confirmKey = `${confirmSourceKey}|||${publisher}`;
 
-        const visibleLines = items.map(item => {
-          const cssClass = item.isNew ? 'line new-line' : 'line';
-          const badge = item.isNew ? `<span class="badge-new">NUEVO</span>` : '';
-          const removedBadge = options.removedSection ? `<span class="badge-removed">REMOVIDO</span>` : '';
+          const copyLines = items.map(item =>
+            `${item.scheduled} - ${item.website} - ${item.type} - ${item.user}`
+          );
 
-          return `
+          const visibleLines = items.map(item => {
+            const cssClass = item.isNew ? 'line new-line' : 'line';
+            const badge = item.isNew ? `<span class="badge-new">NUEVO</span>` : '';
+            const removedBadge = options.removedSection ? `<span class="badge-removed">REMOVIDO</span>` : '';
+
+            return `
             <div class="${cssClass}">
               ${escapeHtml(item.scheduled)} - ${escapeHtml(item.website)} - ${escapeHtml(item.type)} - ${escapeHtml(item.user)}
               ${badge}
               ${removedBadge}
             </div>
           `;
-        }).join('');
+          }).join('');
 
-        const messageBlockContent = options.removedSection
-          ? visibleLines
-          : `
+          const messageBlockContent = options.removedSection
+            ? visibleLines
+            : `
               <div class="hello dynamic-message" data-section="${sectionKey}"></div>
               <div class="message-spacer"></div>
               ${visibleLines}
             `;
 
-        return `
-          <div class="publisher-card ${options.removedSection ? 'removed-card' : ''}" id="card-${sectionKey}-${index}">
+          const confirmedCheckbox = options.removedSection
+            ? ''
+            : `
+              <label class="check-area confirm-area">
+                <input
+                  id="confirmed-${sectionKey}-${index}"
+                  type="checkbox"
+                  onchange="togglePublisherConfirmedByCard('${sectionKey}', ${index}, this.checked)"
+                >
+                <span>Publisher Confirmed</span>
+              </label>
+            `;
+
+          const sentCheckbox = options.removedSection
+            ? ''
+            : `
+              <label class="check-area sent-area">
+                <input
+                  id="sended-${sectionKey}-${index}"
+                  type="checkbox"
+                  onchange="toggleSendedByCard('${sectionKey}', ${index}, this.checked)"
+                >
+                <span>Sended</span>
+              </label>
+            `;
+
+          return `
+          <div
+            class="publisher-card ${options.removedSection ? 'removed-card' : ''} ${options.confirmationSection ? 'confirmation-card' : ''}"
+            id="card-${sectionKey}-${index}"
+            data-section-key="${escapeHtml(sectionKey)}"
+            data-card-index="${index}"
+            data-sent-key="${escapeHtml(sentKey)}"
+            data-confirm-key="${escapeHtml(confirmKey)}"
+          >
             <div class="publisher-header">
               <div class="publisher-title" onclick="copyPublisher('${sectionKey}', ${index})">
                 <span>${escapeHtml(publisher)}</span>
@@ -533,10 +575,10 @@ const generateIntegratedHtmlReportByPublisher = ({
                 <span class="copied-msg" id="copied-${sectionKey}-${index}">Copiado ✅</span>
               </div>
 
-              <label class="check-area">
-                <input type="checkbox" onchange="toggleDone('${sectionKey}', ${index}, this.checked)">
-                <span>Done</span>
-              </label>
+              <div class="status-checks">
+                ${sentCheckbox}
+                ${confirmedCheckbox}
+              </div>
             </div>
 
             <pre class="copy-lines" id="copy-lines-${sectionKey}-${index}">${escapeHtml(copyLines.join('\n'))}</pre>
@@ -546,15 +588,19 @@ const generateIntegratedHtmlReportByPublisher = ({
             </div>
           </div>
         `;
-      }).join('');
+        }).join('');
 
-    const emptyMessage = rows.length === 0
-      ? `<div class="empty">No hay registros para esta sección.</div>`
-      : '';
+      const emptyMessage = rows.length === 0
+        ? `<div class="empty">No hay registros para esta sección.</div>`
+        : '';
 
-    const controls = options.removedSection ? '' : renderControls(sectionKey, defaultMessage);
+      const controls = options.removedSection ? '' : renderControls(sectionKey, defaultMessage);
 
-    return `
+      const summaryText = options.confirmationSection
+        ? `Publishers pendientes por confirmación: <span id="remaining-section-count">${getPublisherCount(rows)}</span>`
+        : `Total registros: ${rows.length}`;
+
+      return `
       <section class="report-section" id="${sectionKey}">
         <div class="section-title-row">
           <h2>${escapeHtml(sectionTitle)}</h2>
@@ -564,16 +610,18 @@ const generateIntegratedHtmlReportByPublisher = ({
         </div>
 
         <div class="section-body" id="section-body-${sectionKey}">
-          <div class="section-summary">Total registros: ${rows.length}</div>
+          <div class="section-summary">${summaryText}</div>
           ${controls}
           ${emptyMessage}
           ${cardsHtml}
         </div>
       </section>
     `;
-  };
+    };
 
-  const html = `
+    const pendingPublisherCount = getPublisherCount(allRows);
+
+    const html = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -621,7 +669,7 @@ const generateIntegratedHtmlReportByPublisher = ({
 
     .top-summary {
       display: grid;
-      grid-template-columns: repeat(5, minmax(130px, 1fr));
+      grid-template-columns: repeat(6, minmax(130px, 1fr));
       gap: 12px;
       margin-bottom: 20px;
     }
@@ -653,6 +701,10 @@ const generateIntegratedHtmlReportByPublisher = ({
 
     .summary-removed .summary-number {
       color: #c62828;
+    }
+
+    .summary-pending .summary-number {
+      color: #d97706;
     }
 
     .tabs {
@@ -803,9 +855,18 @@ const generateIntegratedHtmlReportByPublisher = ({
       box-shadow: 0 2px 6px rgba(0,0,0,0.06);
     }
 
-    .publisher-card.done {
-      background: #eef9ee;
+    .publisher-card.sended {
+      border-color: #90caf9;
+      background: #f5fbff;
+    }
+
+    .publisher-card.confirmed {
       border-color: #8bc58b;
+      background: #eef9ee;
+    }
+
+    .publisher-card.hidden-by-confirmation {
+      display: none;
     }
 
     .removed-card {
@@ -816,7 +877,7 @@ const generateIntegratedHtmlReportByPublisher = ({
     .publisher-header {
       display: flex;
       justify-content: space-between;
-      align-items: center;
+      align-items: flex-start;
       gap: 12px;
       margin-bottom: 12px;
     }
@@ -848,15 +909,32 @@ const generateIntegratedHtmlReportByPublisher = ({
       margin-left: 10px;
     }
 
+    .status-checks {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: flex-end;
+      min-width: 180px;
+    }
+
     .check-area {
       display: flex;
       align-items: center;
       gap: 6px;
-      font-size: 15px;
+      font-size: 14px;
       cursor: pointer;
       user-select: none;
       white-space: nowrap;
       touch-action: manipulation;
+      font-weight: bold;
+    }
+
+    .sent-area {
+      color: #1565c0;
+    }
+
+    .confirm-area {
+      color: #2e7d32;
     }
 
     .check-area input {
@@ -1059,8 +1137,13 @@ const generateIntegratedHtmlReportByPublisher = ({
         font-size: 12px;
       }
 
+      .status-checks {
+        min-width: 135px;
+        gap: 6px;
+      }
+
       .check-area {
-        font-size: 12px;
+        font-size: 11px;
       }
 
       .check-area input {
@@ -1141,6 +1224,18 @@ const generateIntegratedHtmlReportByPublisher = ({
         padding: 6px;
       }
 
+      .publisher-header {
+        flex-direction: column;
+      }
+
+      .status-checks {
+        width: 100%;
+        min-width: 0;
+        align-items: flex-start;
+        flex-direction: row;
+        flex-wrap: wrap;
+      }
+
       .message-block {
         font-size: 12.5px;
       }
@@ -1185,37 +1280,59 @@ const generateIntegratedHtmlReportByPublisher = ({
       <div class="summary-number">${sameRows.length}</div>
       <div class="summary-label">Sin cambios</div>
     </div>
+
+    <div class="summary-card summary-pending">
+      <div class="summary-number" id="pending-confirm-count">${pendingPublisherCount}</div>
+      <div class="summary-label">Pendiente confirmación</div>
+    </div>
   </div>
 
   <div class="tabs">
     <button class="tab-button active" onclick="showTab('todos', this)">Reporte completo (${allRows.length})</button>
     <button class="tab-button" onclick="showTab('5pm', this)">5PM en adelante (${reminderRows.length})</button>
     <button class="tab-button" onclick="showTab('removed', this)">Removidos (${removedRows.length})</button>
+    <button class="tab-button" onclick="showTab('remaining', this)">Restante confirmación (<span id="remaining-tab-count">${pendingPublisherCount}</span>)</button>
   </div>
 
   ${renderSection(
-    'todos',
-    '1. Reporte completo del día',
-    allRows,
-    'hello'
-  )}
+      'todos',
+      '1. Reporte completo del día',
+      allRows,
+      'hello'
+    )}
 
   ${renderSection(
-    '5pm',
-    '2. Last friendly reminder - 5PM en adelante',
-    reminderRows,
-    'reminder'
-  )}
+      '5pm',
+      '2. Last friendly reminder - 5PM en adelante',
+      reminderRows,
+      'reminder'
+    )}
 
   ${renderSection(
-    'removed',
-    '3. Removidos en esta versión',
-    removedRows,
-    '',
-    { removedSection: true }
-  )}
+      'removed',
+      '3. Removidos en esta versión',
+      removedRows,
+      '',
+      { removedSection: true }
+    )}
+
+  ${renderSection(
+      'remaining',
+      '4. Restante por confirmación',
+      allRows,
+      'hello',
+      {
+        confirmationSection: true,
+        confirmSourceKey: 'todos',
+        sentSourceKey: 'todos'
+      }
+    )}
 
   <script>
+    const REPORT_DATE = ${JSON.stringify(reportDate)};
+    const SENDED_PREFIX = 'jcn:sended:' + REPORT_DATE + ':';
+    const CONFIRMED_PREFIX = 'jcn:publisher-confirmed:' + REPORT_DATE + ':';
+
     document.getElementById('todos').classList.add('active');
 
     function getMention(sectionKey) {
@@ -1266,6 +1383,8 @@ const generateIntegratedHtmlReportByPublisher = ({
       if (sectionId !== 'removed') {
         updateSectionMessages(sectionId);
       }
+
+      updateRemainingConfirmation();
     }
 
     function toggleSectionBody(sectionKey) {
@@ -1274,6 +1393,132 @@ const generateIntegratedHtmlReportByPublisher = ({
       if (!body) return;
 
       body.classList.toggle('collapsed');
+    }
+
+    function getCard(sectionKey, index) {
+      return document.getElementById('card-' + sectionKey + '-' + index);
+    }
+
+    function setCheckboxState(id, checked) {
+      const checkbox = document.getElementById(id);
+
+      if (checkbox) {
+        checkbox.checked = checked;
+      }
+    }
+
+    function applySendedState(sentKey, checked) {
+      document.querySelectorAll('[data-sent-key="' + CSS.escape(sentKey) + '"]').forEach(card => {
+        const sectionKey = card.dataset.sectionKey;
+        const index = card.dataset.cardIndex;
+
+        setCheckboxState('sended-' + sectionKey + '-' + index, checked);
+
+        if (checked) {
+          card.classList.add('sended');
+        } else {
+          card.classList.remove('sended');
+        }
+      });
+    }
+
+    function applyConfirmedState(confirmKey, checked) {
+      document.querySelectorAll('[data-confirm-key="' + CSS.escape(confirmKey) + '"]').forEach(card => {
+        const sectionKey = card.dataset.sectionKey;
+        const index = card.dataset.cardIndex;
+
+        setCheckboxState('confirmed-' + sectionKey + '-' + index, checked);
+
+        if (checked) {
+          card.classList.add('confirmed');
+        } else {
+          card.classList.remove('confirmed');
+        }
+      });
+
+      updateRemainingConfirmation();
+    }
+
+    function toggleSendedByCard(sectionKey, index, checked) {
+      const card = getCard(sectionKey, index);
+      if (!card) return;
+
+      const sentKey = card.dataset.sentKey;
+
+      if (checked) {
+        localStorage.setItem(SENDED_PREFIX + sentKey, '1');
+      } else {
+        localStorage.removeItem(SENDED_PREFIX + sentKey);
+      }
+
+      applySendedState(sentKey, checked);
+    }
+
+    function togglePublisherConfirmedByCard(sectionKey, index, checked) {
+      const card = getCard(sectionKey, index);
+      if (!card) return;
+
+      const confirmKey = card.dataset.confirmKey;
+
+      if (checked) {
+        localStorage.setItem(CONFIRMED_PREFIX + confirmKey, '1');
+      } else {
+        localStorage.removeItem(CONFIRMED_PREFIX + confirmKey);
+      }
+
+      applyConfirmedState(confirmKey, checked);
+    }
+
+    function markSendedAfterCopy(sectionKey, index) {
+      const card = getCard(sectionKey, index);
+      if (!card) return;
+
+      const sentKey = card.dataset.sentKey;
+
+      localStorage.setItem(SENDED_PREFIX + sentKey, '1');
+      applySendedState(sentKey, true);
+    }
+
+    function updateRemainingConfirmation() {
+      const remainingCards = document.querySelectorAll('#remaining .publisher-card');
+      let pendingCount = 0;
+
+      remainingCards.forEach(card => {
+        const confirmKey = card.dataset.confirmKey;
+        const isConfirmed = localStorage.getItem(CONFIRMED_PREFIX + confirmKey) === '1';
+
+        if (isConfirmed) {
+          card.classList.add('hidden-by-confirmation');
+        } else {
+          card.classList.remove('hidden-by-confirmation');
+          pendingCount++;
+        }
+      });
+
+      const remainingTabCount = document.getElementById('remaining-tab-count');
+      const remainingSectionCount = document.getElementById('remaining-section-count');
+      const pendingConfirmCount = document.getElementById('pending-confirm-count');
+
+      if (remainingTabCount) remainingTabCount.innerText = pendingCount;
+      if (remainingSectionCount) remainingSectionCount.innerText = pendingCount;
+      if (pendingConfirmCount) pendingConfirmCount.innerText = pendingCount;
+    }
+
+    function restoreSavedStates() {
+      document.querySelectorAll('.publisher-card').forEach(card => {
+        const sentKey = card.dataset.sentKey;
+        const confirmKey = card.dataset.confirmKey;
+
+        if (sentKey && localStorage.getItem(SENDED_PREFIX + sentKey) === '1') {
+          applySendedState(sentKey, true);
+        }
+
+        if (confirmKey && localStorage.getItem(CONFIRMED_PREFIX + confirmKey) === '1') {
+          applyConfirmedState(confirmKey, true);
+        }
+      });
+
+      updateRemainingConfirmation();
     }
 
     function fallbackCopyText(text) {
@@ -1310,6 +1555,10 @@ const generateIntegratedHtmlReportByPublisher = ({
           fallbackCopyText(text);
         }
 
+        if (sectionKey !== 'removed') {
+          markSendedAfterCopy(sectionKey, index);
+        }
+
         title.classList.add('copied');
         copiedMsg.style.display = 'inline';
 
@@ -1322,49 +1571,41 @@ const generateIntegratedHtmlReportByPublisher = ({
       }
     }
 
-    function toggleDone(sectionKey, index, checked) {
-      const card = document.getElementById('card-' + sectionKey + '-' + index);
-
-      if (checked) {
-        card.classList.add('done');
-      } else {
-        card.classList.remove('done');
-      }
-    }
-
     updateSectionMessages('todos');
     updateSectionMessages('5pm');
+    updateSectionMessages('remaining');
+    restoreSavedStates();
   </script>
 </body>
 </html>
 `;
 
-  const reportsFolder = getReportsFolderPath();
+    const reportsFolder = getReportsFolderPath();
 
-  const filePath = getUniqueReportFilePath(
-    reportsFolder,
-    'reporte-publishers-integrado',
-    reportDate
-  );
+    const filePath = getUniqueReportFilePath(
+      reportsFolder,
+      'reporte-publishers-integrado',
+      reportDate
+    );
 
-  fs.writeFileSync(filePath, html, 'utf8');
+    fs.writeFileSync(filePath, html, 'utf8');
 
-  const fileUrl = `file:///${filePath.replace(/\\/g, '/')}`;
+    const fileUrl = `file:///${filePath.replace(/\\/g, '/')}`;
 
-  console.log('');
-  console.log('==================================================');
-  console.log('13. HTML INTEGRADO GENERADO');
-  console.log('==================================================');
-  console.log(`Archivo creado: ${filePath}`);
-  console.log(`Link directo: ${fileUrl}`);
+    console.log('');
+    console.log('==================================================');
+    console.log('13. HTML INTEGRADO GENERADO');
+    console.log('==================================================');
+    console.log(`Archivo creado: ${filePath}`);
+    console.log(`Link directo: ${fileUrl}`);
 
-  if (!process.env.CI) {
-    openHtmlFile(filePath);
-  }
-};
-// ==================================================
-// END MODULE 11 - HTML
-// ==================================================
+    if (!process.env.CI) {
+      openHtmlFile(filePath);
+    }
+  };
+  // ==================================================
+  // END MODULE 11 - HTML
+  // ==================================================
 
 
   // ==================================================
@@ -1560,9 +1801,9 @@ const generateIntegratedHtmlReportByPublisher = ({
     // ==================================================
 
 
-  // ==================================================
-  // MODULE 13 - CLEANUP
-  // ==================================================
+    // ==================================================
+    // MODULE 13 - CLEANUP
+    // ==================================================
   } catch (error) {
     console.error('');
     console.error('==================================================');
