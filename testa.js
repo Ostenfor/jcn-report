@@ -448,7 +448,7 @@ const { chromium } = require('playwright');
   // ==================================================
 
 
-  // ==================================================
+    // ==================================================
   // MODULE 11 - HTML
   // ==================================================
   const generateIntegratedHtmlReportByPublisher = ({
@@ -560,7 +560,7 @@ const { chromium } = require('playwright');
 
           const visibleLines = items.map(item => {
             const cssClass = item.isNew ? 'line new-line' : 'line';
-            const badge = item.isNew ? `<span class="badge-new">NUEVO</span>` : '';
+            const badge = item.isNew ? `<span class="badge-new">NEW</span>` : '';
             const removedBadge = options.removedSection ? `<span class="badge-removed">REMOVIDO</span>` : '';
 
             return `
@@ -636,10 +636,12 @@ const { chromium } = require('playwright');
             data-whatsapp-group="${escapeHtml(whatsappGroupName)}"
           >
             <div class="publisher-topbar">
-              <div class="publisher-title" onclick="copyPublisher('${sectionKey}', ${index})">
-                <span>${escapeHtml(publisher)}</span>
-                <span class="count">(${items.length})</span>
-                <span class="copied-msg" id="copied-${sectionKey}-${index}">Copiado ✅</span>
+              <div class="publisher-title-wrap">
+                <div class="publisher-title" onclick="copyPublisher('${sectionKey}', ${index})">
+                  <span>${escapeHtml(publisher)}</span>
+                  <span class="count">(${items.length})</span>
+                  <span class="copied-msg" id="copied-${sectionKey}-${index}">Copiado ✅</span>
+                </div>
               </div>
 
               <div class="header-checks">
@@ -672,34 +674,38 @@ const { chromium } = require('playwright');
         : `
           <div class="section-progress-box">
             <div class="section-progress-row">
-              <div class="section-progress-card">
-                <div class="section-progress-number">
-                  <span id="confirmed-count-${sectionKey}">0</span>/<span id="confirmed-total-${sectionKey}">${sectionPublisherCount}</span>
+              <div class="section-progress-card progress-confirmed">
+                <div class="section-progress-head">
+                  <span class="section-progress-number">
+                    <span id="confirmed-count-${sectionKey}">0</span>/<span id="confirmed-total-${sectionKey}">${sectionPublisherCount}</span>
+                  </span>
+                  <span class="section-progress-label">Confirmados</span>
                 </div>
-                <div class="section-progress-label">Confirmados en este tab</div>
                 <div class="progress-track">
                   <div class="progress-fill" id="confirmed-fill-${sectionKey}"></div>
                 </div>
-                <div class="progress-text" id="confirmed-text-${sectionKey}">0% completado</div>
+                <div class="progress-mini" id="confirmed-text-${sectionKey}">0%</div>
               </div>
 
-              <div class="section-progress-card">
-                <div class="section-progress-number sended-progress-number">
-                  <span id="sended-count-${sectionKey}">0</span>/<span id="sended-total-${sectionKey}">${sectionPublisherCount}</span>
+              <div class="section-progress-card progress-sended">
+                <div class="section-progress-head">
+                  <span class="section-progress-number">
+                    <span id="sended-count-${sectionKey}">0</span>/<span id="sended-total-${sectionKey}">${sectionPublisherCount}</span>
+                  </span>
+                  <span class="section-progress-label">Sended</span>
                 </div>
-                <div class="section-progress-label">Sended en este tab</div>
                 <div class="progress-track">
                   <div class="progress-fill" id="sended-fill-${sectionKey}"></div>
                 </div>
-                <div class="progress-text" id="sended-text-${sectionKey}">0% completado</div>
+                <div class="progress-mini" id="sended-text-${sectionKey}">0%</div>
               </div>
             </div>
           </div>
         `;
 
       const summaryText = options.removedSection
-        ? `Total registros: ${rows.length}`
-        : `Total registros: ${rows.length} | Clientes del tab: ${sectionPublisherCount} | Clientes pendientes confirmación: <span id="pending-confirm-count-${sectionKey}">${sectionPublisherCount}</span>`;
+        ? `Total: ${rows.length}`
+        : `Total: ${rows.length} | Clientes: ${sectionPublisherCount} | Pendientes: <span id="pending-confirm-count-${sectionKey}">${sectionPublisherCount}</span>`;
 
       const pendingConfirmBox = options.removedSection
         ? ''
@@ -752,45 +758,78 @@ const { chromium } = require('playwright');
       box-sizing: border-box;
     }
 
+    :root {
+      --bg: #0b0f14;
+      --bg-soft: #111827;
+      --bg-card: #121a24;
+      --bg-card-2: #0f172a;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --line: #243041;
+      --line-soft: #1e293b;
+      --accent: #38bdf8;
+      --accent-2: #60a5fa;
+      --green: #22c55e;
+      --green-soft: rgba(34, 197, 94, 0.12);
+      --yellow: #f59e0b;
+      --yellow-soft: rgba(245, 158, 11, 0.14);
+      --red: #ef4444;
+      --red-soft: rgba(239, 68, 68, 0.12);
+      --purple: #a78bfa;
+      --blue-soft: rgba(56, 189, 248, 0.15);
+      --shadow: 0 10px 24px rgba(0,0,0,0.28);
+      --radius: 16px;
+    }
+
     html {
       -webkit-text-size-adjust: 100%;
       text-size-adjust: 100%;
+      background: var(--bg);
     }
 
     body {
       font-family: Arial, sans-serif;
-      background: #f4f6f8;
-      color: #111;
+      background:
+        radial-gradient(circle at top left, rgba(59,130,246,0.08), transparent 28%),
+        radial-gradient(circle at top right, rgba(168,85,247,0.06), transparent 24%),
+        linear-gradient(180deg, #0b0f14 0%, #0c1118 100%);
+      color: var(--text);
       padding: 24px;
       margin: 0;
       font-size: 15px;
+      min-height: 100vh;
     }
 
     h1 {
-      margin: 0 0 4px 0;
+      margin: 0 0 6px 0;
       font-size: 30px;
-      line-height: 1.15;
+      line-height: 1.1;
+      font-weight: 800;
+      letter-spacing: 0.2px;
     }
 
     h2 {
       margin: 0;
-      padding-bottom: 8px;
-      font-size: 24px;
+      padding-bottom: 0;
+      font-size: 22px;
       line-height: 1.2;
+      font-weight: 800;
+      color: #ffffff;
     }
 
     .generated-time {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      background: #111827;
+      gap: 8px;
+      background: linear-gradient(135deg, #111827, #0f172a);
       color: #fff;
       border-radius: 999px;
-      padding: 8px 12px;
+      padding: 10px 14px;
       margin: 8px 0 20px 0;
       font-size: 14px;
       line-height: 1.2;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
     }
 
     .generated-time span {
@@ -811,58 +850,62 @@ const { chromium } = require('playwright');
     }
 
     .summary-card {
-      background: #fff;
-      border: 1px solid #ddd;
-      border-radius: 10px;
-      padding: 14px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+      background: linear-gradient(180deg, rgba(18,26,36,0.96), rgba(15,23,42,0.96));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: var(--shadow);
       min-width: 0;
     }
 
     .summary-number {
-      font-size: 28px;
-      font-weight: bold;
-      margin-bottom: 4px;
+      font-size: 30px;
+      font-weight: 800;
+      margin-bottom: 6px;
       line-height: 1;
+      color: #ffffff;
     }
 
     .summary-label {
-      color: #555;
+      color: var(--muted);
       font-size: 13px;
       line-height: 1.25;
+      font-weight: 600;
     }
 
     .summary-new .summary-number {
-      color: #0a8f3c;
+      color: var(--green);
     }
 
     .summary-removed .summary-number {
-      color: #c62828;
+      color: var(--red);
     }
 
     .tabs {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: 10px;
       margin: 16px 0 22px 0;
     }
 
     .tab-button {
-      border: 1px solid #ccc;
-      background: #fff;
+      border: 1px solid var(--line);
+      background: rgba(17,24,39,0.88);
+      color: var(--text);
       border-radius: 999px;
       padding: 10px 14px;
       cursor: pointer;
-      font-weight: bold;
+      font-weight: 700;
       font-size: 14px;
-      min-height: 40px;
+      min-height: 42px;
       touch-action: manipulation;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.18);
     }
 
     .tab-button.active {
-      background: #111;
+      background: linear-gradient(135deg, #0ea5e9, #2563eb);
       color: #fff;
-      border-color: #111;
+      border-color: #38bdf8;
     }
 
     .report-section {
@@ -880,25 +923,27 @@ const { chromium } = require('playwright');
       gap: 12px;
       margin-top: 34px;
       margin-bottom: 12px;
-      padding-bottom: 8px;
-      border-bottom: 2px solid #ddd;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--line);
     }
 
     .collapse-btn {
-      border: 1px solid #ccc;
-      background: #fff;
+      border: 1px solid var(--line);
+      background: rgba(17,24,39,0.9);
+      color: #fff;
       border-radius: 999px;
-      padding: 8px 12px;
+      padding: 9px 14px;
       cursor: pointer;
-      font-weight: bold;
+      font-weight: 700;
       white-space: nowrap;
       font-size: 13px;
-      min-height: 38px;
+      min-height: 40px;
       touch-action: manipulation;
     }
 
-    .collapse-btn:hover {
-      background: #f0f7ff;
+    .collapse-btn:hover,
+    .small-collapse-btn:hover {
+      background: rgba(30, 41, 59, 0.95);
     }
 
     .section-body.collapsed {
@@ -906,61 +951,68 @@ const { chromium } = require('playwright');
     }
 
     .section-summary {
-      color: #555;
-      margin-bottom: 8px;
+      color: var(--muted);
+      margin-bottom: 10px;
       font-size: 14px;
+      font-weight: 600;
     }
 
     .message-controls {
       position: sticky;
       top: 0;
       z-index: 50;
-      background: rgba(255, 255, 255, 0.97);
-      border: 1px solid #ddd;
-      border-radius: 10px;
-      padding: 8px 10px;
+      background: rgba(12, 17, 24, 0.96);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px 12px;
       margin-bottom: 12px;
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
       align-items: center;
       font-size: 13px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-      backdrop-filter: blur(4px);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(8px);
     }
 
     .control-group {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
       min-width: 0;
+      flex: 1;
     }
 
     .control-label {
-      font-weight: normal;
+      font-weight: 700;
       white-space: nowrap;
+      color: var(--text);
     }
 
     .message-controls select {
-      padding: 6px 8px;
-      border-radius: 7px;
-      border: 1px solid #bbb;
-      font-weight: bold;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      font-weight: 700;
       font-size: 13px;
-      max-width: 280px;
-      min-height: 34px;
+      max-width: 320px;
+      min-height: 38px;
       cursor: pointer;
+      background: var(--bg-soft);
+      color: #fff;
+      outline: none;
     }
 
     .switch-row {
       display: flex;
       gap: 6px;
       align-items: center;
-      font-weight: bold;
+      font-weight: 700;
       font-size: 13px;
       min-height: 34px;
       cursor: pointer;
       touch-action: manipulation;
+      color: var(--text);
     }
 
     .switch-row input {
@@ -968,6 +1020,7 @@ const { chromium } = require('playwright');
       height: 18px;
       cursor: pointer;
       margin: 0;
+      accent-color: #38bdf8;
     }
 
     .global-reset-row {
@@ -977,20 +1030,21 @@ const { chromium } = require('playwright');
     }
 
     .reset-all-btn {
-      border: 1px solid #991b1b;
-      background: #991b1b;
+      border: 1px solid rgba(239,68,68,0.45);
+      background: linear-gradient(135deg, #b91c1c, #dc2626);
       color: #fff;
       border-radius: 999px;
-      padding: 9px 14px;
+      padding: 10px 16px;
       cursor: pointer;
-      font-weight: bold;
+      font-weight: 800;
       font-size: 13px;
-      min-height: 38px;
+      min-height: 40px;
       touch-action: manipulation;
+      box-shadow: 0 10px 20px rgba(185,28,28,0.22);
     }
 
     .reset-all-btn:hover {
-      background: #7f1d1d;
+      filter: brightness(1.05);
     }
 
     .section-progress-box {
@@ -999,43 +1053,57 @@ const { chromium } = require('playwright');
 
     .section-progress-row {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 12px;
     }
 
     .section-progress-card {
-      background: #fff;
-      border: 1px solid #ddd;
-      border-radius: 10px;
+      background: linear-gradient(180deg, rgba(18,26,36,0.98), rgba(14,20,30,0.98));
+      border: 1px solid var(--line);
+      border-radius: 14px;
       padding: 12px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+      box-shadow: var(--shadow);
+      min-width: 0;
+    }
+
+    .section-progress-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
     }
 
     .section-progress-number {
-      font-size: 24px;
-      font-weight: bold;
+      font-size: 28px;
+      font-weight: 800;
       line-height: 1;
-      color: #16a34a;
-      margin-bottom: 4px;
+      color: #ffffff;
+      white-space: nowrap;
     }
 
-    .sended-progress-number {
-      color: #1565c0;
+    .progress-confirmed .section-progress-number {
+      color: var(--green);
+    }
+
+    .progress-sended .section-progress-number {
+      color: var(--accent);
     }
 
     .section-progress-label {
-      color: #555;
+      color: var(--muted);
       font-size: 13px;
-      line-height: 1.25;
+      line-height: 1.2;
+      font-weight: 700;
+      white-space: nowrap;
     }
 
     .progress-track {
       width: 100%;
       height: 10px;
-      background: #e5e7eb;
+      background: #1e293b;
       border-radius: 999px;
       overflow: hidden;
-      margin-top: 10px;
     }
 
     .progress-fill {
@@ -1044,21 +1112,24 @@ const { chromium } = require('playwright');
       background: #dc2626;
       border-radius: 999px;
       transition: width 0.25s ease, background 0.25s ease;
+      box-shadow: 0 0 12px rgba(255,255,255,0.08);
     }
 
-    .progress-text {
-      margin-top: 6px;
+    .progress-mini {
+      margin-top: 8px;
       font-size: 12px;
-      color: #555;
-      font-weight: bold;
+      color: var(--muted);
+      font-weight: 800;
+      text-align: right;
     }
 
     .pending-confirm-box {
-      background: #fff8e6;
-      border: 1px solid #f0d28a;
-      border-radius: 10px;
-      padding: 10px 12px;
+      background: linear-gradient(180deg, rgba(245,158,11,0.10), rgba(245,158,11,0.06));
+      border: 1px solid rgba(245,158,11,0.35);
+      border-radius: 16px;
+      padding: 12px 14px;
       margin-bottom: 14px;
+      box-shadow: var(--shadow);
     }
 
     .pending-confirm-header {
@@ -1068,17 +1139,24 @@ const { chromium } = require('playwright');
       gap: 12px;
     }
 
+    .pending-confirm-header strong {
+      color: #fde68a;
+      font-size: 16px;
+      line-height: 1.2;
+    }
+
     .small-collapse-btn {
-      border: 1px solid #d6b65c;
-      background: #fff;
-      color: #7a5200;
+      border: 1px solid rgba(245,158,11,0.45);
+      background: rgba(17,24,39,0.9);
+      color: #fde68a;
       border-radius: 999px;
-      padding: 6px 10px;
+      padding: 7px 12px;
       cursor: pointer;
-      font-weight: bold;
+      font-weight: 700;
       font-size: 12px;
-      min-height: 32px;
+      min-height: 34px;
       touch-action: manipulation;
+      white-space: nowrap;
     }
 
     .pending-confirm-body.collapsed {
@@ -1086,104 +1164,112 @@ const { chromium } = require('playwright');
     }
 
     .pending-confirm-list {
-      margin-top: 10px;
+      margin-top: 12px;
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: 10px;
     }
 
     .pending-pill {
-      background: #fff;
-      border: 1px solid #e6c875;
-      color: #6f4a00;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(245,158,11,0.40);
+      color: #fde68a;
       border-radius: 999px;
-      padding: 6px 10px;
+      padding: 7px 12px;
       font-size: 13px;
-      font-weight: bold;
+      font-weight: 700;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02);
     }
 
     .empty {
-      background: #fff;
-      border: 1px solid #ddd;
-      border-radius: 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
       padding: 18px;
-      color: #555;
+      color: var(--muted);
       margin-bottom: 16px;
+      box-shadow: var(--shadow);
     }
 
     .publisher-card {
-      background: #fff;
-      border: 1px solid #ddd;
-      border-radius: 12px;
+      background: linear-gradient(180deg, rgba(18,26,36,0.98), rgba(15,23,42,0.98));
+      border: 1px solid var(--line);
+      border-radius: 18px;
       padding: 16px;
       margin-bottom: 18px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+      box-shadow: var(--shadow);
     }
 
     .publisher-card.sended {
-      border-color: #90caf9;
-      background: #f5fbff;
+      border-color: rgba(56,189,248,0.45);
+      background: linear-gradient(180deg, rgba(11,31,48,0.98), rgba(15,23,42,0.98));
     }
 
     .publisher-card.confirmed {
-      border-color: #8bc58b;
-      background: #eef9ee;
+      border-color: rgba(34,197,94,0.45);
+      background: linear-gradient(180deg, rgba(12,36,24,0.98), rgba(15,23,42,0.98));
     }
 
     .removed-card {
-      border-color: #f0b8b8;
-      background: #fffafa;
+      border-color: rgba(239,68,68,0.45);
+      background: linear-gradient(180deg, rgba(42,18,24,0.98), rgba(20,12,18,0.98));
     }
 
     .publisher-topbar {
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
+      align-items: center;
       gap: 18px;
       margin-bottom: 14px;
     }
 
+    .publisher-title-wrap {
+      flex: 1;
+      min-width: 0;
+    }
+
     .publisher-title {
       font-size: 18px;
-      font-weight: bold;
+      font-weight: 800;
       cursor: pointer;
-      color: #111;
+      color: #ffffff;
       user-select: none;
       line-height: 1.25;
       touch-action: manipulation;
     }
 
     .publisher-title.copied {
-      color: #0066cc;
+      color: #60a5fa;
     }
 
     .count {
-      color: #666;
+      color: var(--muted);
       font-size: 14px;
       margin-left: 6px;
     }
 
     .copied-msg {
       display: none;
-      color: #008000;
+      color: var(--green);
       font-size: 14px;
       margin-left: 10px;
     }
 
     .header-checks {
       display: flex;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       gap: 18px;
       align-items: center;
       justify-content: flex-end;
+      flex-shrink: 0;
     }
 
     .header-check {
-      display: flex;
+      display: inline-flex;
       align-items: center;
       gap: 8px;
       font-size: 14px;
-      font-weight: bold;
+      font-weight: 800;
       white-space: nowrap;
       user-select: none;
       cursor: pointer;
@@ -1196,14 +1282,15 @@ const { chromium } = require('playwright');
       margin: 0;
       cursor: pointer;
       flex-shrink: 0;
+      accent-color: #38bdf8;
     }
 
     .sent-area {
-      color: #1565c0;
+      color: var(--accent);
     }
 
     .confirm-area {
-      color: #2e7d32;
+      color: var(--green);
     }
 
     .action-buttons {
@@ -1218,62 +1305,67 @@ const { chromium } = require('playwright');
       border-radius: 999px;
       padding: 10px 16px;
       cursor: pointer;
-      font-weight: bold;
+      font-weight: 800;
       font-size: 14px;
       min-height: 42px;
       touch-action: manipulation;
+      border: 1px solid var(--line);
+      box-shadow: 0 8px 18px rgba(0,0,0,0.18);
     }
 
     .whatsapp-btn {
-      border: 1px solid #25d366;
-      background: #eafff2;
-      color: #075e54;
+      border-color: rgba(34,197,94,0.50);
+      background: rgba(34,197,94,0.12);
+      color: #86efac;
     }
 
     .whatsapp-btn:hover {
-      background: #d9ffe9;
+      background: rgba(34,197,94,0.18);
     }
 
     .copy-group-btn {
-      border: 1px solid #7aa7ff;
-      background: #eef4ff;
-      color: #174ea6;
+      border-color: rgba(96,165,250,0.45);
+      background: rgba(59,130,246,0.12);
+      color: #93c5fd;
     }
 
     .copy-group-btn:hover {
-      background: #dce9ff;
+      background: rgba(59,130,246,0.20);
     }
 
     .disabled-btn,
     .disabled-btn:hover {
       opacity: 0.45;
       cursor: not-allowed;
-      background: #eee;
-      color: #777;
-      border-color: #ccc;
+      background: rgba(255,255,255,0.05);
+      color: #94a3b8;
+      border-color: var(--line);
     }
 
     .message-block {
       cursor: pointer;
       padding: 14px;
-      background: #fafafa;
-      border-radius: 10px;
-      border: 1px solid #eee;
+      background: rgba(255,255,255,0.03);
+      border-radius: 14px;
+      border: 1px solid var(--line-soft);
       line-height: 1.45;
       font-size: 15px;
       overflow-wrap: anywhere;
       word-break: normal;
       touch-action: manipulation;
+      color: var(--text);
     }
 
     .message-block:hover {
-      background: #f0f7ff;
+      background: rgba(59,130,246,0.06);
+      border-color: rgba(59,130,246,0.25);
     }
 
     .hello {
-      font-weight: bold;
+      font-weight: 800;
       font-size: 16px;
       line-height: 1.25;
+      color: #ffffff;
     }
 
     .message-spacer {
@@ -1281,18 +1373,19 @@ const { chromium } = require('playwright');
     }
 
     .line {
-      margin-bottom: 5px;
-      line-height: 1.4;
+      margin-bottom: 6px;
+      line-height: 1.45;
       overflow-wrap: anywhere;
+      color: #e5e7eb;
     }
 
     .new-line {
-      color: #0a8f3c;
-      font-weight: bold;
-      background: #ecfff3;
-      border-left: 4px solid #0a8f3c;
-      padding: 5px 8px;
-      border-radius: 6px;
+      color: #bbf7d0;
+      font-weight: 700;
+      background: rgba(34,197,94,0.10);
+      border-left: 4px solid var(--green);
+      padding: 6px 9px;
+      border-radius: 8px;
     }
 
     .badge-new {
@@ -1300,10 +1393,10 @@ const { chromium } = require('playwright');
       margin-left: 8px;
       padding: 2px 7px;
       border-radius: 999px;
-      background: #0a8f3c;
-      color: #fff;
+      background: var(--green);
+      color: #08130c;
       font-size: 11px;
-      font-weight: bold;
+      font-weight: 800;
       vertical-align: middle;
     }
 
@@ -1312,31 +1405,32 @@ const { chromium } = require('playwright');
       margin-left: 8px;
       padding: 2px 7px;
       border-radius: 999px;
-      background: #c62828;
+      background: var(--red);
       color: #fff;
       font-size: 11px;
-      font-weight: bold;
+      font-weight: 800;
       vertical-align: middle;
     }
 
     .group-footer {
       margin-top: 12px;
-      padding: 10px 12px;
-      background: #fff;
-      border: 1px dashed #b7c7d9;
-      border-radius: 10px;
+      padding: 11px 12px;
+      background: rgba(255,255,255,0.03);
+      border: 1px dashed #334155;
+      border-radius: 12px;
       line-height: 1.35;
+      color: var(--text);
     }
 
     .group-footer-label {
-      color: #555;
-      font-weight: bold;
+      color: var(--muted);
+      font-weight: 700;
       margin-right: 6px;
     }
 
     .group-footer-name {
-      color: #075e54;
-      font-weight: bold;
+      color: #a7f3d0;
+      font-weight: 800;
     }
 
     .copy-lines {
@@ -1350,14 +1444,15 @@ const { chromium } = require('playwright');
       bottom: 22px;
       transform: translateX(-50%);
       max-width: calc(100% - 24px);
-      background: #111;
+      background: rgba(15,23,42,0.96);
       color: #fff;
       padding: 12px 14px;
-      border-radius: 12px;
+      border-radius: 14px;
       font-size: 14px;
       line-height: 1.35;
       z-index: 9999;
-      box-shadow: 0 4px 18px rgba(0,0,0,0.25);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--line);
       display: none;
       text-align: center;
     }
@@ -1367,7 +1462,7 @@ const { chromium } = require('playwright');
     }
 
     .toast strong {
-      color: #9fffc3;
+      color: #93c5fd;
     }
 
     @media (max-width: 900px) {
@@ -1381,12 +1476,12 @@ const { chromium } = require('playwright');
       }
 
       h2 {
-        font-size: 19px;
+        font-size: 18px;
       }
 
       .generated-time {
         font-size: 12px;
-        padding: 7px 10px;
+        padding: 8px 11px;
         margin-bottom: 14px;
       }
 
@@ -1397,8 +1492,7 @@ const { chromium } = require('playwright');
       }
 
       .summary-card {
-        padding: 10px;
-        border-radius: 9px;
+        padding: 12px;
       }
 
       .summary-number {
@@ -1416,19 +1510,37 @@ const { chromium } = require('playwright');
       .reset-all-btn {
         width: 100%;
         font-size: 12px;
-        min-height: 34px;
+        min-height: 36px;
       }
 
       .section-progress-row {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .section-progress-card {
+        padding: 10px;
+      }
+
+      .section-progress-head {
+        gap: 6px;
+        margin-bottom: 8px;
+      }
+
+      .section-progress-number {
+        font-size: 18px;
+      }
+
+      .section-progress-label {
+        font-size: 11px;
       }
 
       .progress-track {
         height: 9px;
-        margin-top: 8px;
       }
 
-      .progress-text {
+      .progress-mini {
+        margin-top: 6px;
         font-size: 11px;
       }
 
@@ -1440,19 +1552,20 @@ const { chromium } = require('playwright');
       .tab-button {
         padding: 8px 10px;
         font-size: 12px;
-        min-height: 36px;
+        min-height: 38px;
       }
 
       .section-title-row {
         margin-top: 22px;
         margin-bottom: 10px;
         gap: 8px;
+        align-items: flex-start;
       }
 
       .collapse-btn {
-        padding: 7px 10px;
+        padding: 8px 10px;
         font-size: 12px;
-        min-height: 34px;
+        min-height: 36px;
       }
 
       .section-summary {
@@ -1462,14 +1575,14 @@ const { chromium } = require('playwright');
 
       .message-controls {
         top: 0;
-        padding: 6px 8px;
+        padding: 8px 10px;
         gap: 8px;
         font-size: 12px;
-        border-radius: 9px;
       }
 
       .control-group {
         width: 100%;
+        flex: 1 1 100%;
       }
 
       .control-label {
@@ -1481,8 +1594,8 @@ const { chromium } = require('playwright');
         max-width: none;
         min-width: 0;
         font-size: 12px;
-        padding: 5px 7px;
-        min-height: 32px;
+        padding: 6px 8px;
+        min-height: 36px;
       }
 
       .switch-row {
@@ -1490,13 +1603,8 @@ const { chromium } = require('playwright');
         min-height: 30px;
       }
 
-      .switch-row input {
-        width: 17px;
-        height: 17px;
-      }
-
       .pending-confirm-box {
-        padding: 8px 10px;
+        padding: 10px 10px;
         margin-bottom: 12px;
       }
 
@@ -1504,18 +1612,22 @@ const { chromium } = require('playwright');
         align-items: flex-start;
       }
 
+      .pending-confirm-header strong {
+        font-size: 15px;
+      }
+
       .pending-pill {
         font-size: 12px;
-        padding: 5px 8px;
+        padding: 6px 10px;
       }
 
       .small-collapse-btn {
         font-size: 11px;
-        min-height: 30px;
+        min-height: 32px;
       }
 
       .publisher-card {
-        padding: 12px;
+        padding: 14px;
         margin-bottom: 14px;
       }
 
@@ -1535,11 +1647,16 @@ const { chromium } = require('playwright');
 
       .header-checks {
         justify-content: flex-start;
-        gap: 16px;
+        align-items: center;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        gap: 18px;
+        width: 100%;
       }
 
       .header-check {
         font-size: 12px;
+        min-height: 30px;
       }
 
       .header-check input {
@@ -1555,13 +1672,13 @@ const { chromium } = require('playwright');
       .copy-group-btn {
         font-size: 12px;
         padding: 9px 13px;
-        min-height: 38px;
+        min-height: 40px;
       }
 
       .message-block {
         padding: 10px;
         font-size: 13px;
-        line-height: 1.35;
+        line-height: 1.4;
       }
 
       .hello {
@@ -1581,7 +1698,7 @@ const { chromium } = require('playwright');
       .new-line {
         padding: 5px 7px;
         border-left-width: 3px;
-        border-radius: 5px;
+        border-radius: 6px;
       }
 
       .badge-new,
@@ -1608,7 +1725,7 @@ const { chromium } = require('playwright');
       }
 
       h2 {
-        font-size: 18px;
+        font-size: 17px;
       }
 
       .top-summary {
@@ -1616,7 +1733,7 @@ const { chromium } = require('playwright');
       }
 
       .summary-card {
-        padding: 9px;
+        padding: 10px;
       }
 
       .summary-number {
@@ -1633,13 +1750,28 @@ const { chromium } = require('playwright');
       }
 
       .message-controls {
-        padding: 6px;
+        padding: 8px;
+      }
+
+      .section-progress-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .section-progress-number {
+        font-size: 17px;
+      }
+
+      .section-progress-label {
+        font-size: 10px;
       }
 
       .header-checks {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 10px;
+        gap: 14px;
+        flex-wrap: nowrap;
+      }
+
+      .header-check {
+        font-size: 11px;
       }
 
       .action-buttons {
@@ -1714,26 +1846,26 @@ const { chromium } = require('playwright');
   </div>
 
   ${renderSection(
-      'todos',
-      '1. Reporte completo del día',
-      allRows,
-      'hello'
-    )}
+    'todos',
+    '1. Reporte completo del día',
+    allRows,
+    'hello'
+  )}
 
   ${renderSection(
-      'after5pm',
-      '2. Last friendly reminder - 5PM en adelante',
-      reminderRows,
-      'reminder'
-    )}
+    'after5pm',
+    '2. Last friendly reminder - 5PM en adelante',
+    reminderRows,
+    'reminder'
+  )}
 
   ${renderSection(
-      'removed',
-      '3. Removidos en esta versión',
-      removedRows,
-      '',
-      { removedSection: true }
-    )}
+    'removed',
+    '3. Removidos en esta versión',
+    removedRows,
+    '',
+    { removedSection: true }
+  )}
 
   <div class="toast" id="toast"></div>
 
@@ -1974,17 +2106,17 @@ const { chromium } = require('playwright');
     }
 
     function getProgressColor(progressPercent) {
-      if (progressPercent < 35) return '#dc2626';
-      if (progressPercent < 70) return '#d97706';
-      if (progressPercent < 90) return '#ca8a04';
-      return '#16a34a';
+      if (progressPercent < 35) return '#ef4444';
+      if (progressPercent < 70) return '#f59e0b';
+      if (progressPercent < 90) return '#eab308';
+      return '#22c55e';
     }
 
     function getProgressColorSended(progressPercent) {
-      if (progressPercent < 35) return '#2563eb';
-      if (progressPercent < 70) return '#1d4ed8';
-      if (progressPercent < 90) return '#1e40af';
-      return '#0f766e';
+      if (progressPercent < 35) return '#38bdf8';
+      if (progressPercent < 70) return '#3b82f6';
+      if (progressPercent < 90) return '#2563eb';
+      return '#14b8a6';
     }
 
     function updateSectionStatus(sectionKey) {
@@ -2053,7 +2185,7 @@ const { chromium } = require('playwright');
         confirmedFill.style.background = getProgressColor(confirmedPercent);
       }
 
-      if (confirmedText) confirmedText.innerText = confirmedPercent + '% completado';
+      if (confirmedText) confirmedText.innerText = confirmedPercent + '%';
 
       const sendedCount = document.getElementById('sended-count-' + sectionKey);
       const sendedTotal = document.getElementById('sended-total-' + sectionKey);
@@ -2068,7 +2200,7 @@ const { chromium } = require('playwright');
         sendedFill.style.background = getProgressColorSended(sendedPercent);
       }
 
-      if (sendedText) sendedText.innerText = sendedPercent + '% completado';
+      if (sendedText) sendedText.innerText = sendedPercent + '%';
     }
 
     function restoreSavedStates() {
@@ -2169,7 +2301,7 @@ const { chromium } = require('playwright');
 </html>
 `;
 
-    const reportsFolder = getReportsFolderPath();
+        const reportsFolder = getReportsFolderPath();
 
     const filePath = getUniqueReportFilePath(
       reportsFolder,
