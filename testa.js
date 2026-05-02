@@ -448,7 +448,7 @@ const { chromium } = require('playwright');
   // ==================================================
 
 
-    // ==================================================
+  // ==================================================
   // MODULE 11 - HTML
   // ==================================================
   const generateIntegratedHtmlReportByPublisher = ({
@@ -1709,31 +1709,31 @@ const { chromium } = require('playwright');
 
   <div class="tabs">
     <button class="tab-button active" onclick="showTab('todos', this)">Reporte completo (${allRows.length})</button>
-    <button class="tab-button" onclick="showTab('5pm', this)">5PM en adelante (${reminderRows.length})</button>
+    <button class="tab-button" onclick="showTab('after5pm', this)">5PM en adelante (${reminderRows.length})</button>
     <button class="tab-button" onclick="showTab('removed', this)">Removidos (${removedRows.length})</button>
   </div>
 
   ${renderSection(
-    'todos',
-    '1. Reporte completo del día',
-    allRows,
-    'hello'
-  )}
+      'todos',
+      '1. Reporte completo del día',
+      allRows,
+      'hello'
+    )}
 
   ${renderSection(
-    '5pm',
-    '2. Last friendly reminder - 5PM en adelante',
-    reminderRows,
-    'reminder'
-  )}
+      'after5pm',
+      '2. Last friendly reminder - 5PM en adelante',
+      reminderRows,
+      'reminder'
+    )}
 
   ${renderSection(
-    'removed',
-    '3. Removidos en esta versión',
-    removedRows,
-    '',
-    { removedSection: true }
-  )}
+      'removed',
+      '3. Removidos en esta versión',
+      removedRows,
+      '',
+      { removedSection: true }
+    )}
 
   <div class="toast" id="toast"></div>
 
@@ -1896,7 +1896,7 @@ const { chromium } = require('playwright');
 
     function updateAllSectionStatuses() {
       updateSectionStatus('todos');
-      updateSectionStatus('5pm');
+      updateSectionStatus('after5pm');
     }
 
     function applySendedState(sentKey, checked) {
@@ -1988,7 +1988,10 @@ const { chromium } = require('playwright');
     }
 
     function updateSectionStatus(sectionKey) {
-      const cards = document.querySelectorAll('#' + sectionKey + ' .publisher-card');
+      const section = document.getElementById(sectionKey);
+      if (!section) return;
+
+      const cards = section.querySelectorAll('.publisher-card');
       const totalClients = cards.length;
 
       let confirmedClients = 0;
@@ -2158,7 +2161,7 @@ const { chromium } = require('playwright');
     }
 
     updateSectionMessages('todos');
-    updateSectionMessages('5pm');
+    updateSectionMessages('after5pm');
     restoreSavedStates();
     updateAllSectionStatuses();
   </script>
