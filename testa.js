@@ -448,7 +448,7 @@ const { chromium } = require('playwright');
   // ==================================================
 
 
-  // ==================================================
+    // ==================================================
   // MODULE 11 - HTML
   // ==================================================
   const generateIntegratedHtmlReportByPublisher = ({
@@ -970,6 +970,29 @@ const { chromium } = require('playwright');
       margin: 0;
     }
 
+    .global-reset-row {
+      display: flex;
+      justify-content: flex-end;
+      margin: 8px 0 14px 0;
+    }
+
+    .reset-all-btn {
+      border: 1px solid #991b1b;
+      background: #991b1b;
+      color: #fff;
+      border-radius: 999px;
+      padding: 9px 14px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 13px;
+      min-height: 38px;
+      touch-action: manipulation;
+    }
+
+    .reset-all-btn:hover {
+      background: #7f1d1d;
+    }
+
     .section-progress-box {
       margin-bottom: 14px;
     }
@@ -1386,6 +1409,16 @@ const { chromium } = require('playwright');
         font-size: 11px;
       }
 
+      .global-reset-row {
+        justify-content: stretch;
+      }
+
+      .reset-all-btn {
+        width: 100%;
+        font-size: 12px;
+        min-height: 34px;
+      }
+
       .section-progress-row {
         grid-template-columns: 1fr;
       }
@@ -1668,6 +1701,12 @@ const { chromium } = require('playwright');
     </div>
   </div>
 
+  <div class="global-reset-row">
+    <button class="reset-all-btn" onclick="resetAllTodayProgress()">
+      Reset todo el día
+    </button>
+  </div>
+
   <div class="tabs">
     <button class="tab-button active" onclick="showTab('todos', this)">Reporte completo (${allRows.length})</button>
     <button class="tab-button" onclick="showTab('5pm', this)">5PM en adelante (${reminderRows.length})</button>
@@ -1675,33 +1714,35 @@ const { chromium } = require('playwright');
   </div>
 
   ${renderSection(
-      'todos',
-      '1. Reporte completo del día',
-      allRows,
-      'hello'
-    )}
+    'todos',
+    '1. Reporte completo del día',
+    allRows,
+    'hello'
+  )}
 
   ${renderSection(
-      '5pm',
-      '2. Last friendly reminder - 5PM en adelante',
-      reminderRows,
-      'reminder'
-    )}
+    '5pm',
+    '2. Last friendly reminder - 5PM en adelante',
+    reminderRows,
+    'reminder'
+  )}
 
   ${renderSection(
-      'removed',
-      '3. Removidos en esta versión',
-      removedRows,
-      '',
-      { removedSection: true }
-    )}
+    'removed',
+    '3. Removidos en esta versión',
+    removedRows,
+    '',
+    { removedSection: true }
+  )}
 
   <div class="toast" id="toast"></div>
 
   <script>
     const REPORT_DATE = ${JSON.stringify(reportDate)};
-    const SENDED_PREFIX = 'jcn:sended:' + REPORT_DATE + ':';
-    const CONFIRMED_PREFIX = 'jcn:publisher-confirmed:' + REPORT_DATE + ':';
+    const STORAGE_VERSION = 'v3';
+
+    const SENDED_PREFIX = 'jcn:' + STORAGE_VERSION + ':sended:' + REPORT_DATE + ':';
+    const CONFIRMED_PREFIX = 'jcn:' + STORAGE_VERSION + ':publisher-confirmed:' + REPORT_DATE + ':';
 
     document.getElementById('todos').classList.add('active');
 
@@ -1781,6 +1822,41 @@ const { chromium } = require('playwright');
       const body = document.getElementById('pending-confirm-body-' + sectionKey);
       if (!body) return;
       body.classList.toggle('collapsed');
+    }
+
+    function resetAllTodayProgress() {
+      const ok = confirm('¿Seguro que quieres borrar todos los checkmarks de hoy?');
+
+      if (!ok) return;
+
+      Object.keys(localStorage)
+        .filter(key =>
+          key.startsWith(SENDED_PREFIX) ||
+          key.startsWith(CONFIRMED_PREFIX) ||
+          key.startsWith('jcn:sended:' + REPORT_DATE + ':') ||
+          key.startsWith('jcn:publisher-confirmed:' + REPORT_DATE + ':') ||
+          key.startsWith('jcn:v1:sended:' + REPORT_DATE + ':') ||
+          key.startsWith('jcn:v1:publisher-confirmed:' + REPORT_DATE + ':') ||
+          key.startsWith('jcn:v2:sended:' + REPORT_DATE + ':') ||
+          key.startsWith('jcn:v2:publisher-confirmed:' + REPORT_DATE + ':') ||
+          key.startsWith('jcn:v3:sended:' + REPORT_DATE + ':') ||
+          key.startsWith('jcn:v3:publisher-confirmed:' + REPORT_DATE + ':')
+        )
+        .forEach(key => localStorage.removeItem(key));
+
+      document.querySelectorAll('.publisher-card').forEach(card => {
+        const sectionKey = card.dataset.sectionKey;
+        const index = card.dataset.cardIndex;
+
+        setCheckboxState('sended-' + sectionKey + '-' + index, false);
+        setCheckboxState('confirmed-' + sectionKey + '-' + index, false);
+
+        card.classList.remove('sended');
+        card.classList.remove('confirmed');
+      });
+
+      updateAllSectionStatuses();
+      showToast('Todos los checkmarks de hoy fueron reseteados.');
     }
 
     function getCard(sectionKey, index) {
