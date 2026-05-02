@@ -327,7 +327,7 @@ const { chromium } = require('playwright');
   // ==================================================
 
 
-  // ==================================================
+    // ==================================================
   // MODULE 09 - SNAPSHOT
   // ==================================================
   const loadPreviousSnapshot = async (reportsFolder, reportDate) => {
@@ -352,16 +352,10 @@ const { chromium } = require('playwright');
       }
     }
 
-    const pagesBaseUrl = (process.env.PAGES_BASE_URL || '').replace(/\/$/, '');
-
-    if (!pagesBaseUrl) {
-      console.log('');
-      console.log('==================================================');
-      console.log('NO HAY SNAPSHOT ANTERIOR');
-      console.log('==================================================');
-      console.log('PAGES_BASE_URL no está configurado. Este run será baseline.');
-      return [];
-    }
+    const pagesBaseUrl = (
+      process.env.PAGES_BASE_URL ||
+      'https://ostenfor.github.io/jcn-report'
+    ).replace(/\/$/, '');
 
     const snapshotUrl = `${pagesBaseUrl}/${snapshotFileName}`;
 
@@ -383,7 +377,7 @@ const { chromium } = require('playwright');
 
       const data = await response.json();
 
-      console.log(`Snapshot encontrado en Pages.`);
+      console.log('Snapshot encontrado en Pages.');
       console.log(`Registros anteriores: ${Array.isArray(data.rows) ? data.rows.length : 0}`);
 
       return Array.isArray(data.rows) ? data.rows : [];
