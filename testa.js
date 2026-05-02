@@ -448,7 +448,7 @@ const { chromium } = require('playwright');
   // ==================================================
 
 
-  // ==================================================
+    // ==================================================
   // MODULE 11 - HTML
   // ==================================================
   const generateIntegratedHtmlReportByPublisher = ({
@@ -460,8 +460,47 @@ const { chromium } = require('playwright');
     generatedAtRD,
     reportDate
   }) => {
+    const whatsappGroupNames = {
+      'KolHaolam': 'KOL Haolam JCN',
+      'Lakewood Scoop': 'TLS JCN Ads',
+      'Jewish News 24': 'Jewish News 24 - JCN',
+      'Meaningful Minute': 'MM /JCN FAMILY',
+      'COL Live': 'COLlive // JCN',
+      'VINnews (Vos Iz Neias)': 'Chayala ad group - VIN',
+      'Jewish Breaking News': 'JBN X JCN NEW GROUP',
+      'Yoilish status': 'Yoilish/JCN',
+      'SY Alerts': 'JCN SY 2025',
+      'Five Towns Central': '5T x JCN 2025',
+      'Just My Israel': 'JustMyIsrael & JCN',
+      "N'Shei News": 'Updated N’shei News X JCN',
+      'Belaaz': 'Belaaz / JCN UPDATED',
+      'Arutz Sheva': 'JCN NEW GROUP A7',
+      'Chez Chaya': 'Chef Chaya / JCN',
+      'Kosher.com': 'Kosher.com ad sales',
+      'Zemel': 'JD media and Zemel',
+      'The Perlowitz Show': 'Perlowitz Show // JCN',
+      'Mommy Deals': 'MommyDeals + JCN',
+      'Raizys Cooking': 'Raizy’s Cooking / JCN',
+      'Israel Breaking News': 'Israel Breaking News🇮🇱 & JCN',
+      'Baltimore Jewish Life': 'Baltimore Jewish Life / JCN',
+      'Israel Live News': 'Israel Live News  x JCN (Yehuda)',
+      'Meira K.': 'Meira K x JCN 2025',
+      'Efraim Feder in Lakewood Status': 'JCN Feder 2025',
+      'Matzav': 'N/A',
+      'Addictive Ads': 'Addictive CWM',
+      'W365': 'Klal Media - Jewish Content Network JDN',
+      'BP24': 'Klal Media - Jewish Content Network JDN',
+      'BP 24': 'Klal Media - Jewish Content Network JDN',
+      'JDN': 'Klal Media - Jewish Content Network JDN',
+      'Rockland Daily': 'Klal Media - Jewish Content Network JDN'
+    };
+
     const getPublisherCount = (rows) => {
       return new Set(rows.map(row => row.website)).size;
+    };
+
+    const getWhatsappGroupName = (publisher) => {
+      return whatsappGroupNames[publisher] || 'N/A';
     };
 
     const renderControls = (sectionKey, defaultMessage) => {
@@ -506,6 +545,8 @@ const { chromium } = require('playwright');
 
           const sentKey = `${sentSourceKey}|||${publisher}`;
           const confirmKey = `${confirmSourceKey}|||${publisher}`;
+          const whatsappGroupName = getWhatsappGroupName(publisher);
+          const hasWhatsappGroup = whatsappGroupName && whatsappGroupName !== 'N/A';
 
           const copyLines = items.map(item =>
             `${item.scheduled} - ${item.website} - ${item.type} - ${item.user}`
@@ -525,11 +566,22 @@ const { chromium } = require('playwright');
           `;
           }).join('');
 
+          const groupInfo = options.removedSection
+            ? ''
+            : `
+              <div class="whatsapp-group-box">
+                <span class="group-label">Grupo WhatsApp:</span>
+                <span class="group-name">${escapeHtml(whatsappGroupName)}</span>
+              </div>
+            `;
+
           const messageBlockContent = options.removedSection
             ? visibleLines
             : `
               <div class="hello dynamic-message" data-section="${sectionKey}"></div>
               <div class="message-spacer"></div>
+              ${groupInfo}
+              <div class="message-spacer small"></div>
               ${visibleLines}
             `;
 
@@ -562,8 +614,20 @@ const { chromium } = require('playwright');
           const whatsAppButton = options.removedSection
             ? ''
             : `
-              <button class="whatsapp-btn" onclick="openWhatsAppTest(event)">
+              <button class="whatsapp-btn" onclick="openWhatsAppTest(event, '${sectionKey}', ${index})">
                 WhatsApp
+              </button>
+            `;
+
+          const copyGroupButton = options.removedSection
+            ? ''
+            : `
+              <button
+                class="copy-group-btn ${hasWhatsappGroup ? '' : 'disabled-btn'}"
+                onclick="copyWhatsappGroup(event, '${sectionKey}', ${index})"
+                ${hasWhatsappGroup ? '' : 'disabled'}
+              >
+                Copy Group
               </button>
             `;
 
@@ -575,6 +639,7 @@ const { chromium } = require('playwright');
             data-card-index="${index}"
             data-sent-key="${escapeHtml(sentKey)}"
             data-confirm-key="${escapeHtml(confirmKey)}"
+            data-whatsapp-group="${escapeHtml(whatsappGroupName)}"
           >
             <div class="publisher-header">
               <div class="publisher-title" onclick="copyPublisher('${sectionKey}', ${index})">
@@ -585,6 +650,7 @@ const { chromium } = require('playwright');
 
               <div class="status-checks">
                 ${whatsAppButton}
+                ${copyGroupButton}
                 ${sentCheckbox}
                 ${confirmedCheckbox}
               </div>
@@ -943,6 +1009,32 @@ const { chromium } = require('playwright');
       background: #d9ffe9;
     }
 
+    .copy-group-btn {
+      border: 1px solid #7aa7ff;
+      background: #eef4ff;
+      color: #174ea6;
+      border-radius: 999px;
+      padding: 7px 10px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 13px;
+      min-height: 34px;
+      touch-action: manipulation;
+    }
+
+    .copy-group-btn:hover {
+      background: #dce9ff;
+    }
+
+    .disabled-btn,
+    .disabled-btn:hover {
+      opacity: 0.45;
+      cursor: not-allowed;
+      background: #eee;
+      color: #777;
+      border-color: #ccc;
+    }
+
     .check-area {
       display: flex;
       align-items: center;
@@ -997,6 +1089,30 @@ const { chromium } = require('playwright');
       height: 10px;
     }
 
+    .message-spacer.small {
+      height: 8px;
+    }
+
+    .whatsapp-group-box {
+      background: #fff;
+      border: 1px dashed #b7c7d9;
+      border-radius: 8px;
+      padding: 8px 10px;
+      margin-bottom: 4px;
+      line-height: 1.3;
+    }
+
+    .group-label {
+      font-weight: bold;
+      color: #555;
+      margin-right: 4px;
+    }
+
+    .group-name {
+      font-weight: bold;
+      color: #075e54;
+    }
+
     .line {
       margin-bottom: 5px;
       line-height: 1.4;
@@ -1039,6 +1155,32 @@ const { chromium } = require('playwright');
     .copy-lines {
       display: none;
       white-space: pre-wrap;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 22px;
+      transform: translateX(-50%);
+      max-width: calc(100% - 24px);
+      background: #111;
+      color: #fff;
+      padding: 12px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 1.35;
+      z-index: 9999;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.25);
+      display: none;
+      text-align: center;
+    }
+
+    .toast.show {
+      display: block;
+    }
+
+    .toast strong {
+      color: #9fffc3;
     }
 
     @media (max-width: 900px) {
@@ -1168,7 +1310,8 @@ const { chromium } = require('playwright');
         gap: 6px;
       }
 
-      .whatsapp-btn {
+      .whatsapp-btn,
+      .copy-group-btn {
         font-size: 11px;
         padding: 6px 8px;
         min-height: 30px;
@@ -1198,6 +1341,11 @@ const { chromium } = require('playwright');
         height: 8px;
       }
 
+      .whatsapp-group-box {
+        padding: 7px 8px;
+        font-size: 12px;
+      }
+
       .line {
         font-size: 13px;
         line-height: 1.35;
@@ -1215,6 +1363,12 @@ const { chromium } = require('playwright');
         font-size: 9px;
         padding: 2px 5px;
         margin-left: 5px;
+      }
+
+      .toast {
+        bottom: 14px;
+        font-size: 13px;
+        padding: 10px 12px;
       }
     }
 
@@ -1360,6 +1514,8 @@ const { chromium } = require('playwright');
       }
     )}
 
+  <div class="toast" id="toast"></div>
+
   <script>
     const REPORT_DATE = ${JSON.stringify(reportDate)};
     const SENDED_PREFIX = 'jcn:sended:' + REPORT_DATE + ':';
@@ -1400,6 +1556,21 @@ const { chromium } = require('playwright');
       });
     }
 
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+
+      if (!toast) return;
+
+      toast.innerHTML = message;
+      toast.classList.add('show');
+
+      clearTimeout(window.__toastTimer);
+
+      window.__toastTimer = setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3500);
+    }
+
     function showTab(sectionId, button) {
       document.querySelectorAll('.report-section').forEach(section => {
         section.classList.remove('active');
@@ -1427,21 +1598,35 @@ const { chromium } = require('playwright');
       body.classList.toggle('collapsed');
     }
 
-    function openWhatsAppTest(event) {
-  event.stopPropagation();
-
-  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-  if (isMobile) {
-    window.location.href = 'https://wa.me/';
-    return;
-  }
-
-  window.open('https://web.whatsapp.com/', '_blank');
-}
-
     function getCard(sectionKey, index) {
       return document.getElementById('card-' + sectionKey + '-' + index);
+    }
+
+    function getWhatsappGroupFromCard(sectionKey, index) {
+      const card = getCard(sectionKey, index);
+      if (!card) return 'N/A';
+
+      return card.dataset.whatsappGroup || 'N/A';
+    }
+
+    function openWhatsAppTest(event, sectionKey, index) {
+      event.stopPropagation();
+
+      const groupName = getWhatsappGroupFromCard(sectionKey, index);
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+      if (groupName && groupName !== 'N/A') {
+        showToast('Busca este grupo:<br><strong>' + groupName + '</strong>');
+      } else {
+        showToast('Este publisher no tiene grupo WhatsApp mapeado.');
+      }
+
+      if (isMobile) {
+        window.location.href = 'whatsapp://send';
+        return;
+      }
+
+      window.open('https://web.whatsapp.com/', '_blank');
     }
 
     function setCheckboxState(id, checked) {
@@ -1582,6 +1767,32 @@ const { chromium } = require('playwright');
       }
     }
 
+    async function copyTextToClipboard(text) {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        fallbackCopyText(text);
+      }
+    }
+
+    async function copyWhatsappGroup(event, sectionKey, index) {
+      event.stopPropagation();
+
+      const groupName = getWhatsappGroupFromCard(sectionKey, index);
+
+      if (!groupName || groupName === 'N/A') {
+        showToast('Este publisher no tiene grupo WhatsApp mapeado.');
+        return;
+      }
+
+      try {
+        await copyTextToClipboard(groupName);
+        showToast('Grupo copiado:<br><strong>' + groupName + '</strong>');
+      } catch (error) {
+        alert('No se pudo copiar el grupo automáticamente.');
+      }
+    }
+
     async function copyPublisher(sectionKey, index) {
       const lines = document.getElementById('copy-lines-' + sectionKey + '-' + index).innerText;
       const title = document.querySelector('#card-' + sectionKey + '-' + index + ' .publisher-title');
@@ -1594,11 +1805,7 @@ const { chromium } = require('playwright');
       }
 
       try {
-        if (navigator.clipboard && window.isSecureContext) {
-          await navigator.clipboard.writeText(text);
-        } else {
-          fallbackCopyText(text);
-        }
+        await copyTextToClipboard(text);
 
         if (sectionKey !== 'removed') {
           markSendedAfterCopy(sectionKey, index);
