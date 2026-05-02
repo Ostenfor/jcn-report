@@ -1433,7 +1433,7 @@ const { chromium } = require('playwright');
   const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
   if (isMobile) {
-    window.location.href = 'whatsapp://send';
+    window.location.href = 'https://wa.me/';
     return;
   }
 
