@@ -448,7 +448,7 @@ const { chromium } = require('playwright');
   // ==================================================
 
 
-  // ==================================================
+    // ==================================================
   // MODULE 11 - HTML
   // ==================================================
   const generateIntegratedHtmlReportByPublisher = ({
@@ -774,7 +774,7 @@ const { chromium } = require('playwright');
 
     .top-summary {
       display: grid;
-      grid-template-columns: repeat(7, minmax(130px, 1fr));
+      grid-template-columns: repeat(6, minmax(130px, 1fr));
       gap: 12px;
       margin-bottom: 20px;
     }
@@ -1596,22 +1596,6 @@ const { chromium } = require('playwright');
       <div class="summary-label">Clientes</div>
     </div>
 
-    <div class="summary-card summary-progress">
-      <div class="summary-number">
-        <span id="dashboard-confirmed-clients">0</span>/<span id="dashboard-total-clients">${totalPublishersCount}</span>
-      </div>
-      <div class="summary-label">Clientes confirmados</div>
-      <div class="progress-track">
-        <div class="progress-fill" id="dashboard-progress-fill"></div>
-      </div>
-      <div class="progress-text" id="dashboard-progress-text">0% completado</div>
-    </div>
-
-    <div class="summary-card summary-pending">
-      <div class="summary-number" id="dashboard-pending-clients">${totalPublishersCount}</div>
-      <div class="summary-label">Faltan por confirmar</div>
-    </div>
-
     <div class="summary-card">
       <div class="summary-number">${reminderRows.length}</div>
       <div class="summary-label">5PM en adelante</div>
@@ -1626,6 +1610,22 @@ const { chromium } = require('playwright');
       <div class="summary-number">${removedRows.length}</div>
       <div class="summary-label">Removidos</div>
     </div>
+
+    <div class="summary-card summary-pending">
+      <div class="summary-number" id="dashboard-pending-clients">${totalPublishersCount}</div>
+      <div class="summary-label">Faltan por confirmar</div>
+    </div>
+
+    <div class="summary-card summary-progress">
+      <div class="summary-number">
+        <span id="dashboard-confirmed-clients">0</span>/<span id="dashboard-total-clients">${totalPublishersCount}</span>
+      </div>
+      <div class="summary-label">Clientes confirmados</div>
+      <div class="progress-track">
+        <div class="progress-fill" id="dashboard-progress-fill"></div>
+      </div>
+      <div class="progress-text" id="dashboard-progress-text">0% completado</div>
+    </div>
   </div>
 
   <div class="tabs">
@@ -1635,26 +1635,26 @@ const { chromium } = require('playwright');
   </div>
 
   ${renderSection(
-      'todos',
-      '1. Reporte completo del día',
-      allRows,
-      'hello'
-    )}
+    'todos',
+    '1. Reporte completo del día',
+    allRows,
+    'hello'
+  )}
 
   ${renderSection(
-      '5pm',
-      '2. Last friendly reminder - 5PM en adelante',
-      reminderRows,
-      'reminder'
-    )}
+    '5pm',
+    '2. Last friendly reminder - 5PM en adelante',
+    reminderRows,
+    'reminder'
+  )}
 
   ${renderSection(
-      'removed',
-      '3. Removidos en esta versión',
-      removedRows,
-      '',
-      { removedSection: true }
-    )}
+    'removed',
+    '3. Removidos en esta versión',
+    removedRows,
+    '',
+    { removedSection: true }
+  )}
 
   <div class="toast" id="toast"></div>
 
@@ -1859,8 +1859,8 @@ const { chromium } = require('playwright');
     }
 
     function updateConfirmationCounts() {
-      let dashboardTotalClients = 0;
-      let dashboardPendingClients = 0;
+      const totalClients = ${totalPublishersCount};
+      let pendingClients = 0;
 
       ['todos', '5pm'].forEach(sectionKey => {
         const cards = document.querySelectorAll('#' + sectionKey + ' .publisher-card');
@@ -1878,8 +1878,7 @@ const { chromium } = require('playwright');
         });
 
         if (sectionKey === 'todos') {
-          dashboardTotalClients = cards.length;
-          dashboardPendingClients = pendingPublishers.length;
+          pendingClients = pendingPublishers.length;
         }
 
         const counter = document.getElementById('pending-confirm-count-' + sectionKey);
@@ -1901,10 +1900,10 @@ const { chromium } = require('playwright');
         }
       });
 
-      const confirmedClients = Math.max(dashboardTotalClients - dashboardPendingClients, 0);
-      const progressPercent = dashboardTotalClients === 0
+      const confirmedClients = Math.max(totalClients - pendingClients, 0);
+      const progressPercent = totalClients === 0
         ? 0
-        : Math.round((confirmedClients / dashboardTotalClients) * 100);
+        : Math.round((confirmedClients / totalClients) * 100);
 
       const confirmedEl = document.getElementById('dashboard-confirmed-clients');
       const totalEl = document.getElementById('dashboard-total-clients');
@@ -1913,8 +1912,8 @@ const { chromium } = require('playwright');
       const progressText = document.getElementById('dashboard-progress-text');
 
       if (confirmedEl) confirmedEl.innerText = confirmedClients;
-      if (totalEl) totalEl.innerText = dashboardTotalClients;
-      if (pendingEl) pendingEl.innerText = dashboardPendingClients;
+      if (totalEl) totalEl.innerText = totalClients;
+      if (pendingEl) pendingEl.innerText = pendingClients;
 
       if (progressFill) {
         progressFill.style.width = progressPercent + '%';
@@ -2018,6 +2017,7 @@ const { chromium } = require('playwright');
     updateSectionMessages('todos');
     updateSectionMessages('5pm');
     restoreSavedStates();
+    updateConfirmationCounts();
   </script>
 </body>
 </html>
