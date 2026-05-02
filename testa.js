@@ -469,14 +469,14 @@ const generateIntegratedHtmlReportByPublisher = ({
   const renderControls = (sectionKey, defaultMessage) => {
     return `
       <div class="message-controls" data-section="${sectionKey}">
-        <label>
-          Mensaje:
+        <div class="control-group">
+          <label class="control-label" for="message-select-${sectionKey}">Mensaje:</label>
           <select id="message-select-${sectionKey}" onchange="updateSectionMessages('${sectionKey}')">
             <option value="hello" ${defaultMessage === 'hello' ? 'selected' : ''}>hello @ for today we have</option>
             <option value="reminder" ${defaultMessage === 'reminder' ? 'selected' : ''}>last friendly reminder for today @</option>
             <option value="updated" ${defaultMessage === 'updated' ? 'selected' : ''}>List updated @</option>
           </select>
-        </label>
+        </div>
 
         <label class="switch-row">
           <span>Single @</span>
@@ -526,7 +526,7 @@ const generateIntegratedHtmlReportByPublisher = ({
           ? visibleLines
           : `
               <div class="hello dynamic-message" data-section="${sectionKey}"></div>
-              <br>
+              <div class="message-spacer"></div>
               ${visibleLines}
             `;
 
@@ -584,27 +584,45 @@ const generateIntegratedHtmlReportByPublisher = ({
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Reporte Integrado de Publishers</title>
 
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    }
+
     body {
       font-family: Arial, sans-serif;
       background: #f4f6f8;
       color: #111;
       padding: 24px;
       margin: 0;
+      font-size: 15px;
     }
 
-    h1 { margin: 0 0 4px 0; }
+    h1 {
+      margin: 0 0 4px 0;
+      font-size: 30px;
+      line-height: 1.15;
+    }
 
     h2 {
       margin: 0;
       padding-bottom: 8px;
+      font-size: 24px;
+      line-height: 1.2;
     }
 
     .subtitle {
       color: #555;
       margin-bottom: 20px;
+      font-size: 14px;
     }
 
     .top-summary {
@@ -626,15 +644,22 @@ const generateIntegratedHtmlReportByPublisher = ({
       font-size: 28px;
       font-weight: bold;
       margin-bottom: 4px;
+      line-height: 1;
     }
 
     .summary-label {
       color: #555;
       font-size: 13px;
+      line-height: 1.25;
     }
 
-    .summary-new .summary-number { color: #0a8f3c; }
-    .summary-removed .summary-number { color: #c62828; }
+    .summary-new .summary-number {
+      color: #0a8f3c;
+    }
+
+    .summary-removed .summary-number {
+      color: #c62828;
+    }
 
     .tabs {
       display: flex;
@@ -650,6 +675,9 @@ const generateIntegratedHtmlReportByPublisher = ({
       padding: 10px 14px;
       cursor: pointer;
       font-weight: bold;
+      font-size: 14px;
+      min-height: 40px;
+      touch-action: manipulation;
     }
 
     .tab-button.active {
@@ -658,8 +686,13 @@ const generateIntegratedHtmlReportByPublisher = ({
       border-color: #111;
     }
 
-    .report-section { display: none; }
-    .report-section.active { display: block; }
+    .report-section {
+      display: none;
+    }
+
+    .report-section.active {
+      display: block;
+    }
 
     .section-title-row {
       display: flex;
@@ -680,6 +713,9 @@ const generateIntegratedHtmlReportByPublisher = ({
       cursor: pointer;
       font-weight: bold;
       white-space: nowrap;
+      font-size: 13px;
+      min-height: 38px;
+      touch-action: manipulation;
     }
 
     .collapse-btn:hover {
@@ -693,17 +729,17 @@ const generateIntegratedHtmlReportByPublisher = ({
     .section-summary {
       color: #555;
       margin-bottom: 8px;
-      font-size: 13px;
+      font-size: 14px;
     }
 
     .message-controls {
       position: sticky;
       top: 0;
       z-index: 50;
-      background: rgba(255, 255, 255, 0.96);
+      background: rgba(255, 255, 255, 0.97);
       border: 1px solid #ddd;
       border-radius: 10px;
-      padding: 6px 10px;
+      padding: 8px 10px;
       margin-bottom: 12px;
       display: flex;
       flex-wrap: wrap;
@@ -714,14 +750,27 @@ const generateIntegratedHtmlReportByPublisher = ({
       backdrop-filter: blur(4px);
     }
 
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .control-label {
+      font-weight: normal;
+      white-space: nowrap;
+    }
+
     .message-controls select {
-      padding: 5px 8px;
+      padding: 6px 8px;
       border-radius: 7px;
       border: 1px solid #bbb;
-      margin-left: 4px;
       font-weight: bold;
       font-size: 13px;
-      max-width: 260px;
+      max-width: 280px;
+      min-height: 34px;
+      cursor: pointer;
     }
 
     .switch-row {
@@ -730,12 +779,16 @@ const generateIntegratedHtmlReportByPublisher = ({
       align-items: center;
       font-weight: bold;
       font-size: 13px;
+      min-height: 34px;
+      cursor: pointer;
+      touch-action: manipulation;
     }
 
     .switch-row input {
-      width: 17px;
-      height: 17px;
+      width: 18px;
+      height: 18px;
       cursor: pointer;
+      margin: 0;
     }
 
     .empty {
@@ -780,9 +833,13 @@ const generateIntegratedHtmlReportByPublisher = ({
       cursor: pointer;
       color: #111;
       user-select: none;
+      line-height: 1.25;
+      touch-action: manipulation;
     }
 
-    .publisher-title.copied { color: #0066cc; }
+    .publisher-title.copied {
+      color: #0066cc;
+    }
 
     .count {
       color: #666;
@@ -804,12 +861,15 @@ const generateIntegratedHtmlReportByPublisher = ({
       font-size: 15px;
       cursor: pointer;
       user-select: none;
+      white-space: nowrap;
+      touch-action: manipulation;
     }
 
     .check-area input {
       width: 20px;
       height: 20px;
       cursor: pointer;
+      margin: 0;
     }
 
     .message-block {
@@ -818,21 +878,39 @@ const generateIntegratedHtmlReportByPublisher = ({
       background: #fafafa;
       border-radius: 8px;
       border: 1px solid #eee;
-      line-height: 1.5;
+      line-height: 1.45;
+      font-size: 15px;
+      overflow-wrap: anywhere;
+      word-break: normal;
+      touch-action: manipulation;
     }
 
-    .message-block:hover { background: #f0f7ff; }
+    .message-block:hover {
+      background: #f0f7ff;
+    }
 
-    .hello { font-weight: bold; }
+    .hello {
+      font-weight: bold;
+      font-size: 16px;
+      line-height: 1.25;
+    }
 
-    .line { margin-bottom: 4px; }
+    .message-spacer {
+      height: 10px;
+    }
+
+    .line {
+      margin-bottom: 5px;
+      line-height: 1.4;
+      overflow-wrap: anywhere;
+    }
 
     .new-line {
       color: #0a8f3c;
       font-weight: bold;
       background: #ecfff3;
       border-left: 4px solid #0a8f3c;
-      padding: 4px 8px;
+      padding: 5px 8px;
       border-radius: 6px;
     }
 
@@ -845,6 +923,7 @@ const generateIntegratedHtmlReportByPublisher = ({
       color: #fff;
       font-size: 11px;
       font-weight: bold;
+      vertical-align: middle;
     }
 
     .badge-removed {
@@ -856,6 +935,7 @@ const generateIntegratedHtmlReportByPublisher = ({
       color: #fff;
       font-size: 11px;
       font-weight: bold;
+      vertical-align: middle;
     }
 
     .copy-lines {
@@ -864,28 +944,219 @@ const generateIntegratedHtmlReportByPublisher = ({
     }
 
     @media (max-width: 900px) {
+      body {
+        padding: 12px;
+        font-size: 14px;
+      }
+
+      h1 {
+        font-size: 22px;
+      }
+
+      h2 {
+        font-size: 19px;
+      }
+
+      .subtitle {
+        font-size: 12px;
+        margin-bottom: 14px;
+      }
+
       .top-summary {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+
+      .summary-card {
+        padding: 10px;
+        border-radius: 9px;
+      }
+
+      .summary-number {
+        font-size: 22px;
+      }
+
+      .summary-label {
+        font-size: 11px;
+      }
+
+      .tabs {
+        gap: 6px;
+        margin: 12px 0 16px 0;
+      }
+
+      .tab-button {
+        padding: 8px 10px;
+        font-size: 12px;
+        min-height: 36px;
       }
 
       .section-title-row {
-        flex-direction: column;
-        align-items: flex-start;
+        margin-top: 22px;
+        margin-bottom: 10px;
+        gap: 8px;
+      }
+
+      .collapse-btn {
+        padding: 7px 10px;
+        font-size: 12px;
+        min-height: 34px;
+      }
+
+      .section-summary {
+        font-size: 13px;
+        margin-bottom: 6px;
       }
 
       .message-controls {
         top: 0;
+        padding: 6px 8px;
         gap: 8px;
+        font-size: 12px;
+        border-radius: 9px;
+      }
+
+      .control-group {
+        width: 100%;
+      }
+
+      .control-label {
         font-size: 12px;
       }
 
       .message-controls select {
-        max-width: 220px;
+        flex: 1;
+        max-width: none;
+        min-width: 0;
         font-size: 12px;
+        padding: 5px 7px;
+        min-height: 32px;
       }
 
       .switch-row {
         font-size: 12px;
+        min-height: 30px;
+      }
+
+      .switch-row input {
+        width: 17px;
+        height: 17px;
+      }
+
+      .publisher-card {
+        padding: 10px;
+        margin-bottom: 12px;
+        border-radius: 9px;
+      }
+
+      .publisher-header {
+        align-items: flex-start;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+
+      .publisher-title {
+        font-size: 15px;
+        line-height: 1.25;
+      }
+
+      .count {
+        font-size: 12px;
+      }
+
+      .check-area {
+        font-size: 12px;
+      }
+
+      .check-area input {
+        width: 18px;
+        height: 18px;
+      }
+
+      .message-block {
+        padding: 9px;
+        font-size: 13px;
+        line-height: 1.35;
+      }
+
+      .hello {
+        font-size: 15px;
+        line-height: 1.25;
+      }
+
+      .message-spacer {
+        height: 8px;
+      }
+
+      .line {
+        font-size: 13px;
+        line-height: 1.35;
+        margin-bottom: 5px;
+      }
+
+      .new-line {
+        padding: 5px 7px;
+        border-left-width: 3px;
+        border-radius: 5px;
+      }
+
+      .badge-new,
+      .badge-removed {
+        font-size: 9px;
+        padding: 2px 5px;
+        margin-left: 5px;
+      }
+    }
+
+    @media (max-width: 430px) {
+      body {
+        padding: 10px;
+      }
+
+      h1 {
+        font-size: 20px;
+      }
+
+      h2 {
+        font-size: 18px;
+      }
+
+      .top-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .summary-card {
+        padding: 9px;
+      }
+
+      .summary-number {
+        font-size: 20px;
+      }
+
+      .summary-label {
+        font-size: 10px;
+      }
+
+      .tab-button {
+        font-size: 11px;
+        padding: 7px 9px;
+      }
+
+      .message-controls {
+        padding: 6px;
+      }
+
+      .message-block {
+        font-size: 12.5px;
+      }
+
+      .hello {
+        font-size: 14px;
+      }
+
+      .line {
+        font-size: 12.5px;
       }
     }
   </style>
@@ -998,7 +1269,9 @@ const generateIntegratedHtmlReportByPublisher = ({
       document.getElementById(sectionId).classList.add('active');
       button.classList.add('active');
 
-      updateSectionMessages(sectionId);
+      if (sectionId !== 'removed') {
+        updateSectionMessages(sectionId);
+      }
     }
 
     function toggleSectionBody(sectionKey) {
