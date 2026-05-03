@@ -29,52 +29,195 @@ const { chromium } = require('playwright');
   // ==================================================
 
 
+    // ==================================================
+  // MODULE 03 - PUBLISHERS CONFIG
   // ==================================================
-  // MODULE 03 - PUBLISHERS
+  const publisherConfigRows = [
+    {
+      publisher: 'KolHaolam',
+      group: 'KOL Haolam JCN',
+      notes: 'No notes'
+    },
+    {
+      publisher: 'Lakewood Scoop',
+      group: 'TLS JCN Ads',
+      notes: 'No notes'
+    },
+    {
+      publisher: 'Jewish News 24',
+      group: 'Jewish News 24 - JCN',
+      notes: 'Dont Send Notification'
+    },
+    {
+      publisher: 'Meaningful Minute',
+      group: 'MM /JCN FAMILY',
+      notes: 'No notes'
+    },
+    {
+      publisher: 'COL Live',
+      group: 'COLlive // JCN',
+      notes: 'No notes'
+    },
+    {
+      publisher: 'VINnews (Vos Iz Neias)',
+      group: 'Chayala ad group - VIN',
+      notes: 'No notes'
+    },
+    {
+      publisher: 'Jewish Breaking News',
+      group: 'JBN X JCN NEW GROUP',
+      notes: 'No notes'
+    },
+    {
+      publisher: 'Yoilish status',
+      group: 'Yoilish/JCN',
+      notes: 'No notes'
+    },
+    {
+      publisher: 'SY Alerts',
+      group: 'JCN SY 2025',
+      notes: 'Status broken link'
+    },
+    {
+      publisher: 'Five Towns Central',
+      group: '5T x JCN 2025',
+      notes: 'No notes'
+    },
+    {
+      publisher: 'Just My Israel',
+      group: 'JustMyIsrael & JCN',
+      notes: 'No notes'
+    },
+    {
+      publisher: "N'shei News",
+      aliases: ["N'Shei News", 'N’Shei News', 'N’shei News', "N’shei News"],
+      group: 'Updated N’shei News X JCN',
+      notes: 'No notes'
+    },
+    {
+      publisher: 'Belaaz',
+      group: 'Belaaz / JCN UPDATED',
+      notes: 'No notes'
+    },
+    {
+      publisher: 'Arutz Sheva',
+      group: 'JCN NEW GROUP A7',
+      notes: 'only Group / no msg on saturday'
+    },
+    {
+      publisher: 'Chez Chaya',
+      group: 'Chef Chaya / JCN',
+      notes: 'only Status'
+    },
+    {
+      publisher: 'Kosher.com',
+      aliases: ['Kosher. com', 'Kosher com'],
+      group: 'Kosher.com ad sales',
+      notes: 'only Group'
+    },
+    {
+      publisher: 'Zemel',
+      group: 'JD media and Zemel',
+      notes: 'No notes'
+    },
+    {
+      publisher: 'The Perlowitz Show',
+      group: 'NEW Perlowitz Group JCN',
+      notes: 'only Status'
+    },
+    {
+      publisher: 'Mommy Deals',
+      group: 'MommyDeals + JCN',
+      notes: 'No notes'
+    },
+    {
+      publisher: 'Raizys Cooking',
+      aliases: ['Raizy’s Cooking', "Raizy's Cooking"],
+      group: 'Raizy’s Cooking / JCN',
+      notes: 'only Status'
+    },
+    {
+      publisher: 'Israel Breaking News',
+      group: 'Israel Breaking News🇮🇱 & JCN',
+      notes: 'No notes'
+    },
+    {
+      publisher: 'Baltimore Jewish Life',
+      group: 'Baltimore Jewish Life / JCN',
+      notes: 'Pending Status'
+    },
+    {
+      publisher: 'Israel Live News',
+      group: 'Israel Live News  x JCN (Yehuda)',
+      notes: 'only Group'
+    },
+    {
+      publisher: 'Meira K.',
+      aliases: ['Meira K'],
+      group: 'Meira K x JCN 2025',
+      notes: 'give time in IST time',
+      mention: '+972 54-346-8770',
+      addIstTime: true
+    },
+    {
+      publisher: 'Efraim Feder in Lakewood Status',
+      group: 'JCN Feder 2025',
+      notes: 'No notes'
+    },
+    {
+      publisher: 'Matzav',
+      group: 'N/A',
+      notes: 'the client does not want publisher group'
+    },
+    {
+      publisher: 'Addictive Ads',
+      group: 'Addictive CWM',
+      notes: 'only publisher group to remind them'
+    },
+    {
+      publisher: 'W365',
+      group: 'Klal Media - Jewish Content Network JDN',
+      notes: 'No notes'
+    },
+    {
+      publisher: 'BP24',
+      aliases: ['BP 24'],
+      group: 'Klal Media - Jewish Content Network JDN',
+      notes: 'No notes'
+    },
+    {
+      publisher: 'JDN',
+      group: 'Klal Media - Jewish Content Network JDN',
+      notes: 'No notes'
+    },
+    {
+      publisher: 'Rockland Daily',
+      group: 'Klal Media - Jewish Content Network JDN',
+      notes: 'No notes'
+    },
+    {
+      publisher: 'Simcha Spot',
+      group: 'SimchaSpot Ads - JCN',
+      notes: 'No notes'
+    }
+  ];
+
+  const allowedPublishers = new Set(
+    publisherConfigRows.flatMap(row => [
+      row.publisher,
+      ...(row.aliases || [])
+    ])
+  );
   // ==================================================
-  const allowedPublishers = new Set([
-    'KolHaolam',
-    'Lakewood Scoop',
-    'Jewish News 24',
-    'Meaningful Minute',
-    'COL Live',
-    'VINnews (Vos Iz Neias)',
-    'Jewish Breaking News',
-    'Yoilish status',
-    'SY Alerts',
-    'Five Towns Central',
-    'Just My Israel',
-    "N'Shei News",
-    'Belaaz',
-    'Arutz Sheva',
-    'Chez Chaya',
-    'Kosher.com',
-    'Zemel',
-    'The Perlowitz Show',
-    'Mommy Deals',
-    'Raizys Cooking',
-    'Israel Breaking News',
-    'Israel Live News',
-    'Meira K.',
-    'Efraim Feder in Lakewood Status',
-    'Matzav',
-    'Addictive Ads',
-    'Simcha Spot',
-    'W365',
-    'BP24',
-    'BP 24',
-    'JDN',
-    'Rockland Daily'
-  ]);
-  // ==================================================
-  // END MODULE 03 - PUBLISHERS
+  // END MODULE 03 - PUBLISHERS CONFIG
   // ==================================================
 
 
-  // ==================================================
+    // ==================================================
   // MODULE 04 - HELPERS
   // ==================================================
   const normalize = (text) => (text || '')
+    .replace(/[’‘`´]/g, "'")
     .replace(/\s+/g, '')
     .trim()
     .toLowerCase();
@@ -84,7 +227,10 @@ const { chromium } = require('playwright');
   );
 
   const parseDate = (text) => {
-    const cleaned = (text || '').replace(' EDT', '').trim();
+    const cleaned = String(text || '')
+      .replace(/\s+(EST|EDT)$/i, '')
+      .trim();
+
     return new Date(cleaned);
   };
 
@@ -115,6 +261,136 @@ const { chromium } = require('playwright');
       .replaceAll('>', '&gt;')
       .replaceAll('"', '&quot;')
       .replaceAll("'", '&#039;');
+  };
+
+  const splitNotes = (notes) => {
+    const clean = String(notes || '').trim();
+
+    if (!clean) return [];
+
+    if (clean.toLowerCase() === 'no notes') {
+      return [];
+    }
+
+    return clean
+      .split('/')
+      .map(note => note.trim())
+      .filter(Boolean);
+  };
+
+  const publisherConfigMap = new Map();
+
+  publisherConfigRows.forEach(row => {
+    const cleanConfig = {
+      publisher: row.publisher,
+      group: row.group || 'N/A',
+      notes: splitNotes(row.notes),
+      mention: row.mention || '',
+      addIstTime: Boolean(row.addIstTime)
+    };
+
+    publisherConfigMap.set(normalize(row.publisher), cleanConfig);
+
+    (row.aliases || []).forEach(alias => {
+      publisherConfigMap.set(normalize(alias), cleanConfig);
+    });
+  });
+
+  const getPublisherConfig = (publisher) => {
+    return publisherConfigMap.get(normalize(publisher)) || {
+      publisher,
+      group: 'N/A',
+      notes: [],
+      mention: '',
+      addIstTime: false
+    };
+  };
+
+  const getWhatsappGroupName = (publisher) => {
+    return getPublisherConfig(publisher).group || 'N/A';
+  };
+
+  const getPublisherNotes = (publisher) => {
+    return getPublisherConfig(publisher).notes || [];
+  };
+
+  const getPublisherMention = (publisher) => {
+    return getPublisherConfig(publisher).mention || '';
+  };
+
+  const addHoursToAmPmTime = (hourRaw, minuteRaw, ampmRaw, hoursToAdd) => {
+    let hour = Number(hourRaw);
+    const minute = Number(minuteRaw);
+    const ampm = String(ampmRaw).toUpperCase();
+
+    if (ampm === 'PM' && hour !== 12) hour += 12;
+    if (ampm === 'AM' && hour === 12) hour = 0;
+
+    const date = new Date(2000, 0, 1, hour, minute);
+    date.setHours(date.getHours() + hoursToAdd);
+
+    let newHour = date.getHours();
+    const newMinute = String(date.getMinutes()).padStart(2, '0');
+    const newAmpm = newHour >= 12 ? 'PM' : 'AM';
+
+    newHour = newHour % 12;
+    if (newHour === 0) newHour = 12;
+
+    return `${newHour}:${newMinute} ${newAmpm}`;
+  };
+
+  const formatScheduledForPublisher = (scheduledText, publisher) => {
+    const config = getPublisherConfig(publisher);
+
+    if (!config.addIstTime) {
+      return scheduledText;
+    }
+
+    const text = String(scheduledText || '').trim();
+
+    const match = text.match(
+      /^(\d{2})\/(\d{2})\/(\d{4}),\s*(\d{1,2}):(\d{2})\s*(AM|PM)\s*(EST|EDT)$/i
+    );
+
+    if (!match) {
+      return scheduledText;
+    }
+
+    const [, mm, dd, yyyy, hourRaw, minuteRaw, ampmRaw, tzRaw] = match;
+
+    const originalHour = String(hourRaw).padStart(2, '0');
+    const originalMinute = String(minuteRaw).padStart(2, '0');
+    const originalAmpm = String(ampmRaw).toUpperCase();
+    const originalTz = String(tzRaw).toUpperCase();
+
+    const istTime = addHoursToAmPmTime(
+      originalHour,
+      originalMinute,
+      originalAmpm,
+      7
+    );
+
+    return `${mm}/${dd}/${yyyy}, ${originalHour}:${originalMinute} ${originalAmpm} ${originalTz} (${istTime} IST)`;
+  };
+
+  const formatRowLine = (item) => {
+    const scheduled = formatScheduledForPublisher(item.scheduled, item.website);
+    return `${scheduled} - ${item.website} - ${item.type} - ${item.user}`;
+  };
+
+  const renderNoteLabels = (publisher) => {
+    const notes = getPublisherNotes(publisher);
+
+    if (!notes.length) return '';
+
+    return `
+      <div class="notes-footer">
+        <span class="notes-footer-label">Notes:</span>
+        <span class="notes-list">
+          ${notes.map(note => `<span class="note-label">${escapeHtml(note)}</span>`).join('')}
+        </span>
+      </div>
+    `;
   };
   // ==================================================
   // END MODULE 04 - HELPERS
@@ -178,7 +454,7 @@ const { chromium } = require('playwright');
   // ==================================================
 
 
-  // ==================================================
+    // ==================================================
   // MODULE 07 - CONSOLE
   // ==================================================
   const printRawList = (title, list) => {
@@ -196,7 +472,7 @@ const { chromium } = require('playwright');
 
     list.forEach((r, index) => {
       const marker = r.isNew ? ' [NUEVO]' : '';
-      console.log(`${index + 1}. ${r.scheduled} - ${r.website} - ${r.type} - ${r.user}${marker}`);
+      console.log(`${index + 1}. ${formatRowLine(r)}${marker}`);
     });
   };
 
@@ -255,12 +531,18 @@ const { chromium } = require('playwright');
       items.sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
 
       console.log(`${publisher} (${items.length})`);
-      console.log(messageHeader);
+
+      const mention = getPublisherMention(publisher);
+      const finalHeader = mention
+        ? messageHeader.replace('@', `@${mention}`)
+        : messageHeader;
+
+      console.log(finalHeader);
       console.log('');
 
       items.forEach(item => {
         const marker = item.isNew ? '  [NUEVO]' : '';
-        console.log(`${item.scheduled} - ${item.website} - ${item.type} - ${item.user}${marker}`);
+        console.log(`${formatRowLine(item)}${marker}`);
       });
 
       console.log('');
@@ -460,54 +742,11 @@ const { chromium } = require('playwright');
     generatedAtRD,
     reportDate
   }) => {
-    const whatsappGroupNames = {
-      'KolHaolam': 'KOL Haolam JCN',
-      'Kol Haolam': 'KOL Haolam JCN',
-      'Lakewood Scoop': 'TLS JCN Ads',
-      'Jewish News 24': 'Jewish News 24 - JCN',
-      'Meaningful Minute': 'MM /JCN FAMILY',
-      'COL Live': 'COLlive // JCN',
-      'VINnews (Vos Iz Neias)': 'Chayala ad group - VIN',
-      'Jewish Breaking News': 'JBN X JCN NEW GROUP',
-      'Yoilish status': 'Yoilish/JCN',
-      'SY Alerts': 'JCN SY 2025',
-      'Five Towns Central': '5T x JCN 2025',
-      'Just My Israel': 'JustMyIsrael & JCN',
-      "N'Shei News": 'Updated N’shei News X JCN',
-      'N’Shei News': 'Updated N’shei News X JCN',
-      'Simcha Spot': 'SimchaSpot Ads - JCN',
-      'Belaaz': 'Belaaz / JCN UPDATED',
-      'Arutz Sheva': 'JCN NEW GROUP A7',
-      'Chez Chaya': 'Chef Chaya / JCN',
-      'Kosher.com': 'Kosher.com ad sales',
-      'Kosher. com': 'Kosher.com ad sales',
-      'Zemel': 'JD media and Zemel',
-      'The Perlowitz Show': 'Perlowitz Show // JCN',
-      'Mommy Deals': 'MommyDeals + JCN',
-      'Raizys Cooking': 'Raizy’s Cooking / JCN',
-      'Israel Breaking News': 'Israel Breaking News🇮🇱 & JCN',
-      'Baltimore Jewish Life': 'Baltimore Jewish Life / JCN',
-      'Israel Live News': 'Israel Live News x JCN (Yehuda)',
-      'Meira K.': 'Meira K x JCN 2025',
-      'Efraim Feder in Lakewood Status': 'JCN Feder 2025',
-      'Matzav': 'N/A',
-      'Addictive Ads': 'Addictive CWM',
-      'W365': 'Klal Media - Jewish Content Network JDN',
-      'BP24': 'Klal Media - Jewish Content Network JDN',
-      'BP 24': 'Klal Media - Jewish Content Network JDN',
-      'JDN': 'Klal Media - Jewish Content Network JDN',
-      'Rockland Daily': 'Klal Media - Jewish Content Network JDN'
-    };
-
     const getPublisherCount = (rows) => {
       return new Set(rows.map(row => row.website)).size;
     };
 
     const totalPublishersCount = getPublisherCount(allRows);
-
-    const getWhatsappGroupName = (publisher) => {
-      return whatsappGroupNames[publisher] || 'N/A';
-    };
 
     const renderControls = (sectionKey, defaultMessage) => {
       return `
@@ -553,10 +792,9 @@ const { chromium } = require('playwright');
           const confirmKey = `${sectionKey}|||${publisher}`;
           const whatsappGroupName = getWhatsappGroupName(publisher);
           const hasWhatsappGroup = whatsappGroupName && whatsappGroupName !== 'N/A';
+          const publisherMention = getPublisherMention(publisher);
 
-          const copyLines = items.map(item =>
-            `${item.scheduled} - ${item.website} - ${item.type} - ${item.user}`
-          );
+          const copyLines = items.map(item => formatRowLine(item));
 
           const visibleLines = items.map(item => {
             const cssClass = item.isNew ? 'line new-line' : 'line';
@@ -565,7 +803,7 @@ const { chromium } = require('playwright');
 
             return `
               <div class="${cssClass}">
-                ${escapeHtml(item.scheduled)} - ${escapeHtml(item.website)} - ${escapeHtml(item.type)} - ${escapeHtml(item.user)}
+                ${escapeHtml(formatRowLine(item))}
                 ${badge}
                 ${removedBadge}
               </div>
@@ -618,11 +856,14 @@ const { chromium } = require('playwright');
             </div>
           `;
 
+          const notesFooter = renderNoteLabels(publisher);
+
           const groupFooter = options.removedSection ? '' : `
             <div class="group-footer">
               <span class="group-footer-label">Grupo WhatsApp:</span>
               <span class="group-footer-name">${escapeHtml(whatsappGroupName)}</span>
             </div>
+            ${notesFooter}
           `;
 
           return `
@@ -634,6 +875,7 @@ const { chromium } = require('playwright');
             data-sent-key="${escapeHtml(sentKey)}"
             data-confirm-key="${escapeHtml(confirmKey)}"
             data-whatsapp-group="${escapeHtml(whatsappGroupName)}"
+            data-mention="${escapeHtml(publisherMention)}"
           >
             <div class="publisher-topbar">
               <div class="publisher-title-wrap">
@@ -1433,6 +1675,46 @@ const { chromium } = require('playwright');
       font-weight: 800;
     }
 
+    .notes-footer {
+      margin-top: 10px;
+      padding: 11px 12px;
+      background: rgba(59,130,246,0.06);
+      border: 1px dashed rgba(96,165,250,0.35);
+      border-radius: 12px;
+      line-height: 1.35;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .notes-footer-label {
+      color: #bfdbfe;
+      font-weight: 800;
+      margin-right: 2px;
+    }
+
+    .notes-list {
+      display: inline-flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .note-label {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(59,130,246,0.18);
+      color: #bfdbfe;
+      font-size: 12px;
+      font-weight: 800;
+      border: 1px solid rgba(96,165,250,0.35);
+      white-space: nowrap;
+    }
+
     .copy-lines {
       display: none;
       white-space: pre-wrap;
@@ -1685,9 +1967,15 @@ const { chromium } = require('playwright');
         font-size: 15px;
       }
 
-      .group-footer {
+      .group-footer,
+      .notes-footer {
         font-size: 12px;
         padding: 8px 10px;
+      }
+
+      .note-label {
+        font-size: 10px;
+        padding: 3px 8px;
       }
 
       .line {
@@ -1892,10 +2180,13 @@ const { chromium } = require('playwright');
       return checked ? '@ @' : '@';
     }
 
-    function getMessage(sectionKey) {
+    function getMessage(sectionKey, mentionOverride = '') {
       const select = document.getElementById('message-select-' + sectionKey);
       const value = select ? select.value : 'hello';
-      const mention = getMention(sectionKey);
+
+      const mention = mentionOverride
+        ? '@' + mentionOverride
+        : getMention(sectionKey);
 
       if (value === 'hello') return 'hello ' + mention + ' for today we have';
       if (value === 'reminder') return 'last friendly reminder for today ' + mention;
@@ -1905,10 +2196,10 @@ const { chromium } = require('playwright');
     }
 
     function updateSectionMessages(sectionKey) {
-      const message = getMessage(sectionKey);
-
       document.querySelectorAll('.dynamic-message[data-section="' + sectionKey + '"]').forEach(el => {
-        el.innerText = message;
+        const card = el.closest('.publisher-card');
+        const mentionOverride = card ? card.dataset.mention || '' : '';
+        el.innerText = getMessage(sectionKey, mentionOverride);
       });
     }
 
@@ -2270,7 +2561,9 @@ const { chromium } = require('playwright');
       let text = lines;
 
       if (sectionKey !== 'removed') {
-        text = getMessage(sectionKey) + '\\n\\n' + lines;
+        const card = getCard(sectionKey, index);
+        const mentionOverride = card ? card.dataset.mention || '' : '';
+        text = getMessage(sectionKey, mentionOverride) + '\\n\\n' + lines;
       }
 
       try {
@@ -2301,7 +2594,7 @@ const { chromium } = require('playwright');
 </html>
 `;
 
-        const reportsFolder = getReportsFolderPath();
+    const reportsFolder = getReportsFolderPath();
 
     const filePath = getUniqueReportFilePath(
       reportsFolder,
