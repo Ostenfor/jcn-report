@@ -284,7 +284,8 @@ const {
       newRows,
       sameRows,
       generatedAtRD,
-      reportDate
+      reportDate,
+      deliveryMatcher
     });
 
     // ------------------------------
