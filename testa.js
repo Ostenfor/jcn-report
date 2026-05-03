@@ -29,7 +29,7 @@ const { chromium } = require('playwright');
   // ==================================================
 
 
-    // ==================================================
+  // ==================================================
   // MODULE 03 - PUBLISHERS CONFIG
   // ==================================================
   const publisherConfigRows = [
@@ -215,7 +215,7 @@ const { chromium } = require('playwright');
   // ==================================================
 
 
-    // ==================================================
+  // ==================================================
   // MODULE 04 - HELPERS
   // ==================================================
   const normalize = (text) => (text || '')
@@ -478,7 +478,7 @@ const { chromium } = require('playwright');
   // ==================================================
 
 
-    // ==================================================
+  // ==================================================
   // MODULE 07 - CONSOLE
   // ==================================================
   const printRawList = (title, list) => {
@@ -754,7 +754,7 @@ const { chromium } = require('playwright');
   // ==================================================
 
 
-    // ==================================================
+  // ==================================================
   // MODULE 11 - HTML
   // ==================================================
   const generateIntegratedHtmlReportByPublisher = ({
@@ -1906,6 +1906,16 @@ const { chromium } = require('playwright');
       transition: width 0.25s ease, background 0.25s ease;
     }
 
+    @media (max-width: 1100px) {
+      .section-progress-box {
+        display: none;
+      }
+
+      body {
+        padding-bottom: 96px;
+      }
+    }
+
     @media (max-width: 900px) {
       body {
         padding: 12px 12px 96px 12px;
@@ -2147,26 +2157,26 @@ const { chromium } = require('playwright');
   </div>
 
   ${renderSection(
-    'todos',
-    '1. Reporte completo del día',
-    allRows,
-    'hello'
-  )}
+      'todos',
+      '1. Reporte completo del día',
+      allRows,
+      'hello'
+    )}
 
   ${renderSection(
-    'after5pm',
-    '2. Last friendly reminder - 5PM en adelante',
-    reminderRows,
-    'reminder'
-  )}
+      'after5pm',
+      '2. Last friendly reminder - 5PM en adelante',
+      reminderRows,
+      'reminder'
+    )}
 
   ${renderSection(
-    'removed',
-    '3. Removidos en esta versión',
-    removedRows,
-    '',
-    { removedSection: true }
-  )}
+      'removed',
+      '3. Removidos en esta versión',
+      removedRows,
+      '',
+      { removedSection: true }
+    )}
 
   <div class="fixed-progress-footer">
     <div class="fixed-progress-inner">
