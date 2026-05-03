@@ -38,6 +38,12 @@ const {
 const {
   buildDiff
 } = require('./src/services/diffService');
+
+const {
+  printRawList,
+  printPublisherCountsFromRows,
+  printFinalGroupedByPublisher
+} = require('./src/utils/consoleUtils');
 // ==================================================
 // END MODULE 01 - BOOT
 // ==================================================
@@ -60,97 +66,97 @@ const {
   // ==================================================
 
   // ==================================================
-// MODULE 04 - HELPERS
-// ==================================================
-const parseDate = (text) => {
-  const cleaned = String(text || '')
-    .replace(/\s+(EST|EDT)$/i, '')
-    .trim();
+  // MODULE 04 - HELPERS
+  // ==================================================
+  const parseDate = (text) => {
+    const cleaned = String(text || '')
+      .replace(/\s+(EST|EDT)$/i, '')
+      .trim();
 
-  return new Date(cleaned);
-};
+    return new Date(cleaned);
+  };
 
-const isAtOrAfter5PM = (scheduledText) => {
-  const date = parseDate(scheduledText);
-  if (isNaN(date.getTime())) return false;
-  return date.getHours() >= 17;
-};
+  const isAtOrAfter5PM = (scheduledText) => {
+    const date = parseDate(scheduledText);
+    if (isNaN(date.getTime())) return false;
+    return date.getHours() >= 17;
+  };
 
-const escapeHtml = (text) => {
-  return String(text || '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;');
-};
+  const escapeHtml = (text) => {
+    return String(text || '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  };
 
-const addHoursToAmPmTime = (hourRaw, minuteRaw, ampmRaw, hoursToAdd) => {
-  let hour = Number(hourRaw);
-  const minute = Number(minuteRaw);
-  const ampm = String(ampmRaw).toUpperCase();
+  const addHoursToAmPmTime = (hourRaw, minuteRaw, ampmRaw, hoursToAdd) => {
+    let hour = Number(hourRaw);
+    const minute = Number(minuteRaw);
+    const ampm = String(ampmRaw).toUpperCase();
 
-  if (ampm === 'PM' && hour !== 12) hour += 12;
-  if (ampm === 'AM' && hour === 12) hour = 0;
+    if (ampm === 'PM' && hour !== 12) hour += 12;
+    if (ampm === 'AM' && hour === 12) hour = 0;
 
-  const date = new Date(2000, 0, 1, hour, minute);
-  date.setHours(date.getHours() + hoursToAdd);
+    const date = new Date(2000, 0, 1, hour, minute);
+    date.setHours(date.getHours() + hoursToAdd);
 
-  let newHour = date.getHours();
-  const newMinute = String(date.getMinutes()).padStart(2, '0');
-  const newAmpm = newHour >= 12 ? 'PM' : 'AM';
+    let newHour = date.getHours();
+    const newMinute = String(date.getMinutes()).padStart(2, '0');
+    const newAmpm = newHour >= 12 ? 'PM' : 'AM';
 
-  newHour = newHour % 12;
-  if (newHour === 0) newHour = 12;
+    newHour = newHour % 12;
+    if (newHour === 0) newHour = 12;
 
-  return `${newHour}:${newMinute} ${newAmpm}`;
-};
+    return `${newHour}:${newMinute} ${newAmpm}`;
+  };
 
-const formatScheduledForPublisher = (scheduledText, publisher) => {
-  const config = getPublisherConfig(publisher);
+  const formatScheduledForPublisher = (scheduledText, publisher) => {
+    const config = getPublisherConfig(publisher);
 
-  if (!config.addIstTime) {
-    return scheduledText;
-  }
+    if (!config.addIstTime) {
+      return scheduledText;
+    }
 
-  const text = String(scheduledText || '').trim();
+    const text = String(scheduledText || '').trim();
 
-  const match = text.match(
-    /^(\d{2})\/(\d{2})\/(\d{4}),\s*(\d{1,2}):(\d{2})\s*(AM|PM)\s*(EST|EDT)$/i
-  );
+    const match = text.match(
+      /^(\d{2})\/(\d{2})\/(\d{4}),\s*(\d{1,2}):(\d{2})\s*(AM|PM)\s*(EST|EDT)$/i
+    );
 
-  if (!match) {
-    return scheduledText;
-  }
+    if (!match) {
+      return scheduledText;
+    }
 
-  const [, mm, dd, yyyy, hourRaw, minuteRaw, ampmRaw, tzRaw] = match;
+    const [, mm, dd, yyyy, hourRaw, minuteRaw, ampmRaw, tzRaw] = match;
 
-  const originalHour = String(hourRaw).padStart(2, '0');
-  const originalMinute = String(minuteRaw).padStart(2, '0');
-  const originalAmpm = String(ampmRaw).toUpperCase();
-  const originalTz = String(tzRaw).toUpperCase();
+    const originalHour = String(hourRaw).padStart(2, '0');
+    const originalMinute = String(minuteRaw).padStart(2, '0');
+    const originalAmpm = String(ampmRaw).toUpperCase();
+    const originalTz = String(tzRaw).toUpperCase();
 
-  const istTime = addHoursToAmPmTime(
-    originalHour,
-    originalMinute,
-    originalAmpm,
-    7
-  );
+    const istTime = addHoursToAmPmTime(
+      originalHour,
+      originalMinute,
+      originalAmpm,
+      7
+    );
 
-  return `${mm}/${dd}/${yyyy}, ${originalHour}:${originalMinute} ${originalAmpm} ${originalTz} (${istTime} IST)`;
-};
+    return `${mm}/${dd}/${yyyy}, ${originalHour}:${originalMinute} ${originalAmpm} ${originalTz} (${istTime} IST)`;
+  };
 
-const formatRowLine = (item) => {
-  const scheduled = formatScheduledForPublisher(item.scheduled, item.website);
-  return `${scheduled} - ${item.website} - ${item.type} - ${item.user}`;
-};
+  const formatRowLine = (item) => {
+    const scheduled = formatScheduledForPublisher(item.scheduled, item.website);
+    return `${scheduled} - ${item.website} - ${item.type} - ${item.user}`;
+  };
 
-const renderNoteLabels = (publisher) => {
-  const notes = getPublisherNotes(publisher);
+  const renderNoteLabels = (publisher) => {
+    const notes = getPublisherNotes(publisher);
 
-  if (!notes.length) return '';
+    if (!notes.length) return '';
 
-  return `
+    return `
     <div class="notes-footer">
       <span class="notes-footer-label">Notes:</span>
       <span class="notes-list">
@@ -158,111 +164,12 @@ const renderNoteLabels = (publisher) => {
       </span>
     </div>
   `;
-};
-// ==================================================
-// END MODULE 04 - HELPERS
-// ==================================================
-
-  // ==================================================
-  // MODULE 07 - CONSOLE
-  // ==================================================
-  const printRawList = (title, list) => {
-    console.log('');
-    console.log('==================================================');
-    console.log(title);
-    console.log('==================================================');
-    console.log(`Total registros: ${list.length}`);
-    console.log('');
-
-    if (list.length === 0) {
-      console.log('No hay registros para mostrar.');
-      return;
-    }
-
-    list.forEach((r, index) => {
-      const marker = r.isNew ? ' [NUEVO]' : '';
-      console.log(`${index + 1}. ${formatRowLine(r)}${marker}`);
-    });
-  };
-
-  const printPublisherCountsFromRows = (title, rows) => {
-    const grouped = {};
-
-    rows.forEach(r => {
-      if (!grouped[r.website]) grouped[r.website] = 0;
-      grouped[r.website]++;
-    });
-
-    const publishers = Object.keys(grouped).sort((a, b) => a.localeCompare(b));
-
-    console.log('');
-    console.log('==================================================');
-    console.log(title);
-    console.log('==================================================');
-    console.log(`Cantidad de publicadores: ${publishers.length}`);
-    console.log('');
-
-    if (publishers.length === 0) {
-      console.log('No hay publicadores para mostrar.');
-      return;
-    }
-
-    publishers.forEach((name, index) => {
-      console.log(`${index + 1}. ${name} (${grouped[name]})`);
-    });
-  };
-
-  const printFinalGroupedByPublisher = (title, rows, messageHeader) => {
-    const grouped = {};
-
-    rows.forEach(row => {
-      if (!grouped[row.website]) {
-        grouped[row.website] = [];
-      }
-
-      grouped[row.website].push(row);
-    });
-
-    console.log('');
-    console.log('==================================================');
-    console.log(title);
-    console.log('==================================================');
-    console.log('');
-
-    if (Object.keys(grouped).length === 0) {
-      console.log('No hay resultado final para mostrar.');
-      return;
-    }
-
-    for (const publisher of Object.keys(grouped).sort((a, b) => a.localeCompare(b))) {
-      const items = grouped[publisher];
-
-      items.sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
-
-      console.log(`${publisher} (${items.length})`);
-
-      const mention = getPublisherMention(publisher);
-      const finalHeader = mention
-        ? messageHeader.replace('@', `@${mention}`)
-        : messageHeader;
-
-      console.log(finalHeader);
-      console.log('');
-
-      items.forEach(item => {
-        const marker = item.isNew ? '  [NUEVO]' : '';
-        console.log(`${formatRowLine(item)}${marker}`);
-      });
-
-      console.log('');
-    }
   };
   // ==================================================
-  // END MODULE 07 - CONSOLE
+  // END MODULE 04 - HELPERS
   // ==================================================
 
-
-    // ==================================================
+  // ==================================================
   // MODULE 11 - HTML
   // ==================================================
   const generateIntegratedHtmlReportByPublisher = ({
@@ -1541,26 +1448,26 @@ const renderNoteLabels = (publisher) => {
   </div>
 
   ${renderSection(
-    'todos',
-    '1. Reporte completo del día',
-    allRows,
-    'hello'
-  )}
+      'todos',
+      '1. Reporte completo del día',
+      allRows,
+      'hello'
+    )}
 
   ${renderSection(
-    'after5pm',
-    '2. Last friendly reminder - 5PM en adelante',
-    reminderRows,
-    'reminder'
-  )}
+      'after5pm',
+      '2. Last friendly reminder - 5PM en adelante',
+      reminderRows,
+      'reminder'
+    )}
 
   ${renderSection(
-    'removed',
-    '3. Removidos en esta versión',
-    removedRows,
-    '',
-    { removedSection: true }
-  )}
+      'removed',
+      '3. Removidos en esta versión',
+      removedRows,
+      '',
+      { removedSection: true }
+    )}
 
   <div class="fixed-progress-footer">
     <div class="fixed-progress-inner">
@@ -2075,7 +1982,7 @@ const renderNoteLabels = (publisher) => {
   // ==================================================
 
 
-  // ==================================================
+    // ==================================================
   // MODULE 12 - MAIN
   // ==================================================
   try {
@@ -2164,7 +2071,7 @@ const renderNoteLabels = (publisher) => {
       return data;
     });
 
-    printRawList('2. RAW SCRAPING', rows);
+    printRawList('2. RAW SCRAPING', rows, formatRowLine);
 
     const todayString = getTodayStringRD();
 
@@ -2178,8 +2085,8 @@ const renderNoteLabels = (publisher) => {
       return datePart !== todayString;
     });
 
-    printRawList(`3. FILTRO SOLO HOY (${todayString})`, rowsToday);
-    printRawList(`4. REMOVIDOS POR FECHA (NO SON DE HOY ${todayString})`, rowsRemovedByDate);
+    printRawList(`3. FILTRO SOLO HOY (${todayString})`, rowsToday, formatRowLine);
+    printRawList(`4. REMOVIDOS POR FECHA (NO SON DE HOY ${todayString})`, rowsRemovedByDate, formatRowLine);
 
     printPublisherCountsFromRows('5. PUBLICADORES ENCONTRADOS HOY', rowsToday);
     printPublisherCountsFromRows('6. PUBLICADORES REMOVIDOS POR FECHA', rowsRemovedByDate);
@@ -2192,8 +2099,8 @@ const renderNoteLabels = (publisher) => {
       !allowedPublishersNormalized.has(normalize(r.website))
     );
 
-    printRawList('7. FILTRO POR TU LISTA', rowsFiltered);
-    printRawList('8. REMOVIDOS POR TU LISTA', rowsRemovedByWhitelist);
+    printRawList('7. FILTRO POR TU LISTA', rowsFiltered, formatRowLine);
+    printRawList('8. REMOVIDOS POR TU LISTA', rowsRemovedByWhitelist, formatRowLine);
 
     printPublisherCountsFromRows('9. PUBLICADORES FINALES DESPUÉS DEL FILTRO', rowsFiltered);
     printPublisherCountsFromRows('10. PUBLICADORES REMOVIDOS POR TU LISTA', rowsRemovedByWhitelist);
@@ -2217,8 +2124,8 @@ const renderNoteLabels = (publisher) => {
 
     const rowsFilteredAfter5PM = rowsWithStatus.filter(row => isAtOrAfter5PM(row.scheduled));
 
-    printRawList('11. AGREGADOS NUEVOS VS ÚLTIMA VERSIÓN DEL MISMO DÍA', newRows);
-    printRawList('12. REMOVIDOS VS ÚLTIMA VERSIÓN DEL MISMO DÍA', removedRows);
+    printRawList('11. AGREGADOS NUEVOS VS ÚLTIMA VERSIÓN DEL MISMO DÍA', newRows, formatRowLine);
+    printRawList('12. REMOVIDOS VS ÚLTIMA VERSIÓN DEL MISMO DÍA', removedRows, formatRowLine);
 
     console.log('');
     console.log('==================================================');
@@ -2229,17 +2136,23 @@ const renderNoteLabels = (publisher) => {
     console.log(`Removidos: ${removedRows.length}`);
     console.log(`Sin cambios: ${sameRows.length}`);
 
-    printFinalGroupedByPublisher(
-      '13. RESULTADO FINAL AGRUPADO - TODOS',
-      rowsWithStatus,
-      'hello @ for today we have'
-    );
+    printFinalGroupedByPublisher({
+      title: '13. RESULTADO FINAL AGRUPADO - TODOS',
+      rows: rowsWithStatus,
+      messageHeader: 'hello @ for today we have',
+      parseDate,
+      formatRowLine,
+      getPublisherMention
+    });
 
-    printFinalGroupedByPublisher(
-      '14. RESULTADO FINAL AGRUPADO - 5PM EN ADELANTE',
-      rowsFilteredAfter5PM,
-      'last friendly reminder @'
-    );
+    printFinalGroupedByPublisher({
+      title: '14. RESULTADO FINAL AGRUPADO - 5PM EN ADELANTE',
+      rows: rowsFilteredAfter5PM,
+      messageHeader: 'last friendly reminder @',
+      parseDate,
+      formatRowLine,
+      getPublisherMention
+    });
 
     const generatedAtRD = new Intl.DateTimeFormat('en-US', {
       timeZone: 'America/Santo_Domingo',
