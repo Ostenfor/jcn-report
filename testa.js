@@ -31,11 +31,13 @@ const {
 } = require('./src/utils/fileUtils');
 
 const {
-  rowKey,
-  keyToRow,
   loadPreviousSnapshot,
   saveSnapshot
 } = require('./src/services/snapshotService');
+
+const {
+  buildDiff
+} = require('./src/services/diffService');
 // ==================================================
 // END MODULE 01 - BOOT
 // ==================================================
@@ -257,40 +259,6 @@ const renderNoteLabels = (publisher) => {
   };
   // ==================================================
   // END MODULE 07 - CONSOLE
-  // ==================================================
-
-  // ==================================================
-  // MODULE 10 - DIFF
-  // ==================================================
-  const buildDiff = (currentRows, previousKeys) => {
-    const previousSet = new Set(previousKeys);
-    const currentSet = new Set(currentRows.map(rowKey));
-
-    const rowsWithStatus = currentRows.map(row => {
-      return {
-        ...row,
-        isNew: !previousSet.has(rowKey(row))
-      };
-    });
-
-    const newRows = rowsWithStatus.filter(row => row.isNew);
-
-    const removedRows = previousKeys
-      .filter(key => !currentSet.has(key))
-      .map(keyToRow)
-      .filter(row => row.scheduled && row.website && row.type && row.user);
-
-    const sameRows = rowsWithStatus.filter(row => !row.isNew);
-
-    return {
-      rowsWithStatus,
-      newRows,
-      removedRows,
-      sameRows
-    };
-  };
-  // ==================================================
-  // END MODULE 10 - DIFF
   // ==================================================
 
 
