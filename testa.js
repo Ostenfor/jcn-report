@@ -1,5 +1,5 @@
 // ==================================================
-// MODULE 01 - BOOT
+// MODULE 01 - BOOT / IMPORTS
 // ==================================================
 require('dotenv').config();
 
@@ -49,13 +49,25 @@ const {
 const {
   crawlPosts
 } = require('./src/crawlers/postsCrawler');
+
+const {
+  SCREENSHOTS_URL,
+  SCREENSHOTS_TWOS_URL,
+  APPROVED_SCREENSHOTS_URL,
+  crawlScreenshots
+} = require('./src/crawlers/screenshotsCrawler');
+
+const {
+  buildDeliveryMatcher,
+  printDeliveryMatcherSummary
+} = require('./src/services/screenshotMatcherService');
 // ==================================================
-// END MODULE 01 - BOOT
+// END MODULE 01 - BOOT / IMPORTS
 // ==================================================
 
 
 // ==================================================
-// MODULE 02 - APP START
+// MODULE 02 - BROWSER START
 // ==================================================
 (async () => {
   const browser = await chromium.launch({
@@ -67,24 +79,75 @@ const {
   page.setDefaultTimeout(60000);
   page.setDefaultNavigationTimeout(60000);
   // ==================================================
-  // END MODULE 02 - APP START
+  // END MODULE 02 - BROWSER START
   // ==================================================
 
 
-    // ==================================================
-  // MODULE 12 - MAIN
+  // ==================================================
+  // MODULE 03 - MAIN FLOW
   // ==================================================
   try {
+    // ------------------------------
+    // 3.1 LOGIN
+    // ------------------------------
     await login(page);
 
+    // ------------------------------
+    // 3.2 DATE CONTEXT
+    // ------------------------------
+    const todayString = getTodayStringRD();
+
+    // ------------------------------
+    // 3.3 CRAWL POSTS
+    // ------------------------------
     const {
       rows
     } = await crawlPosts(page);
 
+    // ------------------------------
+    // 3.4 CRAWL SCREENSHOTS
+    // ------------------------------
+    const screenshotsResult = await crawlScreenshots({
+      page,
+      todayString,
+      allowedPublishersNormalized,
+      normalize,
+      url: SCREENSHOTS_URL,
+      title: 'screenshots'
+    });
+
+    // ------------------------------
+    // 3.5 CRAWL SCREENSHOTS TWOS
+    // ------------------------------
+    const screenshotsTwosResult = await crawlScreenshots({
+      page,
+      todayString,
+      allowedPublishersNormalized,
+      normalize,
+      url: SCREENSHOTS_TWOS_URL,
+      title: 'screenshots-twos'
+    });
+
+    // ------------------------------
+    // 3.6 CRAWL APPROVED SCREENSHOTS
+    // ------------------------------
+    const approvedScreenshotsResult = await crawlScreenshots({
+      page,
+      todayString,
+      allowedPublishersNormalized,
+      normalize,
+      url: APPROVED_SCREENSHOTS_URL,
+      title: 'approved-screenshots'
+    });
+
+    // ------------------------------
+    // 3.7 RAW POSTS OUTPUT
+    // ------------------------------
     printRawList('2. RAW SCRAPING', rows, formatRowLine);
 
-    const todayString = getTodayStringRD();
-
+    // ------------------------------
+    // 3.8 FILTER POSTS BY DATE
+    // ------------------------------
     const rowsToday = rows.filter(r => {
       const datePart = r.scheduled.split(',')[0]?.trim();
       return datePart === todayString;
@@ -95,12 +158,27 @@ const {
       return datePart !== todayString;
     });
 
+    // ------------------------------
+    // 3.9 DELIVERY MATCHER
+    // ------------------------------
+    const deliveryMatcher = buildDeliveryMatcher({
+      postsRows: rowsToday,
+      screenshotsRows: screenshotsResult.rowsToday,
+      screenshotsTwosRows: screenshotsTwosResult.rowsToday,
+      approvedRows: approvedScreenshotsResult.rowsToday
+    });
+
+    printDeliveryMatcherSummary(deliveryMatcher);
+
     printRawList(`3. FILTRO SOLO HOY (${todayString})`, rowsToday, formatRowLine);
     printRawList(`4. REMOVIDOS POR FECHA (NO SON DE HOY ${todayString})`, rowsRemovedByDate, formatRowLine);
 
     printPublisherCountsFromRows('5. PUBLICADORES ENCONTRADOS HOY', rowsToday);
     printPublisherCountsFromRows('6. PUBLICADORES REMOVIDOS POR FECHA', rowsRemovedByDate);
 
+    // ------------------------------
+    // 3.10 FILTER POSTS BY PUBLISHER WHITELIST
+    // ------------------------------
     const rowsFiltered = rowsToday.filter(r =>
       allowedPublishersNormalized.has(normalize(r.website))
     );
@@ -117,6 +195,24 @@ const {
 
     rowsFiltered.sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
 
+    // ------------------------------
+    // 3.11 FULL DELIVERY SUMMARY
+    // ------------------------------
+    console.log('');
+    console.log('==================================================');
+    console.log('RESUMEN FOTOS VS CICLO COMPLETO');
+    console.log('==================================================');
+    console.log(`Total esperado del día: ${deliveryMatcher.summary.totalExpected}`);
+    console.log(`Aprobados: ${deliveryMatcher.summary.approved}`);
+    console.log(`Completados pendiente aprobación: ${deliveryMatcher.summary.completedPendingApproval}`);
+    console.log(`Total completados: ${deliveryMatcher.summary.completedTotal}`);
+    console.log(`Total pendientes: ${deliveryMatcher.summary.pendingTotal}`);
+    console.log(`Pendientes screenshot: ${deliveryMatcher.summary.pendingScreenshot}`);
+    console.log(`Activos sin registro screenshot: ${deliveryMatcher.summary.activeNoScreenshotRecord}`);
+
+    // ------------------------------
+    // 3.12 SNAPSHOT DIFF
+    // ------------------------------
     const reportsFolder = getReportsFolderPath();
     const reportDate = getReportDateForFileName();
 
@@ -134,6 +230,9 @@ const {
 
     const rowsFilteredAfter5PM = rowsWithStatus.filter(row => isAtOrAfter5PM(row.scheduled));
 
+    // ------------------------------
+    // 3.13 CONSOLE OUTPUT
+    // ------------------------------
     printRawList('11. AGREGADOS NUEVOS VS ÚLTIMA VERSIÓN DEL MISMO DÍA', newRows, formatRowLine);
     printRawList('12. REMOVIDOS VS ÚLTIMA VERSIÓN DEL MISMO DÍA', removedRows, formatRowLine);
 
@@ -164,6 +263,9 @@ const {
       getPublisherMention
     });
 
+    // ------------------------------
+    // 3.14 HTML REPORT
+    // ------------------------------
     const generatedAtRD = new Intl.DateTimeFormat('en-US', {
       timeZone: 'America/Santo_Domingo',
       month: '2-digit',
@@ -185,31 +287,33 @@ const {
       reportDate
     });
 
+    // ------------------------------
+    // 3.15 SAVE SNAPSHOT
+    // ------------------------------
     saveSnapshot(reportsFolder, reportDate, rowsFiltered);
     // ==================================================
-    // END MODULE 12 - MAIN
+    // END MODULE 03 - MAIN FLOW
     // ==================================================
 
 
-  // ==================================================
-  // MODULE 13 - CLEANUP
-  // ==================================================
-} catch (error) {
-  console.error('');
-  console.error('==================================================');
-  console.error('ERROR');
-  console.error('==================================================');
-  console.error(error.message);
+    // ==================================================
+    // MODULE 04 - CLEANUP / ERROR HANDLING
+    // ==================================================
+  } catch (error) {
+    console.error('');
+    console.error('==================================================');
+    console.error('ERROR');
+    console.error('==================================================');
+    console.error(error.message);
 
-  console.log('');
-  console.log('URL donde falló:', page.url());
+    console.log('');
+    console.log('URL donde falló:', page.url());
 
-  await page.waitForTimeout(10000);
-} finally {
-  await browser.close();
-}
+    await page.waitForTimeout(10000);
+  } finally {
+    await browser.close();
+  }
   // ==================================================
-  // END MODULE 13 - CLEANUP
+  // END MODULE 04 - CLEANUP / ERROR HANDLING
   // ==================================================
-}) ();
-
+})();
