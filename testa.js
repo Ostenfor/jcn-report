@@ -19,6 +19,10 @@ const {
   getNoNotificationPublisherCount,
   getNotificationRequiredPublisherCount
 } = require('./src/config/publishers');
+
+const {
+  safeGoto
+} = require('./src/utils/navigationUtils');
 // ==================================================
 // END MODULE 01 - BOOT
 // ==================================================
@@ -41,33 +45,6 @@ const {
   // ==================================================
 
 
-  
-
-
-  // ==================================================
-  // MODULE 05 - NAVIGATION
-  // ==================================================
-  const safeGoto = async (url) => {
-    try {
-      await page.goto(url, {
-        waitUntil: 'domcontentloaded',
-        timeout: 60000
-      });
-    } catch (error) {
-      if (
-        error.message.includes('ERR_ABORTED') ||
-        error.message.includes('Navigation failed because page was closed') ||
-        error.message.includes('Navigation interrupted')
-      ) {
-        console.log('La navegación fue abortada por redirect/Nova, continuando...');
-      } else {
-        throw error;
-      }
-    }
-  };
-  // ==================================================
-  // END MODULE 05 - NAVIGATION
-  // ==================================================
 
 
   // ==================================================
@@ -2316,7 +2293,7 @@ const renderNoteLabels = (publisher) => {
     console.log('');
     console.log('Entrando al login...');
 
-    await safeGoto('https://dashboard.jewishcontentnetwork.com/admin/login');
+    await safeGoto(page, 'https://dashboard.jewishcontentnetwork.com/admin/login');
 
     await page.fill('#email', process.env.JCN_USER);
     await page.fill('#password', process.env.JCN_PASS);
@@ -2334,7 +2311,7 @@ const renderNoteLabels = (publisher) => {
 
     const postsUrl = 'https://dashboard.jewishcontentnetwork.com/admin/resources/posts';
 
-    await safeGoto(postsUrl);
+    await safeGoto(page, postsUrl);
 
     if (!page.url().includes('/admin/resources/posts')) {
       console.log('Forzando navegación con window.location...');
