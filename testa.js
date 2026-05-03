@@ -46,7 +46,8 @@ const { chromium } = require('playwright');
     {
       publisher: 'Jewish News 24',
       group: 'Jewish News 24 - JCN',
-      notes: 'Dont Send Notification'
+      notes: 'Dont Send Notification',
+      requiresNotification: false
     },
     {
       publisher: 'Meaningful Minute',
@@ -167,7 +168,8 @@ const { chromium } = require('playwright');
     {
       publisher: 'Matzav',
       group: 'N/A',
-      notes: 'the client does not want publisher group'
+      notes: 'the client does not want a publisher group',
+      requiresNotification: false
     },
     {
       publisher: 'Addictive Ads',
@@ -286,7 +288,8 @@ const { chromium } = require('playwright');
       group: row.group || 'N/A',
       notes: splitNotes(row.notes),
       mention: row.mention || '',
-      addIstTime: Boolean(row.addIstTime)
+      addIstTime: Boolean(row.addIstTime),
+      requiresNotification: row.requiresNotification !== false
     };
 
     publisherConfigMap.set(normalize(row.publisher), cleanConfig);
@@ -302,7 +305,8 @@ const { chromium } = require('playwright');
       group: 'N/A',
       notes: [],
       mention: '',
-      addIstTime: false
+      addIstTime: false,
+      requiresNotification: true
     };
   };
 
@@ -316,6 +320,26 @@ const { chromium } = require('playwright');
 
   const getPublisherMention = (publisher) => {
     return getPublisherConfig(publisher).mention || '';
+  };
+
+  const publisherRequiresNotification = (publisher) => {
+    return getPublisherConfig(publisher).requiresNotification !== false;
+  };
+
+  const getNoNotificationPublisherCount = (rows) => {
+    return new Set(
+      rows
+        .filter(row => !publisherRequiresNotification(row.website))
+        .map(row => row.website)
+    ).size;
+  };
+
+  const getNotificationRequiredPublisherCount = (rows) => {
+    return new Set(
+      rows
+        .filter(row => publisherRequiresNotification(row.website))
+        .map(row => row.website)
+    ).size;
   };
 
   const addHoursToAmPmTime = (hourRaw, minuteRaw, ampmRaw, hoursToAdd) => {
@@ -747,6 +771,35 @@ const { chromium } = require('playwright');
     };
 
     const totalPublishersCount = getPublisherCount(allRows);
+    const notificationRequiredCount = getNotificationRequiredPublisherCount(allRows);
+    const noNotificationRequiredCount = getNoNotificationPublisherCount(allRows);
+
+    const groupRowsByPublisher = (rows) => {
+      const notificationRequired = {};
+      const noNotificationRequired = {};
+
+      rows.forEach(row => {
+        const target = publisherRequiresNotification(row.website)
+          ? notificationRequired
+          : noNotificationRequired;
+
+        if (!target[row.website]) target[row.website] = [];
+        target[row.website].push(row);
+      });
+
+      Object.keys(notificationRequired).forEach(publisher => {
+        notificationRequired[publisher].sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
+      });
+
+      Object.keys(noNotificationRequired).forEach(publisher => {
+        noNotificationRequired[publisher].sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
+      });
+
+      return {
+        notificationRequired,
+        noNotificationRequired
+      };
+    };
 
     const renderControls = (sectionKey, defaultMessage) => {
       return `
@@ -769,30 +822,22 @@ const { chromium } = require('playwright');
     `;
     };
 
-    const renderSection = (sectionKey, sectionTitle, rows, defaultMessage, options = {}) => {
-      const groupedByPublisher = {};
-
-      rows.forEach(row => {
-        if (!groupedByPublisher[row.website]) groupedByPublisher[row.website] = [];
-        groupedByPublisher[row.website].push(row);
-      });
-
-      Object.keys(groupedByPublisher).forEach(publisher => {
-        groupedByPublisher[publisher].sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
-      });
-
-      const sectionPublisherCount = Object.keys(groupedByPublisher).length;
-
-      const cardsHtml = Object.keys(groupedByPublisher)
+    const renderPublisherCards = (groupedByPublisher, sectionKey, options = {}) => {
+      return Object.keys(groupedByPublisher)
         .sort((a, b) => a.localeCompare(b))
         .map((publisher, index) => {
           const items = groupedByPublisher[publisher];
+
+          const safeIndex = options.noNotificationSection
+            ? `no-notification-${index}`
+            : index;
 
           const sentKey = `${sectionKey}|||${publisher}`;
           const confirmKey = `${sectionKey}|||${publisher}`;
           const whatsappGroupName = getWhatsappGroupName(publisher);
           const hasWhatsappGroup = whatsappGroupName && whatsappGroupName !== 'N/A';
           const publisherMention = getPublisherMention(publisher);
+          const requiresNotification = !options.noNotificationSection && !options.removedSection;
 
           const copyLines = items.map(item => formatRowLine(item));
 
@@ -810,79 +855,86 @@ const { chromium } = require('playwright');
             `;
           }).join('');
 
-          const messageBlockContent = options.removedSection
-            ? visibleLines
-            : `
+          const messageBlockContent = requiresNotification
+            ? `
               <div class="hello dynamic-message" data-section="${sectionKey}"></div>
               <div class="message-spacer"></div>
               ${visibleLines}
-            `;
+            `
+            : visibleLines;
 
-          const confirmedCheckbox = options.removedSection ? '' : `
+          const confirmedCheckbox = requiresNotification ? `
             <label class="header-check confirm-area">
               <input
-                id="confirmed-${sectionKey}-${index}"
+                id="confirmed-${sectionKey}-${safeIndex}"
                 type="checkbox"
-                onchange="togglePublisherConfirmedByCard('${sectionKey}', ${index}, this.checked)"
+                onchange="togglePublisherConfirmedByCard('${sectionKey}', '${safeIndex}', this.checked)"
               >
               <span>Publisher Confirmed</span>
             </label>
-          `;
+          ` : '';
 
-          const sentCheckbox = options.removedSection ? '' : `
+          const sentCheckbox = requiresNotification ? `
             <label class="header-check sent-area">
               <input
-                id="sended-${sectionKey}-${index}"
+                id="sended-${sectionKey}-${safeIndex}"
                 type="checkbox"
-                onchange="toggleSendedByCard('${sectionKey}', ${index}, this.checked)"
+                onchange="toggleSendedByCard('${sectionKey}', '${safeIndex}', this.checked)"
               >
               <span>Sended</span>
             </label>
-          `;
+          ` : '';
 
-          const actionButtons = options.removedSection ? '' : `
+          const actionButtons = requiresNotification ? `
             <div class="action-buttons">
-              <button class="whatsapp-btn" onclick="openWhatsAppTest(event, '${sectionKey}', ${index})">
+              <button class="whatsapp-btn" onclick="openWhatsAppTest(event, '${sectionKey}', '${safeIndex}')">
                 WhatsApp
               </button>
 
               <button
                 class="copy-group-btn ${hasWhatsappGroup ? '' : 'disabled-btn'}"
-                onclick="copyWhatsappGroup(event, '${sectionKey}', ${index})"
+                onclick="copyWhatsappGroup(event, '${sectionKey}', '${safeIndex}')"
                 ${hasWhatsappGroup ? '' : 'disabled'}
               >
                 Copy Group
               </button>
             </div>
-          `;
+          ` : '';
 
           const notesFooter = renderNoteLabels(publisher);
 
-          const groupFooter = options.removedSection ? '' : `
+          const groupFooter = !options.removedSection ? `
             <div class="group-footer">
               <span class="group-footer-label">Grupo WhatsApp:</span>
               <span class="group-footer-name">${escapeHtml(whatsappGroupName)}</span>
             </div>
             ${notesFooter}
-          `;
+          ` : '';
+
+          const noNotificationBadge = options.noNotificationSection ? `
+            <div class="no-notification-badge">
+              No requiere notificación
+            </div>
+          ` : '';
 
           return `
           <div
-            class="publisher-card ${options.removedSection ? 'removed-card' : ''}"
-            id="card-${sectionKey}-${index}"
+            class="publisher-card ${options.removedSection ? 'removed-card' : ''} ${options.noNotificationSection ? 'no-notification-card' : ''}"
+            id="card-${sectionKey}-${safeIndex}"
             data-section-key="${escapeHtml(sectionKey)}"
-            data-card-index="${index}"
+            data-card-index="${safeIndex}"
             data-sent-key="${escapeHtml(sentKey)}"
             data-confirm-key="${escapeHtml(confirmKey)}"
             data-whatsapp-group="${escapeHtml(whatsappGroupName)}"
             data-mention="${escapeHtml(publisherMention)}"
+            data-requires-notification="${requiresNotification ? 'true' : 'false'}"
           >
             <div class="publisher-topbar">
               <div class="publisher-title-wrap">
-                <div class="publisher-title" onclick="copyPublisher('${sectionKey}', ${index})">
+                <div class="publisher-title" onclick="copyPublisher('${sectionKey}', '${safeIndex}')">
                   <span>${escapeHtml(publisher)}</span>
                   <span class="count">(${items.length})</span>
-                  <span class="copied-msg" id="copied-${sectionKey}-${index}">Copiado ✅</span>
+                  <span class="copied-msg" id="copied-${sectionKey}-${safeIndex}">Copiado ✅</span>
                 </div>
               </div>
 
@@ -892,11 +944,12 @@ const { chromium } = require('playwright');
               </div>
             </div>
 
+            ${noNotificationBadge}
             ${actionButtons}
 
-            <pre class="copy-lines" id="copy-lines-${sectionKey}-${index}">${escapeHtml(copyLines.join('\n'))}</pre>
+            <pre class="copy-lines" id="copy-lines-${sectionKey}-${safeIndex}">${escapeHtml(copyLines.join('\n'))}</pre>
 
-            <div class="message-block" onclick="copyPublisher('${sectionKey}', ${index})">
+            <div class="message-block" onclick="copyPublisher('${sectionKey}', '${safeIndex}')">
               ${messageBlockContent}
             </div>
 
@@ -904,6 +957,47 @@ const { chromium } = require('playwright');
           </div>
           `;
         }).join('');
+    };
+
+    const renderNoNotificationBox = (sectionKey, groupedNoNotification) => {
+      const publishers = Object.keys(groupedNoNotification);
+
+      if (!publishers.length) return '';
+
+      const totalRows = publishers.reduce((sum, publisher) => {
+        return sum + groupedNoNotification[publisher].length;
+      }, 0);
+
+      return `
+        <div class="no-notification-box">
+          <div class="no-notification-header">
+            <div>
+              <strong>Clientes sin notificación requerida</strong>
+              <span>${publishers.length} clientes | ${totalRows} publicaciones</span>
+            </div>
+
+            <button class="small-collapse-btn" onclick="toggleNoNotificationBox('${sectionKey}')">
+              Ver / Ocultar
+            </button>
+          </div>
+
+          <div class="no-notification-body collapsed" id="no-notification-body-${sectionKey}">
+            ${renderPublisherCards(groupedNoNotification, sectionKey, { noNotificationSection: true })}
+          </div>
+        </div>
+      `;
+    };
+
+    const renderSection = (sectionKey, sectionTitle, rows, defaultMessage, options = {}) => {
+      const {
+        notificationRequired,
+        noNotificationRequired
+      } = groupRowsByPublisher(rows);
+
+      const sectionPublisherCount = Object.keys(notificationRequired).length;
+      const sectionNoNotificationCount = Object.keys(noNotificationRequired).length;
+
+      const cardsHtml = renderPublisherCards(notificationRequired, sectionKey, options);
 
       const emptyMessage = rows.length === 0
         ? `<div class="empty">No hay registros para esta sección.</div>`
@@ -947,7 +1041,7 @@ const { chromium } = require('playwright');
 
       const summaryText = options.removedSection
         ? `Total: ${rows.length}`
-        : `Total: ${rows.length} | Clientes: ${sectionPublisherCount} | Pendientes: <span id="pending-confirm-count-${sectionKey}">${sectionPublisherCount}</span>`;
+        : `Total: ${rows.length} | Clientes que requieren notificación: ${sectionPublisherCount} | Sin notificación requerida: ${sectionNoNotificationCount} | Pendientes: <span id="pending-confirm-count-${sectionKey}">${sectionPublisherCount}</span>`;
 
       const pendingConfirmBox = options.removedSection
         ? ''
@@ -966,6 +1060,8 @@ const { chromium } = require('playwright');
           </div>
         `;
 
+      const noNotificationBox = renderNoNotificationBox(sectionKey, noNotificationRequired);
+
       return `
       <section class="report-section" id="${sectionKey}">
         <div class="section-title-row">
@@ -982,6 +1078,7 @@ const { chromium } = require('playwright');
           ${pendingConfirmBox}
           ${emptyMessage}
           ${cardsHtml}
+          ${noNotificationBox}
         </div>
       </section>
       `;
@@ -1010,22 +1107,14 @@ const { chromium } = require('playwright');
       --line: #243041;
       --line-soft: #1e293b;
       --accent: #38bdf8;
-      --accent-2: #60a5fa;
       --green: #22c55e;
-      --green-soft: rgba(34, 197, 94, 0.12);
       --yellow: #f59e0b;
-      --yellow-soft: rgba(245, 158, 11, 0.14);
       --red: #ef4444;
-      --red-soft: rgba(239, 68, 68, 0.12);
-      --purple: #a78bfa;
-      --blue-soft: rgba(56, 189, 248, 0.15);
       --shadow: 0 10px 24px rgba(0,0,0,0.28);
       --radius: 16px;
     }
 
     html {
-      -webkit-text-size-adjust: 100%;
-      text-size-adjust: 100%;
       background: var(--bg);
     }
 
@@ -1036,7 +1125,7 @@ const { chromium } = require('playwright');
         radial-gradient(circle at top right, rgba(168,85,247,0.06), transparent 24%),
         linear-gradient(180deg, #0b0f14 0%, #0c1118 100%);
       color: var(--text);
-      padding: 24px;
+      padding: 24px 24px 120px 24px;
       margin: 0;
       font-size: 15px;
       min-height: 100vh;
@@ -1047,12 +1136,10 @@ const { chromium } = require('playwright');
       font-size: 30px;
       line-height: 1.1;
       font-weight: 800;
-      letter-spacing: 0.2px;
     }
 
     h2 {
       margin: 0;
-      padding-bottom: 0;
       font-size: 22px;
       line-height: 1.2;
       font-weight: 800;
@@ -1069,7 +1156,6 @@ const { chromium } = require('playwright');
       padding: 10px 14px;
       margin: 8px 0 20px 0;
       font-size: 14px;
-      line-height: 1.2;
       border: 1px solid var(--line);
       box-shadow: var(--shadow);
     }
@@ -1086,7 +1172,7 @@ const { chromium } = require('playwright');
 
     .top-summary {
       display: grid;
-      grid-template-columns: repeat(5, minmax(140px, 1fr));
+      grid-template-columns: repeat(6, minmax(130px, 1fr));
       gap: 12px;
       margin-bottom: 20px;
     }
@@ -1123,11 +1209,26 @@ const { chromium } = require('playwright');
       color: var(--red);
     }
 
+    .summary-no-notification .summary-number {
+      color: var(--yellow);
+    }
+
     .tabs {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
       margin: 16px 0 22px 0;
+    }
+
+    .tab-button,
+    .collapse-btn,
+    .small-collapse-btn,
+    .reset-all-btn,
+    .whatsapp-btn,
+    .copy-group-btn {
+      cursor: pointer;
+      touch-action: manipulation;
+      font-weight: 800;
     }
 
     .tab-button {
@@ -1136,11 +1237,8 @@ const { chromium } = require('playwright');
       color: var(--text);
       border-radius: 999px;
       padding: 10px 14px;
-      cursor: pointer;
-      font-weight: 700;
       font-size: 14px;
       min-height: 42px;
-      touch-action: manipulation;
       box-shadow: 0 6px 16px rgba(0,0,0,0.18);
     }
 
@@ -1169,26 +1267,29 @@ const { chromium } = require('playwright');
       border-bottom: 1px solid var(--line);
     }
 
-    .collapse-btn {
+    .collapse-btn,
+    .small-collapse-btn {
       border: 1px solid var(--line);
       background: rgba(17,24,39,0.9);
       color: #fff;
       border-radius: 999px;
       padding: 9px 14px;
-      cursor: pointer;
-      font-weight: 700;
       white-space: nowrap;
       font-size: 13px;
       min-height: 40px;
-      touch-action: manipulation;
     }
 
-    .collapse-btn:hover,
-    .small-collapse-btn:hover {
-      background: rgba(30, 41, 59, 0.95);
+    .small-collapse-btn {
+      color: #fde68a;
+      border-color: rgba(245,158,11,0.45);
+      font-size: 12px;
+      min-height: 34px;
+      padding: 7px 12px;
     }
 
-    .section-body.collapsed {
+    .section-body.collapsed,
+    .pending-confirm-body.collapsed,
+    .no-notification-body.collapsed {
       display: none;
     }
 
@@ -1253,7 +1354,6 @@ const { chromium } = require('playwright');
       font-size: 13px;
       min-height: 34px;
       cursor: pointer;
-      touch-action: manipulation;
       color: var(--text);
     }
 
@@ -1277,16 +1377,9 @@ const { chromium } = require('playwright');
       color: #fff;
       border-radius: 999px;
       padding: 10px 16px;
-      cursor: pointer;
-      font-weight: 800;
       font-size: 13px;
       min-height: 40px;
-      touch-action: manipulation;
       box-shadow: 0 10px 20px rgba(185,28,28,0.22);
-    }
-
-    .reset-all-btn:hover {
-      filter: brightness(1.05);
     }
 
     .section-progress-box {
@@ -1299,13 +1392,18 @@ const { chromium } = require('playwright');
       gap: 12px;
     }
 
-    .section-progress-card {
-      background: linear-gradient(180deg, rgba(18,26,36,0.98), rgba(14,20,30,0.98));
+    .section-progress-card,
+    .publisher-card,
+    .pending-confirm-box,
+    .no-notification-box {
+      background: linear-gradient(180deg, rgba(18,26,36,0.98), rgba(15,23,42,0.98));
       border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 12px;
+      border-radius: 16px;
       box-shadow: var(--shadow);
-      min-width: 0;
+    }
+
+    .section-progress-card {
+      padding: 12px;
     }
 
     .section-progress-head {
@@ -1335,7 +1433,6 @@ const { chromium } = require('playwright');
     .section-progress-label {
       color: var(--muted);
       font-size: 13px;
-      line-height: 1.2;
       font-weight: 700;
       white-space: nowrap;
     }
@@ -1354,7 +1451,6 @@ const { chromium } = require('playwright');
       background: #dc2626;
       border-radius: 999px;
       transition: width 0.25s ease, background 0.25s ease;
-      box-shadow: 0 0 12px rgba(255,255,255,0.08);
     }
 
     .progress-mini {
@@ -1367,14 +1463,13 @@ const { chromium } = require('playwright');
 
     .pending-confirm-box {
       background: linear-gradient(180deg, rgba(245,158,11,0.10), rgba(245,158,11,0.06));
-      border: 1px solid rgba(245,158,11,0.35);
-      border-radius: 16px;
+      border-color: rgba(245,158,11,0.35);
       padding: 12px 14px;
       margin-bottom: 14px;
-      box-shadow: var(--shadow);
     }
 
-    .pending-confirm-header {
+    .pending-confirm-header,
+    .no-notification-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -1384,25 +1479,6 @@ const { chromium } = require('playwright');
     .pending-confirm-header strong {
       color: #fde68a;
       font-size: 16px;
-      line-height: 1.2;
-    }
-
-    .small-collapse-btn {
-      border: 1px solid rgba(245,158,11,0.45);
-      background: rgba(17,24,39,0.9);
-      color: #fde68a;
-      border-radius: 999px;
-      padding: 7px 12px;
-      cursor: pointer;
-      font-weight: 700;
-      font-size: 12px;
-      min-height: 34px;
-      touch-action: manipulation;
-      white-space: nowrap;
-    }
-
-    .pending-confirm-body.collapsed {
-      display: none;
     }
 
     .pending-confirm-list {
@@ -1420,7 +1496,6 @@ const { chromium } = require('playwright');
       padding: 7px 12px;
       font-size: 13px;
       font-weight: 700;
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02);
     }
 
     .empty {
@@ -1434,12 +1509,8 @@ const { chromium } = require('playwright');
     }
 
     .publisher-card {
-      background: linear-gradient(180deg, rgba(18,26,36,0.98), rgba(15,23,42,0.98));
-      border: 1px solid var(--line);
-      border-radius: 18px;
       padding: 16px;
       margin-bottom: 18px;
-      box-shadow: var(--shadow);
     }
 
     .publisher-card.sended {
@@ -1455,6 +1526,11 @@ const { chromium } = require('playwright');
     .removed-card {
       border-color: rgba(239,68,68,0.45);
       background: linear-gradient(180deg, rgba(42,18,24,0.98), rgba(20,12,18,0.98));
+    }
+
+    .no-notification-card {
+      border-color: rgba(245,158,11,0.45);
+      background: linear-gradient(180deg, rgba(45,32,12,0.98), rgba(15,23,42,0.98));
     }
 
     .publisher-topbar {
@@ -1477,7 +1553,6 @@ const { chromium } = require('playwright');
       color: #ffffff;
       user-select: none;
       line-height: 1.25;
-      touch-action: manipulation;
     }
 
     .publisher-title.copied {
@@ -1546,11 +1621,8 @@ const { chromium } = require('playwright');
     .copy-group-btn {
       border-radius: 999px;
       padding: 10px 16px;
-      cursor: pointer;
-      font-weight: 800;
       font-size: 14px;
       min-height: 42px;
-      touch-action: manipulation;
       border: 1px solid var(--line);
       box-shadow: 0 8px 18px rgba(0,0,0,0.18);
     }
@@ -1561,22 +1633,13 @@ const { chromium } = require('playwright');
       color: #86efac;
     }
 
-    .whatsapp-btn:hover {
-      background: rgba(34,197,94,0.18);
-    }
-
     .copy-group-btn {
       border-color: rgba(96,165,250,0.45);
       background: rgba(59,130,246,0.12);
       color: #93c5fd;
     }
 
-    .copy-group-btn:hover {
-      background: rgba(59,130,246,0.20);
-    }
-
-    .disabled-btn,
-    .disabled-btn:hover {
+    .disabled-btn {
       opacity: 0.45;
       cursor: not-allowed;
       background: rgba(255,255,255,0.05);
@@ -1593,20 +1656,12 @@ const { chromium } = require('playwright');
       line-height: 1.45;
       font-size: 15px;
       overflow-wrap: anywhere;
-      word-break: normal;
-      touch-action: manipulation;
       color: var(--text);
-    }
-
-    .message-block:hover {
-      background: rgba(59,130,246,0.06);
-      border-color: rgba(59,130,246,0.25);
     }
 
     .hello {
       font-weight: 800;
       font-size: 16px;
-      line-height: 1.25;
       color: #ffffff;
     }
 
@@ -1630,31 +1685,29 @@ const { chromium } = require('playwright');
       border-radius: 8px;
     }
 
-    .badge-new {
-      display: inline-block;
-      margin-left: 8px;
-      padding: 2px 7px;
-      border-radius: 999px;
-      background: var(--green);
-      color: #08130c;
-      font-size: 11px;
-      font-weight: 800;
-      vertical-align: middle;
-    }
-
+    .badge-new,
     .badge-removed {
       display: inline-block;
       margin-left: 8px;
       padding: 2px 7px;
       border-radius: 999px;
-      background: var(--red);
       color: #fff;
       font-size: 11px;
       font-weight: 800;
       vertical-align: middle;
     }
 
-    .group-footer {
+    .badge-new {
+      background: var(--green);
+      color: #08130c;
+    }
+
+    .badge-removed {
+      background: var(--red);
+    }
+
+    .group-footer,
+    .notes-footer {
       margin-top: 12px;
       padding: 11px 12px;
       background: rgba(255,255,255,0.03);
@@ -1676,13 +1729,8 @@ const { chromium } = require('playwright');
     }
 
     .notes-footer {
-      margin-top: 10px;
-      padding: 11px 12px;
       background: rgba(59,130,246,0.06);
-      border: 1px dashed rgba(96,165,250,0.35);
-      border-radius: 12px;
-      line-height: 1.35;
-      color: var(--text);
+      border-color: rgba(96,165,250,0.35);
       display: flex;
       align-items: center;
       flex-wrap: wrap;
@@ -1715,6 +1763,44 @@ const { chromium } = require('playwright');
       white-space: nowrap;
     }
 
+    .no-notification-box {
+      margin-top: 22px;
+      padding: 14px;
+      border-color: rgba(245,158,11,0.35);
+      background: linear-gradient(180deg, rgba(245,158,11,0.10), rgba(15,23,42,0.96));
+    }
+
+    .no-notification-header strong {
+      display: block;
+      color: #fde68a;
+      font-size: 16px;
+      margin-bottom: 3px;
+    }
+
+    .no-notification-header span {
+      display: block;
+      color: #fcd34d;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .no-notification-body {
+      margin-top: 14px;
+    }
+
+    .no-notification-badge {
+      display: inline-flex;
+      align-items: center;
+      margin-bottom: 12px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: rgba(245,158,11,0.16);
+      color: #fde68a;
+      font-size: 12px;
+      font-weight: 900;
+      border: 1px solid rgba(245,158,11,0.35);
+    }
+
     .copy-lines {
       display: none;
       white-space: pre-wrap;
@@ -1723,7 +1809,7 @@ const { chromium } = require('playwright');
     .toast {
       position: fixed;
       left: 50%;
-      bottom: 22px;
+      bottom: 92px;
       transform: translateX(-50%);
       max-width: calc(100% - 24px);
       background: rgba(15,23,42,0.96);
@@ -1731,7 +1817,6 @@ const { chromium } = require('playwright');
       padding: 12px 14px;
       border-radius: 14px;
       font-size: 14px;
-      line-height: 1.35;
       z-index: 9999;
       box-shadow: var(--shadow);
       border: 1px solid var(--line);
@@ -1747,9 +1832,83 @@ const { chromium } = require('playwright');
       color: #93c5fd;
     }
 
+    .fixed-progress-footer {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 9998;
+      background: rgba(8, 13, 20, 0.96);
+      border-top: 1px solid rgba(96,165,250,0.22);
+      box-shadow: 0 -10px 28px rgba(0,0,0,0.35);
+      backdrop-filter: blur(10px);
+      padding: 10px 14px;
+    }
+
+    .fixed-progress-inner {
+      max-width: 1600px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .fixed-progress-card {
+      background: rgba(15,23,42,0.82);
+      border: 1px solid rgba(148,163,184,0.22);
+      border-radius: 14px;
+      padding: 9px 11px;
+      min-width: 0;
+    }
+
+    .fixed-progress-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 7px;
+    }
+
+    .fixed-progress-number {
+      font-size: 18px;
+      font-weight: 900;
+      color: #ffffff;
+      line-height: 1;
+    }
+
+    .fixed-progress-label {
+      color: #bfdbfe;
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .fixed-progress-card.confirmed .fixed-progress-number {
+      color: var(--green);
+    }
+
+    .fixed-progress-card.sended .fixed-progress-number {
+      color: var(--accent);
+    }
+
+    .fixed-progress-track {
+      height: 7px;
+      background: #1e293b;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .fixed-progress-fill {
+      height: 100%;
+      width: 0%;
+      background: #dc2626;
+      border-radius: 999px;
+      transition: width 0.25s ease, background 0.25s ease;
+    }
+
     @media (max-width: 900px) {
       body {
-        padding: 12px;
+        padding: 12px 12px 96px 12px;
         font-size: 14px;
       }
 
@@ -1761,16 +1920,9 @@ const { chromium } = require('playwright');
         font-size: 18px;
       }
 
-      .generated-time {
-        font-size: 12px;
-        padding: 8px 11px;
-        margin-bottom: 14px;
-      }
-
       .top-summary {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 8px;
-        margin-bottom: 14px;
       }
 
       .summary-card {
@@ -1785,28 +1937,14 @@ const { chromium } = require('playwright');
         font-size: 11px;
       }
 
-      .global-reset-row {
-        justify-content: stretch;
-      }
-
-      .reset-all-btn {
-        width: 100%;
-        font-size: 12px;
-        min-height: 36px;
-      }
-
-      .section-progress-row {
+      .section-progress-row,
+      .fixed-progress-inner {
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
+        gap: 8px;
       }
 
       .section-progress-card {
         padding: 10px;
-      }
-
-      .section-progress-head {
-        gap: 6px;
-        margin-bottom: 8px;
       }
 
       .section-progress-number {
@@ -1822,41 +1960,10 @@ const { chromium } = require('playwright');
       }
 
       .progress-mini {
-        margin-top: 6px;
         font-size: 11px;
       }
 
-      .tabs {
-        gap: 6px;
-        margin: 12px 0 16px 0;
-      }
-
-      .tab-button {
-        padding: 8px 10px;
-        font-size: 12px;
-        min-height: 38px;
-      }
-
-      .section-title-row {
-        margin-top: 22px;
-        margin-bottom: 10px;
-        gap: 8px;
-        align-items: flex-start;
-      }
-
-      .collapse-btn {
-        padding: 8px 10px;
-        font-size: 12px;
-        min-height: 36px;
-      }
-
-      .section-summary {
-        font-size: 13px;
-        margin-bottom: 6px;
-      }
-
       .message-controls {
-        top: 0;
         padding: 8px 10px;
         gap: 8px;
         font-size: 12px;
@@ -1867,45 +1974,16 @@ const { chromium } = require('playwright');
         flex: 1 1 100%;
       }
 
-      .control-label {
-        font-size: 12px;
-      }
-
       .message-controls select {
         flex: 1;
         max-width: none;
         min-width: 0;
         font-size: 12px;
-        padding: 6px 8px;
-        min-height: 36px;
       }
 
-      .switch-row {
-        font-size: 12px;
-        min-height: 30px;
-      }
-
-      .pending-confirm-box {
-        padding: 10px 10px;
-        margin-bottom: 12px;
-      }
-
-      .pending-confirm-header {
-        align-items: flex-start;
-      }
-
-      .pending-confirm-header strong {
-        font-size: 15px;
-      }
-
-      .pending-pill {
-        font-size: 12px;
-        padding: 6px 10px;
-      }
-
-      .small-collapse-btn {
-        font-size: 11px;
-        min-height: 32px;
+      .pending-confirm-box,
+      .no-notification-box {
+        padding: 10px;
       }
 
       .publisher-card {
@@ -1919,17 +1997,8 @@ const { chromium } = require('playwright');
         gap: 10px;
       }
 
-      .publisher-title {
-        font-size: 16px;
-      }
-
-      .count {
-        font-size: 12px;
-      }
-
       .header-checks {
         justify-content: flex-start;
-        align-items: center;
         flex-direction: row;
         flex-wrap: nowrap;
         gap: 18px;
@@ -1938,7 +2007,6 @@ const { chromium } = require('playwright');
 
       .header-check {
         font-size: 12px;
-        min-height: 30px;
       }
 
       .header-check input {
@@ -1950,21 +2018,9 @@ const { chromium } = require('playwright');
         gap: 10px;
       }
 
-      .whatsapp-btn,
-      .copy-group-btn {
-        font-size: 12px;
-        padding: 9px 13px;
-        min-height: 40px;
-      }
-
       .message-block {
         padding: 10px;
         font-size: 13px;
-        line-height: 1.4;
-      }
-
-      .hello {
-        font-size: 15px;
       }
 
       .group-footer,
@@ -1980,86 +2036,38 @@ const { chromium } = require('playwright');
 
       .line {
         font-size: 13px;
-        line-height: 1.35;
-      }
-
-      .new-line {
-        padding: 5px 7px;
-        border-left-width: 3px;
-        border-radius: 6px;
-      }
-
-      .badge-new,
-      .badge-removed {
-        font-size: 9px;
-        padding: 2px 5px;
-        margin-left: 5px;
       }
 
       .toast {
-        bottom: 14px;
-        font-size: 13px;
-        padding: 10px 12px;
+        bottom: 86px;
+      }
+
+      .fixed-progress-footer {
+        padding: 8px 10px;
+      }
+
+      .fixed-progress-card {
+        padding: 8px;
+        border-radius: 12px;
+      }
+
+      .fixed-progress-number {
+        font-size: 15px;
+      }
+
+      .fixed-progress-label {
+        font-size: 10px;
+      }
+
+      .fixed-progress-track {
+        height: 6px;
       }
     }
 
     @media (max-width: 430px) {
-      body {
-        padding: 10px;
-      }
-
-      h1 {
-        font-size: 20px;
-      }
-
-      h2 {
-        font-size: 17px;
-      }
-
-      .top-summary {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-
-      .summary-card {
-        padding: 10px;
-      }
-
-      .summary-number {
-        font-size: 20px;
-      }
-
-      .summary-label {
-        font-size: 10px;
-      }
-
       .tab-button {
         font-size: 11px;
         padding: 7px 9px;
-      }
-
-      .message-controls {
-        padding: 8px;
-      }
-
-      .section-progress-row {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-
-      .section-progress-number {
-        font-size: 17px;
-      }
-
-      .section-progress-label {
-        font-size: 10px;
-      }
-
-      .header-checks {
-        gap: 14px;
-        flex-wrap: nowrap;
-      }
-
-      .header-check {
-        font-size: 11px;
       }
 
       .action-buttons {
@@ -2106,8 +2114,13 @@ const { chromium } = require('playwright');
     </div>
 
     <div class="summary-card">
-      <div class="summary-number">${reminderRows.length}</div>
-      <div class="summary-label">5PM en adelante</div>
+      <div class="summary-number">${notificationRequiredCount}</div>
+      <div class="summary-label">Clientes que requieren notificación</div>
+    </div>
+
+    <div class="summary-card summary-no-notification">
+      <div class="summary-number">${noNotificationRequiredCount}</div>
+      <div class="summary-label">Clientes sin notificación requerida</div>
     </div>
 
     <div class="summary-card summary-new">
@@ -2155,11 +2168,39 @@ const { chromium } = require('playwright');
     { removedSection: true }
   )}
 
+  <div class="fixed-progress-footer">
+    <div class="fixed-progress-inner">
+      <div class="fixed-progress-card confirmed">
+        <div class="fixed-progress-top">
+          <span class="fixed-progress-number">
+            <span id="footer-confirmed-count">0</span>/<span id="footer-confirmed-total">0</span>
+          </span>
+          <span class="fixed-progress-label">Confirmados</span>
+        </div>
+        <div class="fixed-progress-track">
+          <div class="fixed-progress-fill" id="footer-confirmed-fill"></div>
+        </div>
+      </div>
+
+      <div class="fixed-progress-card sended">
+        <div class="fixed-progress-top">
+          <span class="fixed-progress-number">
+            <span id="footer-sended-count">0</span>/<span id="footer-sended-total">0</span>
+          </span>
+          <span class="fixed-progress-label">Sended</span>
+        </div>
+        <div class="fixed-progress-track">
+          <div class="fixed-progress-fill" id="footer-sended-fill"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
   <script>
     const REPORT_DATE = ${JSON.stringify(reportDate)};
-    const STORAGE_VERSION = 'v3';
+    const STORAGE_VERSION = 'v4';
 
     const SENDED_PREFIX = 'jcn:' + STORAGE_VERSION + ':sended:' + REPORT_DATE + ':';
     const CONFIRMED_PREFIX = 'jcn:' + STORAGE_VERSION + ':publisher-confirmed:' + REPORT_DATE + ':';
@@ -2232,7 +2273,14 @@ const { chromium } = require('playwright');
       if (sectionId !== 'removed') {
         updateSectionMessages(sectionId);
         updateSectionStatus(sectionId);
+      } else {
+        updateFixedFooterProgress(0, 0, 0, 0);
       }
+    }
+
+    function getActiveSectionKey() {
+      const active = document.querySelector('.report-section.active');
+      return active ? active.id : 'todos';
     }
 
     function toggleSectionBody(sectionKey) {
@@ -2243,6 +2291,12 @@ const { chromium } = require('playwright');
 
     function togglePendingBox(sectionKey) {
       const body = document.getElementById('pending-confirm-body-' + sectionKey);
+      if (!body) return;
+      body.classList.toggle('collapsed');
+    }
+
+    function toggleNoNotificationBox(sectionKey) {
+      const body = document.getElementById('no-notification-body-' + sectionKey);
       if (!body) return;
       body.classList.toggle('collapsed');
     }
@@ -2263,11 +2317,13 @@ const { chromium } = require('playwright');
           key.startsWith('jcn:v2:sended:' + REPORT_DATE + ':') ||
           key.startsWith('jcn:v2:publisher-confirmed:' + REPORT_DATE + ':') ||
           key.startsWith('jcn:v3:sended:' + REPORT_DATE + ':') ||
-          key.startsWith('jcn:v3:publisher-confirmed:' + REPORT_DATE + ':')
+          key.startsWith('jcn:v3:publisher-confirmed:' + REPORT_DATE + ':') ||
+          key.startsWith('jcn:v4:sended:' + REPORT_DATE + ':') ||
+          key.startsWith('jcn:v4:publisher-confirmed:' + REPORT_DATE + ':')
         )
         .forEach(key => localStorage.removeItem(key));
 
-      document.querySelectorAll('.publisher-card').forEach(card => {
+      document.querySelectorAll('.publisher-card[data-requires-notification="true"]').forEach(card => {
         const sectionKey = card.dataset.sectionKey;
         const index = card.dataset.cardIndex;
 
@@ -2323,7 +2379,7 @@ const { chromium } = require('playwright');
     }
 
     function applySendedState(sentKey, checked) {
-      document.querySelectorAll('[data-sent-key="' + CSS.escape(sentKey) + '"]').forEach(card => {
+      document.querySelectorAll('[data-sent-key="' + CSS.escape(sentKey) + '"][data-requires-notification="true"]').forEach(card => {
         const sectionKey = card.dataset.sectionKey;
         const index = card.dataset.cardIndex;
 
@@ -2340,7 +2396,7 @@ const { chromium } = require('playwright');
     }
 
     function applyConfirmedState(confirmKey, checked) {
-      document.querySelectorAll('[data-confirm-key="' + CSS.escape(confirmKey) + '"]').forEach(card => {
+      document.querySelectorAll('[data-confirm-key="' + CSS.escape(confirmKey) + '"][data-requires-notification="true"]').forEach(card => {
         const sectionKey = card.dataset.sectionKey;
         const index = card.dataset.cardIndex;
 
@@ -2358,7 +2414,7 @@ const { chromium } = require('playwright');
 
     function toggleSendedByCard(sectionKey, index, checked) {
       const card = getCard(sectionKey, index);
-      if (!card) return;
+      if (!card || card.dataset.requiresNotification !== 'true') return;
 
       const sentKey = card.dataset.sentKey;
 
@@ -2373,7 +2429,7 @@ const { chromium } = require('playwright');
 
     function togglePublisherConfirmedByCard(sectionKey, index, checked) {
       const card = getCard(sectionKey, index);
-      if (!card) return;
+      if (!card || card.dataset.requiresNotification !== 'true') return;
 
       const confirmKey = card.dataset.confirmKey;
 
@@ -2388,7 +2444,7 @@ const { chromium } = require('playwright');
 
     function markSendedAfterCopy(sectionKey, index) {
       const card = getCard(sectionKey, index);
-      if (!card) return;
+      if (!card || card.dataset.requiresNotification !== 'true') return;
 
       const sentKey = card.dataset.sentKey;
 
@@ -2410,11 +2466,43 @@ const { chromium } = require('playwright');
       return '#14b8a6';
     }
 
+    function updateFixedFooterProgress(confirmedClients, totalClients, sendedClients, activeTotal) {
+      const confirmedPercent = totalClients === 0
+        ? 0
+        : Math.round((confirmedClients / totalClients) * 100);
+
+      const sendedPercent = activeTotal === 0
+        ? 0
+        : Math.round((sendedClients / activeTotal) * 100);
+
+      const footerConfirmedCount = document.getElementById('footer-confirmed-count');
+      const footerConfirmedTotal = document.getElementById('footer-confirmed-total');
+      const footerConfirmedFill = document.getElementById('footer-confirmed-fill');
+
+      const footerSendedCount = document.getElementById('footer-sended-count');
+      const footerSendedTotal = document.getElementById('footer-sended-total');
+      const footerSendedFill = document.getElementById('footer-sended-fill');
+
+      if (footerConfirmedCount) footerConfirmedCount.innerText = confirmedClients;
+      if (footerConfirmedTotal) footerConfirmedTotal.innerText = totalClients;
+      if (footerConfirmedFill) {
+        footerConfirmedFill.style.width = confirmedPercent + '%';
+        footerConfirmedFill.style.background = getProgressColor(confirmedPercent);
+      }
+
+      if (footerSendedCount) footerSendedCount.innerText = sendedClients;
+      if (footerSendedTotal) footerSendedTotal.innerText = activeTotal;
+      if (footerSendedFill) {
+        footerSendedFill.style.width = sendedPercent + '%';
+        footerSendedFill.style.background = getProgressColorSended(sendedPercent);
+      }
+    }
+
     function updateSectionStatus(sectionKey) {
       const section = document.getElementById(sectionKey);
       if (!section) return;
 
-      const cards = section.querySelectorAll('.publisher-card');
+      const cards = section.querySelectorAll('.publisher-card[data-requires-notification="true"]');
       const totalClients = cards.length;
 
       let confirmedClients = 0;
@@ -2492,10 +2580,14 @@ const { chromium } = require('playwright');
       }
 
       if (sendedText) sendedText.innerText = sendedPercent + '%';
+
+      if (getActiveSectionKey() === sectionKey) {
+        updateFixedFooterProgress(confirmedClients, totalClients, sendedClients, totalClients);
+      }
     }
 
     function restoreSavedStates() {
-      document.querySelectorAll('.publisher-card').forEach(card => {
+      document.querySelectorAll('.publisher-card[data-requires-notification="true"]').forEach(card => {
         const sentKey = card.dataset.sentKey;
         const confirmKey = card.dataset.confirmKey;
 
@@ -2509,6 +2601,7 @@ const { chromium } = require('playwright');
       });
 
       updateAllSectionStatuses();
+      updateSectionStatus(getActiveSectionKey());
     }
 
     function fallbackCopyText(text) {
@@ -2554,30 +2647,33 @@ const { chromium } = require('playwright');
     }
 
     async function copyPublisher(sectionKey, index) {
-      const lines = document.getElementById('copy-lines-' + sectionKey + '-' + index).innerText;
+      const linesEl = document.getElementById('copy-lines-' + sectionKey + '-' + index);
       const title = document.querySelector('#card-' + sectionKey + '-' + index + ' .publisher-title');
       const copiedMsg = document.getElementById('copied-' + sectionKey + '-' + index);
+      const card = getCard(sectionKey, index);
 
+      if (!linesEl || !card) return;
+
+      const lines = linesEl.innerText;
       let text = lines;
 
-      if (sectionKey !== 'removed') {
-        const card = getCard(sectionKey, index);
-        const mentionOverride = card ? card.dataset.mention || '' : '';
+      if (sectionKey !== 'removed' && card.dataset.requiresNotification === 'true') {
+        const mentionOverride = card.dataset.mention || '';
         text = getMessage(sectionKey, mentionOverride) + '\\n\\n' + lines;
       }
 
       try {
         await copyTextToClipboard(text);
 
-        if (sectionKey !== 'removed') {
+        if (sectionKey !== 'removed' && card.dataset.requiresNotification === 'true') {
           markSendedAfterCopy(sectionKey, index);
         }
 
-        title.classList.add('copied');
-        copiedMsg.style.display = 'inline';
+        if (title) title.classList.add('copied');
+        if (copiedMsg) copiedMsg.style.display = 'inline';
 
         setTimeout(() => {
-          copiedMsg.style.display = 'none';
+          if (copiedMsg) copiedMsg.style.display = 'none';
         }, 2000);
 
       } catch (error) {
@@ -2589,6 +2685,7 @@ const { chromium } = require('playwright');
     updateSectionMessages('after5pm');
     restoreSavedStates();
     updateAllSectionStatuses();
+    updateSectionStatus('todos');
   </script>
 </body>
 </html>
