@@ -754,7 +754,7 @@ const { chromium } = require('playwright');
   // ==================================================
 
 
-  // ==================================================
+    // ==================================================
   // MODULE 11 - HTML
   // ==================================================
   const generateIntegratedHtmlReportByPublisher = ({
@@ -1005,39 +1005,7 @@ const { chromium } = require('playwright');
 
       const controls = options.removedSection ? '' : renderControls(sectionKey, defaultMessage);
 
-      const sectionProgressBox = options.removedSection
-        ? ''
-        : `
-          <div class="section-progress-box">
-            <div class="section-progress-row">
-              <div class="section-progress-card progress-confirmed">
-                <div class="section-progress-head">
-                  <span class="section-progress-number">
-                    <span id="confirmed-count-${sectionKey}">0</span>/<span id="confirmed-total-${sectionKey}">${sectionPublisherCount}</span>
-                  </span>
-                  <span class="section-progress-label">Confirmados</span>
-                </div>
-                <div class="progress-track">
-                  <div class="progress-fill" id="confirmed-fill-${sectionKey}"></div>
-                </div>
-                <div class="progress-mini" id="confirmed-text-${sectionKey}">0%</div>
-              </div>
-
-              <div class="section-progress-card progress-sended">
-                <div class="section-progress-head">
-                  <span class="section-progress-number">
-                    <span id="sended-count-${sectionKey}">0</span>/<span id="sended-total-${sectionKey}">${sectionPublisherCount}</span>
-                  </span>
-                  <span class="section-progress-label">Sended</span>
-                </div>
-                <div class="progress-track">
-                  <div class="progress-fill" id="sended-fill-${sectionKey}"></div>
-                </div>
-                <div class="progress-mini" id="sended-text-${sectionKey}">0%</div>
-              </div>
-            </div>
-          </div>
-        `;
+      const sectionProgressBox = '';
 
       const summaryText = options.removedSection
         ? `Total: ${rows.length}`
@@ -1383,13 +1351,11 @@ const { chromium } = require('playwright');
     }
 
     .section-progress-box {
-      margin-bottom: 14px;
+      display: none;
     }
 
     .section-progress-row {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
+      display: none;
     }
 
     .section-progress-card,
@@ -1400,65 +1366,6 @@ const { chromium } = require('playwright');
       border: 1px solid var(--line);
       border-radius: 16px;
       box-shadow: var(--shadow);
-    }
-
-    .section-progress-card {
-      padding: 12px;
-    }
-
-    .section-progress-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 10px;
-    }
-
-    .section-progress-number {
-      font-size: 28px;
-      font-weight: 800;
-      line-height: 1;
-      color: #ffffff;
-      white-space: nowrap;
-    }
-
-    .progress-confirmed .section-progress-number {
-      color: var(--green);
-    }
-
-    .progress-sended .section-progress-number {
-      color: var(--accent);
-    }
-
-    .section-progress-label {
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 700;
-      white-space: nowrap;
-    }
-
-    .progress-track {
-      width: 100%;
-      height: 10px;
-      background: #1e293b;
-      border-radius: 999px;
-      overflow: hidden;
-    }
-
-    .progress-fill {
-      height: 100%;
-      width: 0%;
-      background: #dc2626;
-      border-radius: 999px;
-      transition: width 0.25s ease, background 0.25s ease;
-    }
-
-    .progress-mini {
-      margin-top: 8px;
-      font-size: 12px;
-      color: var(--muted);
-      font-weight: 800;
-      text-align: right;
     }
 
     .pending-confirm-box {
@@ -1906,16 +1813,6 @@ const { chromium } = require('playwright');
       transition: width 0.25s ease, background 0.25s ease;
     }
 
-    @media (max-width: 1100px) {
-      .section-progress-box {
-        display: none;
-      }
-
-      body {
-        padding-bottom: 96px;
-      }
-    }
-
     @media (max-width: 900px) {
       body {
         padding: 12px 12px 96px 12px;
@@ -1947,30 +1844,9 @@ const { chromium } = require('playwright');
         font-size: 11px;
       }
 
-      .section-progress-row,
       .fixed-progress-inner {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 8px;
-      }
-
-      .section-progress-card {
-        padding: 10px;
-      }
-
-      .section-progress-number {
-        font-size: 18px;
-      }
-
-      .section-progress-label {
-        font-size: 11px;
-      }
-
-      .progress-track {
-        height: 9px;
-      }
-
-      .progress-mini {
-        font-size: 11px;
       }
 
       .message-controls {
@@ -2157,26 +2033,26 @@ const { chromium } = require('playwright');
   </div>
 
   ${renderSection(
-      'todos',
-      '1. Reporte completo del día',
-      allRows,
-      'hello'
-    )}
+    'todos',
+    '1. Reporte completo del día',
+    allRows,
+    'hello'
+  )}
 
   ${renderSection(
-      'after5pm',
-      '2. Last friendly reminder - 5PM en adelante',
-      reminderRows,
-      'reminder'
-    )}
+    'after5pm',
+    '2. Last friendly reminder - 5PM en adelante',
+    reminderRows,
+    'reminder'
+  )}
 
   ${renderSection(
-      'removed',
-      '3. Removidos en esta versión',
-      removedRows,
-      '',
-      { removedSection: true }
-    )}
+    'removed',
+    '3. Removidos en esta versión',
+    removedRows,
+    '',
+    { removedSection: true }
+  )}
 
   <div class="fixed-progress-footer">
     <div class="fixed-progress-inner">
@@ -2539,14 +2415,6 @@ const { chromium } = require('playwright');
         }
       });
 
-      const confirmedPercent = totalClients === 0
-        ? 0
-        : Math.round((confirmedClients / totalClients) * 100);
-
-      const sendedPercent = totalClients === 0
-        ? 0
-        : Math.round((sendedClients / totalClients) * 100);
-
       const pendingCounter = document.getElementById('pending-confirm-count-' + sectionKey);
       if (pendingCounter) pendingCounter.innerText = pendingPublishers.length;
 
@@ -2560,36 +2428,6 @@ const { chromium } = require('playwright');
             .join('');
         }
       }
-
-      const confirmedCount = document.getElementById('confirmed-count-' + sectionKey);
-      const confirmedTotal = document.getElementById('confirmed-total-' + sectionKey);
-      const confirmedFill = document.getElementById('confirmed-fill-' + sectionKey);
-      const confirmedText = document.getElementById('confirmed-text-' + sectionKey);
-
-      if (confirmedCount) confirmedCount.innerText = confirmedClients;
-      if (confirmedTotal) confirmedTotal.innerText = totalClients;
-
-      if (confirmedFill) {
-        confirmedFill.style.width = confirmedPercent + '%';
-        confirmedFill.style.background = getProgressColor(confirmedPercent);
-      }
-
-      if (confirmedText) confirmedText.innerText = confirmedPercent + '%';
-
-      const sendedCount = document.getElementById('sended-count-' + sectionKey);
-      const sendedTotal = document.getElementById('sended-total-' + sectionKey);
-      const sendedFill = document.getElementById('sended-fill-' + sectionKey);
-      const sendedText = document.getElementById('sended-text-' + sectionKey);
-
-      if (sendedCount) sendedCount.innerText = sendedClients;
-      if (sendedTotal) sendedTotal.innerText = totalClients;
-
-      if (sendedFill) {
-        sendedFill.style.width = sendedPercent + '%';
-        sendedFill.style.background = getProgressColorSended(sendedPercent);
-      }
-
-      if (sendedText) sendedText.innerText = sendedPercent + '%';
 
       if (getActiveSectionKey() === sectionKey) {
         updateFixedFooterProgress(confirmedClients, totalClients, sendedClients, totalClients);
