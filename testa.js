@@ -5,7 +5,6 @@ require('dotenv').config();
 
 const fs = require('fs');
 const path = require('path');
-const { exec } = require('child_process');
 const { chromium } = require('playwright');
 
 const {
@@ -23,6 +22,10 @@ const {
 const {
   safeGoto
 } = require('./src/utils/navigationUtils');
+
+const {
+  openHtmlFile
+} = require('./src/utils/fileUtils');
 // ==================================================
 // END MODULE 01 - BOOT
 // ==================================================
@@ -164,37 +167,6 @@ const renderNoteLabels = (publisher) => {
 // ==================================================
 // END MODULE 04 - HELPERS
 // ==================================================
-
-
-  // ==================================================
-  // MODULE 06 - LOCAL OPEN
-  // ==================================================
-  const openHtmlFile = (filePath) => {
-    const fileUrl = `file:///${filePath.replace(/\\/g, '/')}`;
-
-    console.log('');
-    console.log('==================================================');
-    console.log('ABRIR REPORTE');
-    console.log('==================================================');
-    console.log(`Link directo: ${fileUrl}`);
-
-    const command = process.platform === 'win32'
-      ? `start "" "${filePath}"`
-      : process.platform === 'darwin'
-        ? `open "${filePath}"`
-        : `xdg-open "${filePath}"`;
-
-    exec(command, (error) => {
-      if (error) {
-        console.log('');
-        console.log('No se pudo abrir automáticamente.');
-        console.log(`Abre este link manualmente: ${fileUrl}`);
-      }
-    });
-  };
-  // ==================================================
-  // END MODULE 06 - LOCAL OPEN
-  // ==================================================
 
 
   // ==================================================
