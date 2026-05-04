@@ -14,6 +14,7 @@ const buildReportCss = () => {
       --line: #243041;
       --line-soft: #1e293b;
       --accent: #38bdf8;
+      --blue: #3b82f6;
       --green: #22c55e;
       --yellow: #f59e0b;
       --red: #ef4444;
@@ -42,15 +43,31 @@ const buildReportCss = () => {
       margin: 0 0 6px 0;
       font-size: 30px;
       line-height: 1.1;
-      font-weight: 800;
+      font-weight: 900;
+      color: #ffffff;
     }
 
     h2 {
       margin: 0;
       font-size: 22px;
       line-height: 1.2;
-      font-weight: 800;
+      font-weight: 900;
       color: #ffffff;
+    }
+
+    h3 {
+      color: #ffffff;
+    }
+
+    button,
+    input,
+    select {
+      font-family: inherit;
+    }
+
+    button {
+      cursor: pointer;
+      touch-action: manipulation;
     }
 
     .generated-time {
@@ -69,12 +86,12 @@ const buildReportCss = () => {
 
     .generated-time span {
       color: #cbd5e1;
-      font-weight: bold;
+      font-weight: 800;
     }
 
     .generated-time strong {
       color: #ffffff;
-      font-weight: 800;
+      font-weight: 900;
     }
 
     .top-summary {
@@ -95,7 +112,7 @@ const buildReportCss = () => {
 
     .summary-number {
       font-size: 30px;
-      font-weight: 800;
+      font-weight: 900;
       margin-bottom: 6px;
       line-height: 1;
       color: #ffffff;
@@ -105,7 +122,7 @@ const buildReportCss = () => {
       color: var(--muted);
       font-size: 13px;
       line-height: 1.25;
-      font-weight: 600;
+      font-weight: 700;
     }
 
     .summary-new .summary-number {
@@ -120,22 +137,29 @@ const buildReportCss = () => {
       color: var(--yellow);
     }
 
+    .global-reset-row {
+      display: flex;
+      justify-content: flex-end;
+      margin: 8px 0 14px 0;
+    }
+
+    .reset-all-btn {
+      border: 1px solid rgba(239,68,68,0.45);
+      background: linear-gradient(135deg, #b91c1c, #dc2626);
+      color: #fff;
+      border-radius: 999px;
+      padding: 10px 16px;
+      font-size: 13px;
+      min-height: 40px;
+      font-weight: 900;
+      box-shadow: 0 10px 20px rgba(185,28,28,0.22);
+    }
+
     .tabs {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
       margin: 16px 0 22px 0;
-    }
-
-    .tab-button,
-    .collapse-btn,
-    .small-collapse-btn,
-    .reset-all-btn,
-    .whatsapp-btn,
-    .copy-group-btn {
-      cursor: pointer;
-      touch-action: manipulation;
-      font-weight: 800;
     }
 
     .tab-button {
@@ -146,6 +170,7 @@ const buildReportCss = () => {
       padding: 10px 14px;
       font-size: 14px;
       min-height: 42px;
+      font-weight: 900;
       box-shadow: 0 6px 16px rgba(0,0,0,0.18);
     }
 
@@ -184,6 +209,7 @@ const buildReportCss = () => {
       white-space: nowrap;
       font-size: 13px;
       min-height: 40px;
+      font-weight: 900;
     }
 
     .small-collapse-btn {
@@ -204,10 +230,10 @@ const buildReportCss = () => {
       color: var(--muted);
       margin-bottom: 10px;
       font-size: 14px;
-      font-weight: 600;
+      font-weight: 700;
     }
 
-    .message-controls {
+    .controls {
       position: sticky;
       top: 0;
       z-index: 50;
@@ -225,27 +251,22 @@ const buildReportCss = () => {
       backdrop-filter: blur(8px);
     }
 
-    .control-group {
-      display: flex;
+    .controls label,
+    .mention-switch {
+      display: inline-flex;
       align-items: center;
       gap: 8px;
-      min-width: 0;
-      flex: 1;
-    }
-
-    .control-label {
-      font-weight: 700;
-      white-space: nowrap;
       color: var(--text);
+      font-weight: 800;
     }
 
-    .message-controls select {
+    .controls select {
       padding: 8px 10px;
       border-radius: 10px;
       border: 1px solid var(--line);
-      font-weight: 700;
+      font-weight: 800;
       font-size: 13px;
-      max-width: 320px;
+      max-width: 340px;
       min-height: 38px;
       cursor: pointer;
       background: var(--bg-soft);
@@ -253,18 +274,7 @@ const buildReportCss = () => {
       outline: none;
     }
 
-    .switch-row {
-      display: flex;
-      gap: 6px;
-      align-items: center;
-      font-weight: 700;
-      font-size: 13px;
-      min-height: 34px;
-      cursor: pointer;
-      color: var(--text);
-    }
-
-    .switch-row input {
+    .mention-switch input {
       width: 18px;
       height: 18px;
       cursor: pointer;
@@ -272,35 +282,9 @@ const buildReportCss = () => {
       accent-color: #38bdf8;
     }
 
-    .global-reset-row {
-      display: flex;
-      justify-content: flex-end;
-      margin: 8px 0 14px 0;
-    }
-
-    .reset-all-btn {
-      border: 1px solid rgba(239,68,68,0.45);
-      background: linear-gradient(135deg, #b91c1c, #dc2626);
-      color: #fff;
-      border-radius: 999px;
-      padding: 10px 16px;
-      font-size: 13px;
-      min-height: 40px;
-      box-shadow: 0 10px 20px rgba(185,28,28,0.22);
-    }
-
-    .section-progress-box {
-      display: none;
-    }
-
-    .section-progress-row {
-      display: none;
-    }
-
-    .section-progress-card,
-    .publisher-card,
     .pending-confirm-box,
-    .no-notification-box {
+    .no-notification-box,
+    .publisher-card {
       background: linear-gradient(180deg, rgba(18,26,36,0.98), rgba(15,23,42,0.98));
       border: 1px solid var(--line);
       border-radius: 16px;
@@ -320,6 +304,7 @@ const buildReportCss = () => {
       justify-content: space-between;
       align-items: center;
       gap: 12px;
+      flex-wrap: wrap;
     }
 
     .pending-confirm-header strong {
@@ -341,7 +326,7 @@ const buildReportCss = () => {
       border-radius: 999px;
       padding: 7px 12px;
       font-size: 13px;
-      font-weight: 700;
+      font-weight: 800;
     }
 
     .empty {
@@ -357,6 +342,7 @@ const buildReportCss = () => {
     .publisher-card {
       padding: 16px;
       margin-bottom: 18px;
+      overflow: hidden;
     }
 
     .publisher-card.sended {
@@ -369,128 +355,131 @@ const buildReportCss = () => {
       background: linear-gradient(180deg, rgba(12,36,24,0.98), rgba(15,23,42,0.98));
     }
 
-    .removed-card {
-      border-color: rgba(239,68,68,0.45);
-      background: linear-gradient(180deg, rgba(42,18,24,0.98), rgba(20,12,18,0.98));
-    }
-
-    .no-notification-card {
-      border-color: rgba(245,158,11,0.45);
-      background: linear-gradient(180deg, rgba(45,32,12,0.98), rgba(15,23,42,0.98));
-    }
-
-    .publisher-topbar {
+    .publisher-card-header {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      gap: 18px;
-      margin-bottom: 14px;
-    }
-
-    .publisher-title-wrap {
-      flex: 1;
-      min-width: 0;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 10px;
     }
 
     .publisher-title {
       font-size: 18px;
-      font-weight: 800;
+      font-weight: 900;
       cursor: pointer;
       color: #ffffff;
       user-select: none;
       line-height: 1.25;
+      min-width: 0;
     }
 
     .publisher-title.copied {
       color: #60a5fa;
     }
 
-    .count {
-      color: var(--muted);
-      font-size: 14px;
-      margin-left: 6px;
-    }
-
-    .copied-msg {
-      display: none;
+    .publisher-title small {
       color: var(--green);
-      font-size: 14px;
-      margin-left: 10px;
+      font-size: 13px;
+      margin-left: 8px;
+      font-weight: 900;
     }
 
-    .header-checks {
+    .publisher-status-row {
       display: flex;
       flex-wrap: nowrap;
-      gap: 18px;
+      gap: 16px;
       align-items: center;
       justify-content: flex-end;
       flex-shrink: 0;
     }
 
-    .header-check {
+    .status-check {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      font-size: 14px;
-      font-weight: 800;
+      gap: 7px;
+      font-size: 13px;
+      font-weight: 900;
       white-space: nowrap;
       user-select: none;
       cursor: pointer;
       min-height: 34px;
     }
 
-    .header-check input {
-      width: 22px;
-      height: 22px;
+    .status-check input {
+      width: 20px;
+      height: 20px;
       margin: 0;
       cursor: pointer;
       flex-shrink: 0;
       accent-color: #38bdf8;
     }
 
-    .sent-area {
+    .sended-check {
       color: var(--accent);
     }
 
-    .confirm-area {
+    .confirmed-check {
       color: var(--green);
     }
 
+    .card-actions,
     .action-buttons {
       display: flex;
       flex-wrap: wrap;
-      gap: 12px;
-      margin-bottom: 14px;
+      gap: 10px;
+      margin: 8px 0 12px 0;
+      align-items: center;
     }
 
+    .action-btn,
     .whatsapp-btn,
+    .copy-message-btn,
     .copy-group-btn {
+      appearance: none;
       border-radius: 999px;
-      padding: 10px 16px;
-      font-size: 14px;
-      min-height: 42px;
-      border: 1px solid var(--line);
+      padding: 8px 13px;
+      font-size: 13px;
+      line-height: 1;
+      min-height: 34px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      background: rgba(15, 23, 42, 0.85);
+      color: #e5e7eb;
+      cursor: pointer;
+      font-weight: 900;
       box-shadow: 0 8px 18px rgba(0,0,0,0.18);
     }
 
     .whatsapp-btn {
-      border-color: rgba(34,197,94,0.50);
-      background: rgba(34,197,94,0.12);
-      color: #86efac;
+      border-color: rgba(34,197,94,0.55);
+      background: rgba(34,197,94,0.14);
+      color: #bbf7d0;
+    }
+
+    .copy-message-btn {
+      border-color: rgba(59,130,246,0.55);
+      background: rgba(59,130,246,0.14);
+      color: #bfdbfe;
     }
 
     .copy-group-btn {
-      border-color: rgba(96,165,250,0.45);
-      background: rgba(59,130,246,0.12);
-      color: #93c5fd;
+      border-color: rgba(245,158,11,0.55);
+      background: rgba(245,158,11,0.14);
+      color: #fde68a;
     }
 
-    .disabled-btn {
+    .disabled-btn,
+    .action-btn:disabled,
+    .copy-group-btn:disabled {
       opacity: 0.45;
       cursor: not-allowed;
       background: rgba(255,255,255,0.05);
       color: #94a3b8;
       border-color: var(--line);
+    }
+
+    .copy-lines {
+      display: none;
+      white-space: pre-wrap;
     }
 
     .message-block {
@@ -503,16 +492,23 @@ const buildReportCss = () => {
       font-size: 15px;
       overflow-wrap: anywhere;
       color: var(--text);
+      transition: border-color 0.15s ease, background 0.15s ease;
     }
 
-    .hello {
-      font-weight: 800;
-      font-size: 16px;
+    .message-block:hover {
+      border-color: rgba(96,165,250,0.45);
+      background: rgba(59,130,246,0.05);
+    }
+
+    .dynamic-message {
+      font-weight: 900;
+      font-size: 15px;
       color: #ffffff;
+      margin-bottom: 8px;
     }
 
-    .message-spacer {
-      height: 10px;
+    .message-lines {
+      color: #e5e7eb;
     }
 
     .line {
@@ -524,7 +520,7 @@ const buildReportCss = () => {
 
     .new-line {
       color: #bbf7d0;
-      font-weight: 700;
+      font-weight: 800;
       background: rgba(34,197,94,0.10);
       border-left: 4px solid var(--green);
       padding: 6px 9px;
@@ -539,7 +535,7 @@ const buildReportCss = () => {
       border-radius: 999px;
       color: #fff;
       font-size: 11px;
-      font-weight: 800;
+      font-weight: 900;
       vertical-align: middle;
     }
 
@@ -563,15 +559,9 @@ const buildReportCss = () => {
       color: var(--text);
     }
 
-    .group-footer-label {
-      color: var(--muted);
+    .group-footer span {
+      color: #ffffff;
       font-weight: 700;
-      margin-right: 6px;
-    }
-
-    .group-footer-name {
-      color: #a7f3d0;
-      font-weight: 800;
     }
 
     .notes-footer {
@@ -585,7 +575,7 @@ const buildReportCss = () => {
 
     .notes-footer-label {
       color: #bfdbfe;
-      font-weight: 800;
+      font-weight: 900;
       margin-right: 2px;
     }
 
@@ -604,7 +594,7 @@ const buildReportCss = () => {
       background: rgba(59,130,246,0.18);
       color: #bfdbfe;
       font-size: 12px;
-      font-weight: 800;
+      font-weight: 900;
       border: 1px solid rgba(96,165,250,0.35);
       white-space: nowrap;
     }
@@ -627,7 +617,7 @@ const buildReportCss = () => {
       display: block;
       color: #fcd34d;
       font-size: 13px;
-      font-weight: 700;
+      font-weight: 800;
     }
 
     .no-notification-body {
@@ -645,11 +635,6 @@ const buildReportCss = () => {
       font-size: 12px;
       font-weight: 900;
       border: 1px solid rgba(245,158,11,0.35);
-    }
-
-    .copy-lines {
-      display: none;
-      white-space: pre-wrap;
     }
 
     .toast {
@@ -729,20 +714,17 @@ const buildReportCss = () => {
     .fixed-progress-label {
       color: #bfdbfe;
       font-size: 12px;
-      font-weight: 800;
+      font-weight: 900;
       white-space: nowrap;
     }
 
-    .fixed-progress-card.confirmed .fixed-progress-number {
+    .fixed-progress-card.confirmed .fixed-progress-number,
+    .fixed-progress-card.completed .fixed-progress-number {
       color: var(--green);
     }
 
     .fixed-progress-card.sended .fixed-progress-number {
       color: var(--accent);
-    }
-
-    .fixed-progress-card.completed .fixed-progress-number {
-      color: var(--green);
     }
 
     .fixed-progress-card.pending .fixed-progress-number {
@@ -776,24 +758,16 @@ const buildReportCss = () => {
       padding: 12px;
     }
 
-    .delivery-history-controls label {
+    .delivery-history-controls strong {
       color: #bfdbfe;
       font-size: 13px;
       font-weight: 900;
     }
 
-    .delivery-history-controls select {
-      background: var(--bg-soft);
+    .delivery-history-controls span {
       color: #ffffff;
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 9px 12px;
       font-size: 13px;
       font-weight: 800;
-      min-height: 40px;
-      min-width: 280px;
-      cursor: pointer;
-      outline: none;
     }
 
     .delivery-history-panel {
@@ -842,6 +816,10 @@ const buildReportCss = () => {
 
     .delivery-card.status-missing {
       border-color: rgba(239,68,68,0.45);
+    }
+
+    .delivery-card.status-unknown {
+      border-color: rgba(148,163,184,0.45);
     }
 
     .delivery-card-top {
@@ -903,6 +881,12 @@ const buildReportCss = () => {
       color: #fecaca;
       background: rgba(239,68,68,0.12);
       border-color: rgba(239,68,68,0.35);
+    }
+
+    .delivery-status.status-unknown {
+      color: #cbd5e1;
+      background: rgba(148,163,184,0.12);
+      border-color: rgba(148,163,184,0.35);
     }
 
     .delivery-source-row,
@@ -970,7 +954,16 @@ const buildReportCss = () => {
       border: 1px solid rgba(148,163,184,0.18);
     }
 
-    .video-preview,
+    .asset-video-preview {
+      width: 100%;
+      max-height: 115px;
+      object-fit: contain;
+      border-radius: 10px;
+      background: #020617;
+      border: 1px solid rgba(148,163,184,0.18);
+      display: block;
+    }
+
     .asset-missing {
       min-height: 75px;
       display: flex;
@@ -986,16 +979,6 @@ const buildReportCss = () => {
       padding: 8px;
     }
 
-    .asset-video-preview {
-      width: 100%;
-      max-height: 115px;
-      object-fit: contain;
-      border-radius: 10px;
-      background: #020617;
-      border: 1px solid rgba(148,163,184,0.18);
-      display: block;
-    }
-
     .asset-open-link {
       display: inline-flex;
       margin-top: 7px;
@@ -1007,11 +990,6 @@ const buildReportCss = () => {
 
     .asset-open-link:hover {
       text-decoration: underline;
-    }
-
-    .video-preview {
-      color: #93c5fd;
-      border-color: rgba(96,165,250,0.35);
     }
 
     .delivery-actions {
@@ -1052,7 +1030,8 @@ const buildReportCss = () => {
         font-size: 18px;
       }
 
-      .top-summary {
+      .top-summary,
+      .delivery-summary-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 8px;
       }
@@ -1069,23 +1048,17 @@ const buildReportCss = () => {
         font-size: 11px;
       }
 
-      .fixed-progress-inner {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 8px;
-      }
-
-      .message-controls {
+      .controls {
         padding: 8px 10px;
         gap: 8px;
         font-size: 12px;
       }
 
-      .control-group {
+      .controls label:first-child {
         width: 100%;
-        flex: 1 1 100%;
       }
 
-      .message-controls select {
+      .controls select {
         flex: 1;
         max-width: none;
         min-width: 0;
@@ -1102,36 +1075,50 @@ const buildReportCss = () => {
         margin-bottom: 14px;
       }
 
-      .publisher-topbar {
+      .publisher-card-header {
         flex-direction: column;
         align-items: flex-start;
-        gap: 10px;
+        gap: 8px;
       }
 
-      .header-checks {
+      .publisher-status-row {
         justify-content: flex-start;
         flex-direction: row;
         flex-wrap: nowrap;
-        gap: 18px;
+        gap: 16px;
         width: 100%;
       }
 
-      .header-check {
+      .status-check {
         font-size: 12px;
       }
 
-      .header-check input {
+      .status-check input {
         width: 20px;
         height: 20px;
       }
 
+      .card-actions,
       .action-buttons {
-        gap: 10px;
+        gap: 8px;
+      }
+
+      .action-btn,
+      .whatsapp-btn,
+      .copy-message-btn,
+      .copy-group-btn {
+        font-size: 12px;
+        min-height: 34px;
+        padding: 8px 11px;
       }
 
       .message-block {
         padding: 10px;
         font-size: 13px;
+      }
+
+      .dynamic-message {
+        font-size: 14px;
       }
 
       .group-footer,
@@ -1157,6 +1144,11 @@ const buildReportCss = () => {
         padding: 8px 10px;
       }
 
+      .fixed-progress-inner {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
       .fixed-progress-card {
         padding: 8px;
         border-radius: 12px;
@@ -1177,15 +1169,6 @@ const buildReportCss = () => {
       .delivery-history-controls {
         align-items: stretch;
         flex-direction: column;
-      }
-
-      .delivery-history-controls select {
-        min-width: 0;
-        width: 100%;
-      }
-
-      .delivery-summary-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
       .delivery-card {
@@ -1237,8 +1220,7 @@ const buildReportCss = () => {
         max-height: 200px;
       }
 
-      .asset-missing,
-      .video-preview {
+      .asset-missing {
         min-height: 90px;
         font-size: 12px;
       }
@@ -1254,21 +1236,33 @@ const buildReportCss = () => {
         padding: 7px 9px;
       }
 
+      .card-actions,
       .action-buttons {
-        flex-direction: column;
+        display: grid;
+        grid-template-columns: 1fr;
       }
 
+      .action-btn,
       .whatsapp-btn,
+      .copy-message-btn,
       .copy-group-btn {
         width: 100%;
+      }
+
+      .publisher-status-row {
+        gap: 12px;
+      }
+
+      .status-check {
+        font-size: 11px;
       }
 
       .message-block {
         font-size: 12.5px;
       }
 
-      .hello {
-        font-size: 14px;
+      .dynamic-message {
+        font-size: 13.5px;
       }
 
       .line {

@@ -98,7 +98,12 @@ const generateIntegratedHtmlReportByPublisher = ({
         </label>
 
         <label class="mention-switch">
-          <input type="checkbox" id="mention-switch-${sectionKey}" onchange="updateSectionMessages('${sectionKey}')">
+          <input
+            type="checkbox"
+            id="mention-switch-${sectionKey}"
+            onclick="event.stopPropagation()"
+            onchange="updateSectionMessages('${sectionKey}')"
+          >
           <span>Double @</span>
         </label>
       </div>
@@ -116,6 +121,7 @@ const generateIntegratedHtmlReportByPublisher = ({
         const whatsappGroupName = getWhatsappGroupName(publisher);
         const publisherMention = getPublisherMention(publisher);
         const requiresNotification = !options.noNotificationSection && !options.removedSection;
+        const hasWhatsappGroup = Boolean(whatsappGroupName && String(whatsappGroupName).trim());
         const copyLines = items.map(item => formatRowLine(item));
 
         const visibleLines = items.map(item => {
@@ -145,6 +151,7 @@ const generateIntegratedHtmlReportByPublisher = ({
               <input
                 type="checkbox"
                 id="confirmed-${sectionKey}-${safeIndex}"
+                onclick="event.stopPropagation()"
                 onchange="togglePublisherConfirmedByCard('${sectionKey}', '${safeIndex}', this.checked)"
               >
               <span>Publisher Confirmed</span>
@@ -158,6 +165,7 @@ const generateIntegratedHtmlReportByPublisher = ({
               <input
                 type="checkbox"
                 id="sended-${sectionKey}-${safeIndex}"
+                onclick="event.stopPropagation()"
                 onchange="toggleSendedByCard('${sectionKey}', '${safeIndex}', this.checked)"
               >
               <span>Sended</span>
@@ -167,9 +175,31 @@ const generateIntegratedHtmlReportByPublisher = ({
 
         const actionButtons = requiresNotification
           ? `
-            <div class="card-actions">
-              <button onclick="openWhatsAppTest(event, '${sectionKey}', '${safeIndex}')">WhatsApp</button>
-              <button onclick="copyWhatsappGroup(event, '${sectionKey}', '${safeIndex}')">Copy Group</button>
+            <div class="card-actions" onclick="event.stopPropagation()">
+              <button
+                type="button"
+                class="action-btn whatsapp-btn"
+                onclick="openWhatsAppTest(event, '${sectionKey}', '${safeIndex}')"
+              >
+                WhatsApp
+              </button>
+
+              <button
+                type="button"
+                class="action-btn copy-message-btn"
+                onclick="event.stopPropagation(); copyPublisher('${sectionKey}', '${safeIndex}')"
+              >
+                Copy Message
+              </button>
+
+              <button
+                type="button"
+                class="action-btn copy-group-btn ${hasWhatsappGroup ? '' : 'disabled-btn'}"
+                onclick="copyWhatsappGroup(event, '${sectionKey}', '${safeIndex}')"
+                ${hasWhatsappGroup ? '' : 'disabled'}
+              >
+                Copy Group
+              </button>
             </div>
           `
           : '';
@@ -217,7 +247,7 @@ const generateIntegratedHtmlReportByPublisher = ({
 
             <pre class="copy-lines" id="copy-lines-${sectionKey}-${safeIndex}">${escapeHtml(copyLines.join('\n'))}</pre>
 
-            <div class="message-block">
+            <div class="message-block" onclick="copyPublisher('${sectionKey}', '${safeIndex}')">
               ${messageBlockContent}
             </div>
 
