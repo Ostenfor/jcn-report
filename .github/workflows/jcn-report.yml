@@ -48,7 +48,8 @@ jobs:
         env:
           JCN_USER: ${{ secrets.JCN_USER }}
           JCN_PASS: ${{ secrets.JCN_PASS }}
-          CI: true
+          CI: "true"
+          REPORT_OVERWRITE: "true"
         run: node testa.js
 
       - name: Prepare Pages folder
