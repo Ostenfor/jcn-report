@@ -40,7 +40,8 @@ const generateIntegratedHtmlReportByPublisher = ({
   sameRows,
   generatedAtRD,
   reportDate,
-  deliveryMatcher = null
+  deliveryMatcher = null,
+  deliveryHistoryBundle = []
 }) => {
   const reportCss = buildReportCss();
 
@@ -508,6 +509,76 @@ const generateIntegratedHtmlReportByPublisher = ({
     `;
   };
 
+  const renderDeliveryHistorySummaryGrid = (summary) => {
+    return `
+      <div class="delivery-summary-grid">
+        <div class="summary-card">
+          <div class="summary-number">${summary.totalExpected}</div>
+          <div class="summary-label">Total esperado del día</div>
+        </div>
+
+        <div class="summary-card summary-new">
+          <div class="summary-number">${summary.completedTotal}</div>
+          <div class="summary-label">Total completados</div>
+        </div>
+
+        <div class="summary-card summary-removed">
+          <div class="summary-number">${summary.pendingTotal}</div>
+          <div class="summary-label">Total pendientes</div>
+        </div>
+
+        <div class="summary-card">
+          <div class="summary-number">${summary.approved}</div>
+          <div class="summary-label">Approved</div>
+        </div>
+
+        <div class="summary-card">
+          <div class="summary-number">${summary.completedPendingApproval}</div>
+          <div class="summary-label">Completed pending approval</div>
+        </div>
+
+        <div class="summary-card summary-no-notification">
+          <div class="summary-number">${summary.activeNoScreenshotRecord}</div>
+          <div class="summary-label">Activos sin screenshot record</div>
+        </div>
+
+        <div class="summary-card summary-removed">
+          <div class="summary-number">${summary.previouslySeenRemovedFromDashboard || 0}</div>
+          <div class="summary-label">Vistos antes pero removidos</div>
+        </div>
+      </div>
+    `;
+  };
+
+  const renderDeliveryHistoryPanel = (historyItem, isActive) => {
+    const pendingHtml = historyItem.pending.length
+      ? historyItem.pending.map(renderDeliveryCard).join('')
+      : '<div class="empty">No hay publicaciones pendientes para este día.</div>';
+
+    const completedHtml = historyItem.completed.length
+      ? historyItem.completed.map(renderDeliveryCard).join('')
+      : '<div class="empty">No hay publicaciones completadas para este día.</div>';
+
+    return `
+      <div
+        class="delivery-history-panel ${isActive ? 'active-history-panel' : ''}"
+        id="delivery-history-panel-${escapeHtml(historyItem.reportDate)}"
+        data-history-date="${escapeHtml(historyItem.reportDate)}"
+        data-total="${historyItem.summary.totalExpected}"
+        data-completed="${historyItem.summary.completedTotal}"
+        data-pending="${historyItem.summary.pendingTotal}"
+      >
+        ${renderDeliveryHistorySummaryGrid(historyItem.summary)}
+
+        <h3 class="delivery-heading">Pendientes</h3>
+        ${pendingHtml}
+
+        <h3 class="delivery-heading">Completados</h3>
+        ${completedHtml}
+      </div>
+    `;
+  };
+
   const renderDeliverySection = () => {
     if (!deliveryMatcher) {
       return `
@@ -520,13 +591,32 @@ const generateIntegratedHtmlReportByPublisher = ({
       `;
     }
 
-    const pendingHtml = deliveryMatcher.pending.length
-      ? deliveryMatcher.pending.map(renderDeliveryCard).join('')
-      : '<div class="empty">No hay publicaciones pendientes.</div>';
+    const fallbackHistoryBundle = [
+      {
+        reportDate,
+        label: `Today - ${reportDate}`,
+        summary: deliveryMatcher.summary,
+        pending: deliveryMatcher.pending,
+        completed: deliveryMatcher.completed,
+        rows: deliveryMatcher.deliveries
+      }
+    ];
 
-    const completedHtml = deliveryMatcher.completed.length
-      ? deliveryMatcher.completed.map(renderDeliveryCard).join('')
-      : '<div class="empty">No hay publicaciones completadas.</div>';
+    const historyBundle = deliveryHistoryBundle.length
+      ? deliveryHistoryBundle
+      : fallbackHistoryBundle;
+
+    const optionsHtml = historyBundle.map((item, index) => {
+      return `
+        <option value="${escapeHtml(item.reportDate)}" ${index === 0 ? 'selected' : ''}>
+          ${escapeHtml(item.label)} | Pending: ${item.summary.pendingTotal} | Completed: ${item.summary.completedTotal}
+        </option>
+      `;
+    }).join('');
+
+    const panelsHtml = historyBundle.map((item, index) => {
+      return renderDeliveryHistoryPanel(item, index === 0);
+    }).join('');
 
     return `
       <section class="report-section" id="delivery">
@@ -538,48 +628,15 @@ const generateIntegratedHtmlReportByPublisher = ({
         </div>
 
         <div class="section-body" id="section-body-delivery">
-          <div class="delivery-summary-grid">
-            <div class="summary-card">
-              <div class="summary-number">${deliveryMatcher.summary.totalExpected}</div>
-              <div class="summary-label">Total esperado del día</div>
-            </div>
+          <div class="delivery-history-controls">
+            <label for="delivery-history-select">Histórico de fotos:</label>
 
-            <div class="summary-card summary-new">
-              <div class="summary-number">${deliveryMatcher.summary.completedTotal}</div>
-              <div class="summary-label">Total completados</div>
-            </div>
-
-            <div class="summary-card summary-removed">
-              <div class="summary-number">${deliveryMatcher.summary.pendingTotal}</div>
-              <div class="summary-label">Total pendientes</div>
-            </div>
-
-            <div class="summary-card">
-              <div class="summary-number">${deliveryMatcher.summary.approved}</div>
-              <div class="summary-label">Approved</div>
-            </div>
-
-            <div class="summary-card">
-              <div class="summary-number">${deliveryMatcher.summary.completedPendingApproval}</div>
-              <div class="summary-label">Completed pending approval</div>
-            </div>
-
-            <div class="summary-card summary-no-notification">
-              <div class="summary-number">${deliveryMatcher.summary.activeNoScreenshotRecord}</div>
-              <div class="summary-label">Activos sin screenshot record</div>
-            </div>
-
-            <div class="summary-card summary-removed">
-              <div class="summary-number">${deliveryMatcher.summary.previouslySeenRemovedFromDashboard || 0}</div>
-              <div class="summary-label">Vistos antes pero removidos</div>
-            </div>
+            <select id="delivery-history-select" onchange="showDeliveryHistoryDay(this.value)">
+              ${optionsHtml}
+            </select>
           </div>
 
-          <h3 class="delivery-heading">Pendientes</h3>
-          ${pendingHtml}
-
-          <h3 class="delivery-heading">Completados</h3>
-          ${completedHtml}
+          ${panelsHtml}
         </div>
       </section>
     `;
@@ -595,24 +652,6 @@ const generateIntegratedHtmlReportByPublisher = ({
 
   <style>
     ${reportCss}
-
-    .delivery-history-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 14px;
-    }
-
-    .delivery-history-row span {
-      display: inline-flex;
-      border: 1px solid rgba(245,158,11,0.32);
-      background: rgba(245,158,11,0.08);
-      color: #fde68a;
-      border-radius: 999px;
-      padding: 5px 9px;
-      font-size: 12px;
-      font-weight: 800;
-    }
   </style>
 </head>
 

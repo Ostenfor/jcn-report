@@ -764,6 +764,46 @@ const buildReportCss = () => {
       transition: width 0.25s ease, background 0.25s ease;
     }
 
+    .delivery-history-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 18px;
+      background: rgba(255,255,255,0.035);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
+    }
+
+    .delivery-history-controls label {
+      color: #bfdbfe;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .delivery-history-controls select {
+      background: var(--bg-soft);
+      color: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 9px 12px;
+      font-size: 13px;
+      font-weight: 800;
+      min-height: 40px;
+      min-width: 280px;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .delivery-history-panel {
+      display: none;
+    }
+
+    .delivery-history-panel.active-history-panel {
+      display: block;
+    }
+
     .delivery-summary-grid {
       display: grid;
       grid-template-columns: repeat(6, minmax(130px, 1fr));
@@ -865,7 +905,8 @@ const buildReportCss = () => {
       border-color: rgba(239,68,68,0.35);
     }
 
-    .delivery-source-row {
+    .delivery-source-row,
+    .delivery-history-row {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
@@ -877,6 +918,17 @@ const buildReportCss = () => {
       border: 1px solid var(--line);
       background: rgba(255,255,255,0.04);
       color: #cbd5e1;
+      border-radius: 999px;
+      padding: 5px 9px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .delivery-history-row span {
+      display: inline-flex;
+      border: 1px solid rgba(245,158,11,0.32);
+      background: rgba(245,158,11,0.08);
+      color: #fde68a;
       border-radius: 999px;
       padding: 5px 9px;
       font-size: 12px;
@@ -1120,6 +1172,16 @@ const buildReportCss = () => {
 
       .fixed-progress-track {
         height: 6px;
+      }
+
+      .delivery-history-controls {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .delivery-history-controls select {
+        min-width: 0;
+        width: 100%;
       }
 
       .delivery-summary-grid {

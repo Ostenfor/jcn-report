@@ -27,6 +27,12 @@ const {
 } = require('./src/services/diffService');
 
 const {
+  loadDeliveryHistory,
+  saveDeliveryHistory,
+  loadRecentDeliveryHistoryBundle
+} = require('./src/services/deliveryHistoryService');
+
+const {
   printRawList,
   printPublisherCountsFromRows,
   printFinalGroupedByPublisher
@@ -97,6 +103,9 @@ const {
     // ------------------------------
     const todayString = getTodayStringRD();
 
+    const reportsFolder = getReportsFolderPath();
+    const reportDate = getReportDateForFileName();
+
     // ------------------------------
     // 3.3 CRAWL POSTS
     // ------------------------------
@@ -159,13 +168,16 @@ const {
     });
 
     // ------------------------------
-    // 3.9 DELIVERY MATCHER
+    // 3.9 DELIVERY MATCHER WITH HISTORY
     // ------------------------------
+    const deliveryHistoryRows = loadDeliveryHistory(reportsFolder, reportDate);
+
     const deliveryMatcher = buildDeliveryMatcher({
       postsRows: rowsToday,
       screenshotsRows: screenshotsResult.rowsToday,
       screenshotsTwosRows: screenshotsTwosResult.rowsToday,
-      approvedRows: approvedScreenshotsResult.rowsToday
+      approvedRows: approvedScreenshotsResult.rowsToday,
+      historyRows: deliveryHistoryRows
     });
 
     printDeliveryMatcherSummary(deliveryMatcher);
@@ -209,13 +221,12 @@ const {
     console.log(`Total pendientes: ${deliveryMatcher.summary.pendingTotal}`);
     console.log(`Pendientes screenshot: ${deliveryMatcher.summary.pendingScreenshot}`);
     console.log(`Activos sin registro screenshot: ${deliveryMatcher.summary.activeNoScreenshotRecord}`);
+    console.log(`Vistos antes pero removidos: ${deliveryMatcher.summary.previouslySeenRemovedFromDashboard || 0}`);
+    console.log(`Unknown: ${deliveryMatcher.summary.unknown || 0}`);
 
     // ------------------------------
     // 3.12 SNAPSHOT DIFF
     // ------------------------------
-    const reportsFolder = getReportsFolderPath();
-    const reportDate = getReportDateForFileName();
-
     const previousKeys = await loadPreviousSnapshot(reportsFolder, reportDate);
 
     const {
@@ -264,7 +275,18 @@ const {
     });
 
     // ------------------------------
-    // 3.14 HTML REPORT
+    // 3.14 SAVE DELIVERY HISTORY AND LOAD 3-DAY BUNDLE
+    // ------------------------------
+    saveDeliveryHistory(reportsFolder, reportDate, deliveryMatcher.deliveries);
+
+    const deliveryHistoryBundle = loadRecentDeliveryHistoryBundle(
+      reportsFolder,
+      reportDate,
+      3
+    );
+
+    // ------------------------------
+    // 3.15 HTML REPORT
     // ------------------------------
     const generatedAtRD = new Intl.DateTimeFormat('en-US', {
       timeZone: 'America/Santo_Domingo',
@@ -285,11 +307,12 @@ const {
       sameRows,
       generatedAtRD,
       reportDate,
-      deliveryMatcher
+      deliveryMatcher,
+      deliveryHistoryBundle
     });
 
     // ------------------------------
-    // 3.15 SAVE SNAPSHOT
+    // 3.16 SAVE SNAPSHOT
     // ------------------------------
     saveSnapshot(reportsFolder, reportDate, rowsFiltered);
     // ==================================================

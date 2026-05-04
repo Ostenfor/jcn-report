@@ -336,13 +336,27 @@ const buildReportScripts = ({
     }
 
     function updateDeliveryFooterProgress() {
-      const completedPercent = DELIVERY_TOTAL === 0
-        ? 0
-        : Math.round((DELIVERY_COMPLETED / DELIVERY_TOTAL) * 100);
+      const activePanel = document.querySelector('.delivery-history-panel.active-history-panel');
 
-      const pendingPercent = DELIVERY_TOTAL === 0
+      const deliveryTotal = activePanel
+        ? Number(activePanel.dataset.total || 0)
+        : DELIVERY_TOTAL;
+
+      const deliveryCompleted = activePanel
+        ? Number(activePanel.dataset.completed || 0)
+        : DELIVERY_COMPLETED;
+
+      const deliveryPending = activePanel
+        ? Number(activePanel.dataset.pending || 0)
+        : DELIVERY_PENDING;
+
+      const completedPercent = deliveryTotal === 0
         ? 0
-        : Math.round((DELIVERY_PENDING / DELIVERY_TOTAL) * 100);
+        : Math.round((deliveryCompleted / deliveryTotal) * 100);
+
+      const pendingPercent = deliveryTotal === 0
+        ? 0
+        : Math.round((deliveryPending / deliveryTotal) * 100);
 
       const completedCount = document.getElementById('footer-delivery-completed-count');
       const completedTotal = document.getElementById('footer-delivery-completed-total');
@@ -352,19 +366,33 @@ const buildReportScripts = ({
       const pendingTotal = document.getElementById('footer-delivery-pending-total');
       const pendingFill = document.getElementById('footer-delivery-pending-fill');
 
-      if (completedCount) completedCount.innerText = DELIVERY_COMPLETED;
-      if (completedTotal) completedTotal.innerText = DELIVERY_TOTAL;
+      if (completedCount) completedCount.innerText = deliveryCompleted;
+      if (completedTotal) completedTotal.innerText = deliveryTotal;
       if (completedFill) {
         completedFill.style.width = completedPercent + '%';
         completedFill.style.background = getProgressColor(completedPercent);
       }
 
-      if (pendingCount) pendingCount.innerText = DELIVERY_PENDING;
-      if (pendingTotal) pendingTotal.innerText = DELIVERY_TOTAL;
+      if (pendingCount) pendingCount.innerText = deliveryPending;
+      if (pendingTotal) pendingTotal.innerText = deliveryTotal;
       if (pendingFill) {
         pendingFill.style.width = pendingPercent + '%';
         pendingFill.style.background = getProgressColorSended(pendingPercent);
       }
+    }
+
+    function showDeliveryHistoryDay(reportDate) {
+      document.querySelectorAll('.delivery-history-panel').forEach(panel => {
+        panel.classList.remove('active-history-panel');
+      });
+
+      const selectedPanel = document.getElementById('delivery-history-panel-' + reportDate);
+
+      if (selectedPanel) {
+        selectedPanel.classList.add('active-history-panel');
+      }
+
+      updateDeliveryFooterProgress();
     }
 
     function updateSectionStatus(sectionKey) {
