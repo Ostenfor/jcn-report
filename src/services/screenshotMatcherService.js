@@ -20,6 +20,15 @@ const buildDeliveryKey = (row) => {
   ].join('|||');
 };
 
+const emptyAsset = () => ({
+  exists: false,
+  text: '',
+  imageUrl: null,
+  videoUrl: null,
+  linkUrl: null,
+  thumbnailUrl: null
+});
+
 const hasScreenshot = (row) => {
   return Boolean(
     row?.screenshot?.exists ||
@@ -40,14 +49,7 @@ const getBestMedia = (...rows) => {
     if (row?.media?.exists) return row.media;
   }
 
-  return {
-    exists: false,
-    text: '',
-    imageUrl: null,
-    videoUrl: null,
-    linkUrl: null,
-    thumbnailUrl: null
-  };
+  return emptyAsset();
 };
 
 const getBestScreenshot = (...rows) => {
@@ -55,14 +57,7 @@ const getBestScreenshot = (...rows) => {
     if (row?.screenshot?.exists) return row.screenshot;
   }
 
-  return {
-    exists: false,
-    text: '',
-    imageUrl: null,
-    videoUrl: null,
-    linkUrl: null,
-    thumbnailUrl: null
-  };
+  return emptyAsset();
 };
 
 const getBestScreenshotTwo = (...rows) => {
@@ -70,34 +65,34 @@ const getBestScreenshotTwo = (...rows) => {
     if (row?.screenshotTwo?.exists) return row.screenshotTwo;
   }
 
+  return emptyAsset();
+};
+
+const createEmptySourceItem = (key, row) => {
   return {
-    exists: false,
-    text: '',
-    imageUrl: null,
-    videoUrl: null,
-    linkUrl: null,
-    thumbnailUrl: null
+    key,
+    scheduled: row.scheduled || '',
+    website: row.website || '',
+    type: row.type || '',
+    user: row.user || '',
+    sources: {
+      posts: null,
+      screenshots: null,
+      screenshotsTwos: null,
+      approved: null,
+      history: null
+    }
   };
 };
 
-const addRowsToMap = (map, rows, sourceName) => {
+const addRowsToMap = (map, rows = [], sourceName) => {
   rows.forEach(row => {
-    const key = buildDeliveryKey(row);
+    const key = row.key || buildDeliveryKey(row);
+
+    if (!key || key === '|||||||||') return;
 
     if (!map.has(key)) {
-      map.set(key, {
-        key,
-        scheduled: row.scheduled,
-        website: row.website,
-        type: row.type,
-        user: row.user,
-        sources: {
-          posts: null,
-          screenshots: null,
-          screenshotsTwos: null,
-          approved: null
-        }
-      });
+      map.set(key, createEmptySourceItem(key, row));
     }
 
     const item = map.get(key);
@@ -116,7 +111,8 @@ const resolveDeliveryStatus = (item) => {
     posts,
     screenshots,
     screenshotsTwos,
-    approved
+    approved,
+    history
   } = item.sources;
 
   if (approved) {
@@ -139,17 +135,23 @@ const resolveDeliveryStatus = (item) => {
     return 'ACTIVE_NO_SCREENSHOT_RECORD';
   }
 
+  if (history) {
+    return 'PREVIOUSLY_SEEN_REMOVED_FROM_DASHBOARD';
+  }
+
   return 'UNKNOWN';
 };
 
 const buildDeliveryMatcher = ({
-  postsRows,
-  screenshotsRows,
-  screenshotsTwosRows,
-  approvedRows
+  postsRows = [],
+  screenshotsRows = [],
+  screenshotsTwosRows = [],
+  approvedRows = [],
+  historyRows = []
 }) => {
   const map = new Map();
 
+  addRowsToMap(map, historyRows, 'history');
   addRowsToMap(map, postsRows, 'posts');
   addRowsToMap(map, screenshotsRows, 'screenshots');
   addRowsToMap(map, screenshotsTwosRows, 'screenshotsTwos');
@@ -160,7 +162,8 @@ const buildDeliveryMatcher = ({
       posts,
       screenshots,
       screenshotsTwos,
-      approved
+      approved,
+      history
     } = item.sources;
 
     const status = resolveDeliveryStatus(item);
@@ -169,25 +172,29 @@ const buildDeliveryMatcher = ({
       approved,
       screenshotsTwos,
       screenshots,
-      posts
+      posts,
+      history
     );
 
     const screenshot = getBestScreenshot(
       approved,
       screenshotsTwos,
-      screenshots
+      screenshots,
+      history
     );
 
     const screenshotTwo = getBestScreenshotTwo(
       approved,
       screenshotsTwos,
-      screenshots
+      screenshots,
+      history
     );
 
     const detailUrl = getBestDetailUrl(
       approved,
       screenshotsTwos,
-      screenshots
+      screenshots,
+      history
     );
 
     return {
@@ -207,6 +214,11 @@ const buildDeliveryMatcher = ({
       existsInScreenshots: Boolean(screenshots),
       existsInScreenshotsTwos: Boolean(screenshotsTwos),
       existsInApproved: Boolean(approved),
+      existsInHistory: Boolean(history),
+
+      previousStatus: history?.status || history?.lastKnownStatus || null,
+      firstSeenAt: history?.firstSeenAt || null,
+      lastSeenAt: history?.lastSeenAt || null,
 
       sources: item.sources
     };
@@ -230,6 +242,14 @@ const buildDeliveryMatcher = ({
     row.status === 'ACTIVE_NO_SCREENSHOT_RECORD'
   );
 
+  const previouslySeenRemovedFromDashboard = deliveries.filter(row =>
+    row.status === 'PREVIOUSLY_SEEN_REMOVED_FROM_DASHBOARD'
+  );
+
+  const unknown = deliveries.filter(row =>
+    row.status === 'UNKNOWN'
+  );
+
   const completed = [
     ...approved,
     ...completedPendingApproval
@@ -237,7 +257,9 @@ const buildDeliveryMatcher = ({
 
   const pending = [
     ...pendingScreenshot,
-    ...activeNoScreenshotRecord
+    ...activeNoScreenshotRecord,
+    ...previouslySeenRemovedFromDashboard,
+    ...unknown
   ];
 
   return {
@@ -246,6 +268,8 @@ const buildDeliveryMatcher = ({
     completedPendingApproval,
     pendingScreenshot,
     activeNoScreenshotRecord,
+    previouslySeenRemovedFromDashboard,
+    unknown,
     completed,
     pending,
 
@@ -256,6 +280,8 @@ const buildDeliveryMatcher = ({
       completedTotal: completed.length,
       pendingScreenshot: pendingScreenshot.length,
       activeNoScreenshotRecord: activeNoScreenshotRecord.length,
+      previouslySeenRemovedFromDashboard: previouslySeenRemovedFromDashboard.length,
+      unknown: unknown.length,
       pendingTotal: pending.length
     }
   };
@@ -272,6 +298,8 @@ const printDeliveryMatcherSummary = (matcher) => {
   console.log(`Total completados: ${matcher.summary.completedTotal}`);
   console.log(`Pendientes screenshot: ${matcher.summary.pendingScreenshot}`);
   console.log(`Activos sin registro screenshot: ${matcher.summary.activeNoScreenshotRecord}`);
+  console.log(`Vistos antes pero removidos del dashboard: ${matcher.summary.previouslySeenRemovedFromDashboard}`);
+  console.log(`Unknown: ${matcher.summary.unknown}`);
   console.log(`Total pendientes: ${matcher.summary.pendingTotal}`);
 
   console.log('');
@@ -287,10 +315,14 @@ const printDeliveryMatcherSummary = (matcher) => {
   matcher.pending.forEach((row, index) => {
     console.log(`${index + 1}. ${row.scheduled} - ${row.website} - ${row.type} - ${row.user}`);
     console.log(`   Status: ${row.status}`);
+    console.log(`   Previous status: ${row.previousStatus || 'N/A'}`);
+    console.log(`   First seen: ${row.firstSeenAt || 'N/A'}`);
+    console.log(`   Last seen: ${row.lastSeenAt || 'N/A'}`);
     console.log(`   In posts: ${row.existsInPosts ? 'YES' : 'NO'}`);
     console.log(`   In screenshots: ${row.existsInScreenshots ? 'YES' : 'NO'}`);
     console.log(`   In screenshots-twos: ${row.existsInScreenshotsTwos ? 'YES' : 'NO'}`);
     console.log(`   In approved: ${row.existsInApproved ? 'YES' : 'NO'}`);
+    console.log(`   In history: ${row.existsInHistory ? 'YES' : 'NO'}`);
     console.log(`   Media: ${row.media?.thumbnailUrl || 'no media url'}`);
     console.log(`   Detail: ${row.detailUrl || 'no detail url'}`);
   });

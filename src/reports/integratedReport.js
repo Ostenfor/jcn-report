@@ -341,6 +341,7 @@ const generateIntegratedHtmlReportByPublisher = ({
       COMPLETED_PENDING_APPROVAL: 'Completed - Pending Approval',
       PENDING_SCREENSHOT: 'Pending Screenshot',
       ACTIVE_NO_SCREENSHOT_RECORD: 'Active - Waiting for Screenshot Record',
+      PREVIOUSLY_SEEN_REMOVED_FROM_DASHBOARD: 'Previously Seen - Removed From Dashboard',
       UNKNOWN: 'Unknown'
     };
 
@@ -353,6 +354,7 @@ const generateIntegratedHtmlReportByPublisher = ({
       COMPLETED_PENDING_APPROVAL: 'status-completed',
       PENDING_SCREENSHOT: 'status-pending',
       ACTIVE_NO_SCREENSHOT_RECORD: 'status-missing',
+      PREVIOUSLY_SEEN_REMOVED_FROM_DASHBOARD: 'status-missing',
       UNKNOWN: 'status-unknown'
     };
 
@@ -435,9 +437,31 @@ const generateIntegratedHtmlReportByPublisher = ({
       `;
     }
 
+    if (row.status === 'PREVIOUSLY_SEEN_REMOVED_FROM_DASHBOARD') {
+      return `
+        <div class="delivery-actions delivery-no-link">
+          Previously seen today, but now missing from current dashboards. Needs manual review if not in approved.
+        </div>
+      `;
+    }
+
     return `
       <div class="delivery-actions delivery-no-link">
         No detail URL
+      </div>
+    `;
+  };
+
+  const renderDeliveryHistoryInfo = (row) => {
+    if (!row.existsInHistory && !row.previousStatus && !row.firstSeenAt && !row.lastSeenAt) {
+      return '';
+    }
+
+    return `
+      <div class="delivery-history-row">
+        <span>Previous Status: ${escapeHtml(row.previousStatus || 'N/A')}</span>
+        <span>First Seen: ${escapeHtml(row.firstSeenAt || 'N/A')}</span>
+        <span>Last Seen: ${escapeHtml(row.lastSeenAt || 'N/A')}</span>
       </div>
     `;
   };
@@ -468,7 +492,10 @@ const generateIntegratedHtmlReportByPublisher = ({
           <span>Screenshots: ${row.existsInScreenshots ? 'YES' : 'NO'}</span>
           <span>Screenshots Two: ${row.existsInScreenshotsTwos ? 'YES' : 'NO'}</span>
           <span>Approved: ${row.existsInApproved ? 'YES' : 'NO'}</span>
+          <span>History: ${row.existsInHistory ? 'YES' : 'NO'}</span>
         </div>
+
+        ${renderDeliveryHistoryInfo(row)}
 
         <div class="delivery-assets">
           ${renderAssetBox('Media', row.media)}
@@ -541,6 +568,11 @@ const generateIntegratedHtmlReportByPublisher = ({
               <div class="summary-number">${deliveryMatcher.summary.activeNoScreenshotRecord}</div>
               <div class="summary-label">Activos sin screenshot record</div>
             </div>
+
+            <div class="summary-card summary-removed">
+              <div class="summary-number">${deliveryMatcher.summary.previouslySeenRemovedFromDashboard || 0}</div>
+              <div class="summary-label">Vistos antes pero removidos</div>
+            </div>
           </div>
 
           <h3 class="delivery-heading">Pendientes</h3>
@@ -563,6 +595,24 @@ const generateIntegratedHtmlReportByPublisher = ({
 
   <style>
     ${reportCss}
+
+    .delivery-history-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .delivery-history-row span {
+      display: inline-flex;
+      border: 1px solid rgba(245,158,11,0.32);
+      background: rgba(245,158,11,0.08);
+      color: #fde68a;
+      border-radius: 999px;
+      padding: 5px 9px;
+      font-size: 12px;
+      font-weight: 800;
+    }
   </style>
 </head>
 
