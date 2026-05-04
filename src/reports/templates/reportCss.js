@@ -823,8 +823,8 @@ const buildReportCss = () => {
       background: linear-gradient(180deg, rgba(18,26,36,0.98), rgba(15,23,42,0.98));
       border: 1px solid var(--line);
       border-radius: 16px;
-      padding: 16px;
-      margin-bottom: 16px;
+      padding: 14px;
+      margin-bottom: 13px;
       box-shadow: var(--shadow);
     }
 
@@ -849,11 +849,11 @@ const buildReportCss = () => {
       justify-content: space-between;
       gap: 14px;
       align-items: flex-start;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
 
     .delivery-title {
-      font-size: 18px;
+      font-size: 17px;
       font-weight: 900;
       color: #ffffff;
       line-height: 1.25;
@@ -861,21 +861,21 @@ const buildReportCss = () => {
 
     .delivery-title span {
       color: var(--muted);
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 800;
     }
 
     .delivery-subtitle {
       color: #cbd5e1;
-      font-size: 13px;
+      font-size: 12px;
       margin-top: 5px;
       font-weight: 700;
     }
 
     .delivery-status {
       border-radius: 999px;
-      padding: 7px 11px;
-      font-size: 12px;
+      padding: 6px 10px;
+      font-size: 11px;
       font-weight: 900;
       white-space: nowrap;
       border: 1px solid var(--line);
@@ -909,8 +909,8 @@ const buildReportCss = () => {
     .delivery-history-row {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 14px;
+      gap: 7px;
+      margin-bottom: 11px;
     }
 
     .delivery-source-row span {
@@ -919,8 +919,8 @@ const buildReportCss = () => {
       background: rgba(255,255,255,0.04);
       color: #cbd5e1;
       border-radius: 999px;
-      padding: 5px 9px;
-      font-size: 12px;
+      padding: 4px 8px;
+      font-size: 11px;
       font-weight: 800;
     }
 
@@ -930,23 +930,23 @@ const buildReportCss = () => {
       background: rgba(245,158,11,0.08);
       color: #fde68a;
       border-radius: 999px;
-      padding: 5px 9px;
-      font-size: 12px;
+      padding: 4px 8px;
+      font-size: 11px;
       font-weight: 800;
     }
 
     .delivery-assets {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
-      margin-top: 10px;
+      gap: 10px;
+      margin-top: 9px;
     }
 
     .asset-box {
       background: rgba(255,255,255,0.035);
       border: 1px solid var(--line-soft);
       border-radius: 14px;
-      padding: 10px;
+      padding: 8px;
       min-width: 0;
     }
 
@@ -956,14 +956,14 @@ const buildReportCss = () => {
 
     .asset-label {
       color: #bfdbfe;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 900;
-      margin-bottom: 8px;
+      margin-bottom: 7px;
     }
 
     .asset-preview {
       width: 100%;
-      max-height: 160px;
+      max-height: 105px;
       object-fit: contain;
       border-radius: 10px;
       background: #020617;
@@ -972,7 +972,7 @@ const buildReportCss = () => {
 
     .video-preview,
     .asset-missing {
-      min-height: 90px;
+      min-height: 75px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -980,15 +980,15 @@ const buildReportCss = () => {
       background: rgba(15,23,42,0.9);
       border: 1px dashed #334155;
       color: #94a3b8;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 900;
       text-align: center;
-      padding: 10px;
+      padding: 8px;
     }
 
     .asset-video-preview {
       width: 100%;
-      max-height: 180px;
+      max-height: 115px;
       object-fit: contain;
       border-radius: 10px;
       background: #020617;
@@ -998,9 +998,9 @@ const buildReportCss = () => {
 
     .asset-open-link {
       display: inline-flex;
-      margin-top: 8px;
+      margin-top: 7px;
       color: #93c5fd;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 900;
       text-decoration: none;
     }
@@ -1015,7 +1015,7 @@ const buildReportCss = () => {
     }
 
     .delivery-actions {
-      margin-top: 12px;
+      margin-top: 10px;
     }
 
     .delivery-actions a {
@@ -1023,18 +1023,18 @@ const buildReportCss = () => {
       align-items: center;
       justify-content: center;
       border-radius: 999px;
-      padding: 8px 13px;
+      padding: 7px 12px;
       border: 1px solid rgba(96,165,250,0.42);
       background: rgba(59,130,246,0.12);
       color: #93c5fd;
       text-decoration: none;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 900;
     }
 
     .delivery-no-link {
       color: #94a3b8;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 800;
     }
 
@@ -1188,12 +1188,63 @@ const buildReportCss = () => {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
+      .delivery-card {
+        padding: 16px;
+        margin-bottom: 16px;
+      }
+
       .delivery-card-top {
         flex-direction: column;
       }
 
+      .delivery-title {
+        font-size: 18px;
+      }
+
+      .delivery-subtitle {
+        font-size: 13px;
+      }
+
+      .delivery-status {
+        font-size: 12px;
+        padding: 7px 11px;
+      }
+
+      .delivery-source-row span,
+      .delivery-history-row span {
+        font-size: 12px;
+        padding: 5px 9px;
+      }
+
       .delivery-assets {
         grid-template-columns: 1fr;
+        gap: 12px;
+      }
+
+      .asset-box {
+        padding: 10px;
+      }
+
+      .asset-label {
+        font-size: 12px;
+      }
+
+      .asset-preview {
+        max-height: 180px;
+      }
+
+      .asset-video-preview {
+        max-height: 200px;
+      }
+
+      .asset-missing,
+      .video-preview {
+        min-height: 90px;
+        font-size: 12px;
+      }
+
+      .asset-open-link {
+        font-size: 12px;
       }
     }
 

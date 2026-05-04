@@ -1,4 +1,5 @@
 const fs = require('fs');
+const path = require('path');
 
 const {
   getWhatsappGroupName,
@@ -799,11 +800,20 @@ const generateIntegratedHtmlReportByPublisher = ({
 
   const reportsFolder = getReportsFolderPath();
 
-  const filePath = getUniqueReportFilePath(
-    reportsFolder,
-    'reporte-publishers-integrado',
-    reportDate
-  );
+  const shouldOverwriteReport =
+    process.env.CI === 'true' ||
+    process.env.REPORT_OVERWRITE === 'true';
+
+  const filePath = shouldOverwriteReport
+    ? path.join(
+        reportsFolder,
+        `reporte-publishers-integrado-${reportDate}.html`
+      )
+    : getUniqueReportFilePath(
+        reportsFolder,
+        'reporte-publishers-integrado',
+        reportDate
+      );
 
   fs.writeFileSync(filePath, html, 'utf8');
 
@@ -813,6 +823,13 @@ const generateIntegratedHtmlReportByPublisher = ({
   console.log('==================================================');
   console.log('13. HTML INTEGRADO GENERADO');
   console.log('==================================================');
+
+  if (shouldOverwriteReport) {
+    console.log('Modo reporte: OVERWRITE');
+  } else {
+    console.log('Modo reporte: UNIQUE');
+  }
+
   console.log(`Archivo creado: ${filePath}`);
   console.log(`Link directo: ${fileUrl}`);
 
