@@ -11,6 +11,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  actions: write
 
 concurrency:
   group: pages
@@ -33,6 +34,28 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      - name: Restore report history cache
+        uses: actions/cache@v4
+        with:
+          path: .report-history
+          key: jcn-report-history-${{ github.run_id }}
+          restore-keys: |
+            jcn-report-history-
+
+      - name: Restore previous reports into reporte folder
+        run: |
+          mkdir -p reporte
+
+          if [ -d ".report-history/reporte" ]; then
+            echo "Restoring previous reports from cache..."
+            cp -a .report-history/reporte/. reporte/
+          else
+            echo "No previous report history found."
+          fi
+
+          echo "Reports before new run:"
+          ls -la reporte || true
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -52,18 +75,66 @@ jobs:
           REPORT_OVERWRITE: "true"
         run: node testa.js
 
-      - name: Prepare Pages folder
+      - name: Prepare Pages folder with last 3 reports
         run: |
-          if [ ! -d "reporte" ]; then
-            mkdir reporte
+          mkdir -p reporte
+
+          echo "Reports after new run:"
+          ls -la reporte || true
+
+          # Remove old index before selecting real report files
+          rm -f reporte/index.html
+
+          # Keep only the latest 3 real HTML reports
+          find reporte -maxdepth 1 -type f -name "*.html" ! -name "index.html" -printf "%T@ %p\n" \
+            | sort -rn \
+            | awk 'NR>3 {print $2}' \
+            | xargs -r rm -f
+
+          latest_file=$(find reporte -maxdepth 1 -type f -name "*.html" ! -name "index.html" -printf "%T@ %p\n" \
+            | sort -rn \
+            | head -n 1 \
+            | cut -d' ' -f2-)
+
+          if [ -n "$latest_file" ]; then
+            echo "Latest report is: $latest_file"
+            cp "$latest_file" reporte/index.html
+          else
             echo "<h1>No report generated</h1>" > reporte/index.html
           fi
 
-          latest_file=$(ls -t reporte/*.html | head -n 1)
+          # Create history.json for the website dropdown/history selector
+          echo "[" > reporte/history.json
 
-          if [ -n "$latest_file" ]; then
-            cp "$latest_file" reporte/index.html
-          fi
+          first=true
+          find reporte -maxdepth 1 -type f -name "*.html" ! -name "index.html" -printf "%T@|%f\n" \
+            | sort -rn \
+            | while IFS="|" read -r timestamp filename; do
+                if [ "$first" = true ]; then
+                  first=false
+                else
+                  echo "," >> reporte/history.json
+                fi
+
+                safe_filename=$(printf '%s' "$filename" | sed 's/"/\\"/g')
+                echo "  {\"file\":\"$safe_filename\",\"label\":\"$safe_filename\"}" >> reporte/history.json
+              done
+
+          echo "]" >> reporte/history.json
+
+          echo "Final reports prepared for Pages:"
+          ls -la reporte
+          echo "Generated history.json:"
+          cat reporte/history.json
+
+      - name: Save report history for next run
+        run: |
+          rm -rf .report-history
+          mkdir -p .report-history
+          cp -a reporte .report-history/reporte
+
+          echo "Cached report history:"
+          ls -la .report-history/reporte
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
