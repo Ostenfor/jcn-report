@@ -1,6 +1,4 @@
-const {
-  safeGoto
-} = require('../utils/navigationUtils');
+const { safeGoto } = require('../utils/navigationUtils');
 
 const SCREENSHOTS_URL = 'https://dashboard.jewishcontentnetwork.com/admin/resources/screenshots';
 const SCREENSHOTS_TWOS_URL = 'https://dashboard.jewishcontentnetwork.com/admin/resources/screenshots-twos';
@@ -85,9 +83,41 @@ const getResourceNameFromUrl = (url) => {
   return 'screenshots';
 };
 
+const getScheduledDatePart = (row) => {
+  return row?.scheduled?.split(',')[0]?.trim() || '';
+};
+
+const filterByDate = (rows, dateString) => {
+  if (!dateString) return [];
+  return rows.filter(row => getScheduledDatePart(row) === dateString);
+};
+
+const filterByWhitelist = (rows, allowedPublishersNormalized, normalize) => {
+  return rows.filter(row => allowedPublishersNormalized.has(normalize(row.website)));
+};
+
+const printMissingScreenshots = (title, rowsMissingScreenshot) => {
+  console.log('');
+  console.log('==================================================');
+  console.log(`${title.toUpperCase()} - FALTAN POR SUBIR`);
+  console.log('==================================================');
+
+  if (!rowsMissingScreenshot.length) {
+    console.log(`No faltan screenshots en ${title} para tu lista.`);
+    return;
+  }
+
+  rowsMissingScreenshot.forEach((row, index) => {
+    console.log(`${index + 1}. ${row.scheduled} - ${row.website} - ${row.type} - ${row.user}`);
+    console.log(`   Media: ${row.media.thumbnailUrl || 'no media url'}`);
+    console.log(`   Detail: ${row.detailUrl || 'no detail url'}`);
+  });
+};
+
 const crawlScreenshots = async ({
   page,
   todayString,
+  yesterdayString = null,
   allowedPublishersNormalized,
   normalize,
   url = SCREENSHOTS_URL,
@@ -113,9 +143,7 @@ const crawlScreenshots = async ({
   console.log(`URL actual ${title}:`, page.url());
   console.log(`Esperando tabla de ${title}...`);
 
-  await page.waitForSelector('table tbody tr', {
-    timeout: 60000
-  });
+  await page.waitForSelector('table tbody tr', { timeout: 60000 });
 
   let rowCount = 0;
 
@@ -159,29 +187,19 @@ const crawlScreenshots = async ({
       }
 
       const text = cleanText(cell.innerText);
-
       const img = cell.querySelector('img');
       const video = cell.querySelector('video');
       const source = cell.querySelector('source');
       const link = cell.querySelector('a[href]');
 
-      const imageUrl = img
-        ? getAbsoluteUrl(img.getAttribute('src'))
-        : null;
-
+      const imageUrl = img ? getAbsoluteUrl(img.getAttribute('src')) : null;
       const videoUrl = video
         ? getAbsoluteUrl(video.getAttribute('src'))
         : source
           ? getAbsoluteUrl(source.getAttribute('src'))
           : null;
-
-      const videoPoster = video
-        ? getAbsoluteUrl(video.getAttribute('poster'))
-        : null;
-
-      const linkUrl = link
-        ? getAbsoluteUrl(link.getAttribute('href'))
-        : null;
+      const videoPoster = video ? getAbsoluteUrl(video.getAttribute('poster')) : null;
+      const linkUrl = link ? getAbsoluteUrl(link.getAttribute('href')) : null;
 
       const backgroundImage = [...cell.querySelectorAll('*')]
         .map(el => window.getComputedStyle(el).backgroundImage)
@@ -194,25 +212,15 @@ const crawlScreenshots = async ({
         backgroundImageUrl = match ? getAbsoluteUrl(match[1]) : null;
       }
 
-      const thumbnailUrl =
-        imageUrl ||
-        videoPoster ||
-        backgroundImageUrl ||
-        videoUrl ||
-        linkUrl ||
-        null;
-
+      const thumbnailUrl = imageUrl || videoPoster || backgroundImageUrl || videoUrl || linkUrl || null;
       const normalizedText = text.toLowerCase();
-
-      const looksEmpty =
-        !thumbnailUrl &&
-        (
-          text === '' ||
-          text === '-' ||
-          text === '—' ||
-          normalizedText === 'n/a' ||
-          normalizedText === 'null'
-        );
+      const looksEmpty = !thumbnailUrl && (
+        text === '' ||
+        text === '-' ||
+        text === '—' ||
+        normalizedText === 'n/a' ||
+        normalizedText === 'null'
+      );
 
       return {
         exists: !looksEmpty,
@@ -232,9 +240,7 @@ const crawlScreenshots = async ({
         tr.querySelector('a[href*="/admin/resources/screenshots/"]:not([href$="/edit"])') ||
         tr.querySelector('a[href*="/admin/resources/approved-screenshots/"]:not([href$="/edit"])');
 
-      return viewLink
-        ? getAbsoluteUrl(viewLink.getAttribute('href'))
-        : null;
+      return viewLink ? getAbsoluteUrl(viewLink.getAttribute('href')) : null;
     };
 
     const headers = [...document.querySelectorAll('table thead th')]
@@ -313,38 +319,20 @@ const crawlScreenshots = async ({
       website: publisherIndex >= 0 ? row.cellsText[publisherIndex] || '' : '',
       type: typeIndex >= 0 ? row.cellsText[typeIndex] || '' : '',
       user: clientIndex >= 0 ? row.cellsText[clientIndex] || '' : '',
-
-      media: mediaIndex >= 0
-        ? row.assetsByCell[mediaIndex]
-        : emptyAsset(),
-
-      screenshot: screenshotIndex >= 0
-        ? row.assetsByCell[screenshotIndex]
-        : emptyAsset(),
-
-      screenshotTwo: screenshotTwoIndex >= 0
-        ? row.assetsByCell[screenshotTwoIndex]
-        : emptyAsset(),
-
+      media: mediaIndex >= 0 ? row.assetsByCell[mediaIndex] : emptyAsset(),
+      screenshot: screenshotIndex >= 0 ? row.assetsByCell[screenshotIndex] : emptyAsset(),
+      screenshotTwo: screenshotTwoIndex >= 0 ? row.assetsByCell[screenshotTwoIndex] : emptyAsset(),
       detailUrl: row.detailUrl,
       rawCells: row.cellsText
     };
   });
 
-  const rowsToday = rows.filter(row => {
-    const datePart = row.scheduled.split(',')[0]?.trim();
-    return datePart === todayString;
-  });
+  const rowsToday = filterByDate(rows, todayString);
+  const rowsYesterday = filterByDate(rows, yesterdayString);
+  const rowsRemovedByDate = rows.filter(row => getScheduledDatePart(row) !== todayString);
 
-  const rowsRemovedByDate = rows.filter(row => {
-    const datePart = row.scheduled.split(',')[0]?.trim();
-    return datePart !== todayString;
-  });
-
-  const rowsFiltered = rowsToday.filter(row =>
-    allowedPublishersNormalized.has(normalize(row.website))
-  );
-
+  const rowsFiltered = filterByWhitelist(rowsToday, allowedPublishersNormalized, normalize);
+  const rowsFilteredYesterday = filterByWhitelist(rowsYesterday, allowedPublishersNormalized, normalize);
   const rowsRemovedByWhitelist = rowsToday.filter(row =>
     !allowedPublishersNormalized.has(normalize(row.website))
   );
@@ -352,11 +340,13 @@ const crawlScreenshots = async ({
   const rowsWithScreenshot = rowsFiltered.filter(row => row.screenshot.exists);
   const rowsMissingScreenshot = rowsFiltered.filter(row => !row.screenshot.exists);
 
+  const rowsWithScreenshotYesterday = rowsFilteredYesterday.filter(row => row.screenshot.exists);
+  const rowsMissingScreenshotYesterday = rowsFilteredYesterday.filter(row => !row.screenshot.exists);
+
   console.log('');
   console.log('==================================================');
   console.log(`${title.toUpperCase()} CRAWLER - HEADERS DETECTADOS`);
   console.log('==================================================');
-
   result.headers.forEach((header, index) => {
     console.log(`${index}. ${header}`);
   });
@@ -375,42 +365,41 @@ const crawlScreenshots = async ({
 
   printScreenshotSummary(`${title.toUpperCase()} - RAW TOTAL`, rows);
   printScreenshotSummary(`${title.toUpperCase()} - SOLO HOY (${todayString})`, rowsToday);
+
+  if (yesterdayString) {
+    printScreenshotSummary(`${title.toUpperCase()} - SOLO AYER (${yesterdayString})`, rowsYesterday);
+  }
+
   printScreenshotSummary(`${title.toUpperCase()} - FILTRADO POR TU LISTA`, rowsFiltered);
+  printScreenshotSummary(`${title.toUpperCase()} - FILTRADO POR TU LISTA - AYER`, rowsFilteredYesterday);
   printScreenshotSummary(`${title.toUpperCase()} - REMOVIDOS POR TU LISTA`, rowsRemovedByWhitelist);
 
-  console.log('');
-  console.log('==================================================');
-  console.log(`${title.toUpperCase()} - FALTAN POR SUBIR`);
-  console.log('==================================================');
-
-  if (!rowsMissingScreenshot.length) {
-    console.log(`No faltan screenshots en ${title} para tu lista.`);
-  } else {
-    rowsMissingScreenshot.forEach((row, index) => {
-      console.log(`${index + 1}. ${row.scheduled} - ${row.website} - ${row.type} - ${row.user}`);
-      console.log(`   Media: ${row.media.thumbnailUrl || 'no media url'}`);
-      console.log(`   Detail: ${row.detailUrl || 'no detail url'}`);
-    });
-  }
+  printMissingScreenshots(title, rowsMissingScreenshot);
 
   return {
     rows,
     rowsToday,
+    rowsYesterday,
     rowsRemovedByDate,
     rowsFiltered,
+    rowsFilteredYesterday,
     rowsRemovedByWhitelist,
     rowsWithScreenshot,
     rowsMissingScreenshot,
-
+    rowsWithScreenshotYesterday,
+    rowsMissingScreenshotYesterday,
     summary: {
       raw: buildScreenshotSummary(rows),
       today: buildScreenshotSummary(rowsToday),
+      yesterday: buildScreenshotSummary(rowsYesterday),
       filtered: buildScreenshotSummary(rowsFiltered),
+      filteredYesterday: buildScreenshotSummary(rowsFilteredYesterday),
       removedByWhitelist: buildScreenshotSummary(rowsRemovedByWhitelist),
       withScreenshot: rowsWithScreenshot.length,
-      missingScreenshot: rowsMissingScreenshot.length
+      missingScreenshot: rowsMissingScreenshot.length,
+      withScreenshotYesterday: rowsWithScreenshotYesterday.length,
+      missingScreenshotYesterday: rowsMissingScreenshotYesterday.length
     },
-
     rowCount,
     headers: result.headers,
     headerMap,

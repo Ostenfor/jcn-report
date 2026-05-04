@@ -8,27 +8,22 @@ const {
   getNoNotificationPublisherCount,
   getNotificationRequiredPublisherCount
 } = require('../config/publishers');
-
 const {
   getReportsFolderPath,
   getUniqueReportFilePath,
   openHtmlFile
 } = require('../utils/fileUtils');
-
 const {
   parseDate,
   formatRowLine
 } = require('../utils/dateUtils');
-
 const {
   escapeHtml,
   renderNoteLabels
 } = require('../utils/htmlUtils');
-
 const {
   buildReportCss
 } = require('./templates/reportCss');
-
 const {
   buildReportScripts
 } = require('./templates/reportScripts');
@@ -41,14 +36,18 @@ const generateIntegratedHtmlReportByPublisher = ({
   sameRows,
   generatedAtRD,
   reportDate,
+  yesterdayReportDate = '',
+  todayString = '',
+  yesterdayString = '',
   deliveryMatcher = null,
+  yesterdayDeliveryMatcher = null,
   deliveryHistoryBundle = []
 }) => {
   const reportCss = buildReportCss();
-
   const reportScripts = buildReportScripts({
     reportDate,
-    deliveryMatcher
+    deliveryMatcher,
+    yesterdayDeliveryMatcher
   });
 
   const getPublisherCount = (rows) => {
@@ -88,20 +87,19 @@ const generateIntegratedHtmlReportByPublisher = ({
 
   const renderControls = (sectionKey, defaultMessage) => {
     return `
-      <div class="message-controls" data-section="${sectionKey}">
-        <div class="control-group">
-          <label class="control-label" for="message-select-${sectionKey}">Mensaje:</label>
+      <div class="controls">
+        <label>
+          Mensaje:
           <select id="message-select-${sectionKey}" onchange="updateSectionMessages('${sectionKey}')">
             <option value="hello" ${defaultMessage === 'hello' ? 'selected' : ''}>hello @ for today we have</option>
             <option value="reminder" ${defaultMessage === 'reminder' ? 'selected' : ''}>last friendly reminder for today @</option>
             <option value="updated" ${defaultMessage === 'updated' ? 'selected' : ''}>List updated @</option>
           </select>
-        </div>
+        </label>
 
-        <label class="switch-row">
-          <span>Single @</span>
-          <input id="mention-switch-${sectionKey}" type="checkbox" onchange="updateSectionMessages('${sectionKey}')">
-          <span>Double @ @</span>
+        <label class="mention-switch">
+          <input type="checkbox" id="mention-switch-${sectionKey}" onchange="updateSectionMessages('${sectionKey}')">
+          <span>Double @</span>
         </label>
       </div>
     `;
@@ -112,24 +110,18 @@ const generateIntegratedHtmlReportByPublisher = ({
       .sort((a, b) => a.localeCompare(b))
       .map((publisher, index) => {
         const items = groupedByPublisher[publisher];
-
-        const safeIndex = options.noNotificationSection
-          ? `no-notification-${index}`
-          : index;
-
+        const safeIndex = options.noNotificationSection ? `no-notification-${index}` : index;
         const sentKey = `${sectionKey}|||${publisher}`;
         const confirmKey = `${sectionKey}|||${publisher}`;
         const whatsappGroupName = getWhatsappGroupName(publisher);
-        const hasWhatsappGroup = whatsappGroupName && whatsappGroupName !== 'N/A';
         const publisherMention = getPublisherMention(publisher);
         const requiresNotification = !options.noNotificationSection && !options.removedSection;
-
         const copyLines = items.map(item => formatRowLine(item));
 
         const visibleLines = items.map(item => {
           const cssClass = item.isNew ? 'line new-line' : 'line';
-          const badge = item.isNew ? `<span class="badge-new">NEW</span>` : '';
-          const removedBadge = options.removedSection ? `<span class="badge-removed">REMOVIDO</span>` : '';
+          const badge = item.isNew ? '<span class="badge-new">NEW</span>' : '';
+          const removedBadge = options.removedSection ? '<span class="badge-removed">REMOVIDO</span>' : '';
 
           return `
             <div class="${cssClass}">
@@ -142,88 +134,79 @@ const generateIntegratedHtmlReportByPublisher = ({
 
         const messageBlockContent = requiresNotification
           ? `
-              <div class="hello dynamic-message" data-section="${sectionKey}"></div>
-              <div class="message-spacer"></div>
-              ${visibleLines}
-            `
+            <div class="dynamic-message" data-section="${sectionKey}"></div>
+            <div class="message-lines">${visibleLines}</div>
+          `
           : visibleLines;
 
-        const confirmedCheckbox = requiresNotification ? `
-          <label class="header-check confirm-area">
-            <input
-              id="confirmed-${sectionKey}-${safeIndex}"
-              type="checkbox"
-              onchange="togglePublisherConfirmedByCard('${sectionKey}', '${safeIndex}', this.checked)"
-            >
-            <span>Publisher Confirmed</span>
-          </label>
-        ` : '';
+        const confirmedCheckbox = requiresNotification
+          ? `
+            <label class="status-check confirmed-check" onclick="event.stopPropagation()">
+              <input
+                type="checkbox"
+                id="confirmed-${sectionKey}-${safeIndex}"
+                onchange="togglePublisherConfirmedByCard('${sectionKey}', '${safeIndex}', this.checked)"
+              >
+              <span>Publisher Confirmed</span>
+            </label>
+          `
+          : '';
 
-        const sentCheckbox = requiresNotification ? `
-          <label class="header-check sent-area">
-            <input
-              id="sended-${sectionKey}-${safeIndex}"
-              type="checkbox"
-              onchange="toggleSendedByCard('${sectionKey}', '${safeIndex}', this.checked)"
-            >
-            <span>Sended</span>
-          </label>
-        ` : '';
+        const sentCheckbox = requiresNotification
+          ? `
+            <label class="status-check sended-check" onclick="event.stopPropagation()">
+              <input
+                type="checkbox"
+                id="sended-${sectionKey}-${safeIndex}"
+                onchange="toggleSendedByCard('${sectionKey}', '${safeIndex}', this.checked)"
+              >
+              <span>Sended</span>
+            </label>
+          `
+          : '';
 
-        const actionButtons = requiresNotification ? `
-          <div class="action-buttons">
-            <button class="whatsapp-btn" onclick="openWhatsAppTest(event, '${sectionKey}', '${safeIndex}')">
-              WhatsApp
-            </button>
-
-            <button
-              class="copy-group-btn ${hasWhatsappGroup ? '' : 'disabled-btn'}"
-              onclick="copyWhatsappGroup(event, '${sectionKey}', '${safeIndex}')"
-              ${hasWhatsappGroup ? '' : 'disabled'}
-            >
-              Copy Group
-            </button>
-          </div>
-        ` : '';
+        const actionButtons = requiresNotification
+          ? `
+            <div class="card-actions">
+              <button onclick="openWhatsAppTest(event, '${sectionKey}', '${safeIndex}')">WhatsApp</button>
+              <button onclick="copyWhatsappGroup(event, '${sectionKey}', '${safeIndex}')">Copy Group</button>
+            </div>
+          `
+          : '';
 
         const notesFooter = renderNoteLabels(publisher);
+        const groupFooter = !options.removedSection
+          ? `
+            <div class="group-footer">
+              <span>Grupo WhatsApp: ${escapeHtml(whatsappGroupName)}</span>
+              ${notesFooter}
+            </div>
+          `
+          : '';
 
-        const groupFooter = !options.removedSection ? `
-          <div class="group-footer">
-            <span class="group-footer-label">Grupo WhatsApp:</span>
-            <span class="group-footer-name">${escapeHtml(whatsappGroupName)}</span>
-          </div>
-          ${notesFooter}
-        ` : '';
-
-        const noNotificationBadge = options.noNotificationSection ? `
-          <div class="no-notification-badge">
-            No requiere notificación
-          </div>
-        ` : '';
+        const noNotificationBadge = options.noNotificationSection
+          ? '<div class="no-notification-badge">No requiere notificación</div>'
+          : '';
 
         return `
           <div
-            class="publisher-card ${options.removedSection ? 'removed-card' : ''} ${options.noNotificationSection ? 'no-notification-card' : ''}"
+            class="publisher-card"
             id="card-${sectionKey}-${safeIndex}"
-            data-section-key="${escapeHtml(sectionKey)}"
+            data-section-key="${sectionKey}"
             data-card-index="${safeIndex}"
             data-sent-key="${escapeHtml(sentKey)}"
             data-confirm-key="${escapeHtml(confirmKey)}"
             data-whatsapp-group="${escapeHtml(whatsappGroupName)}"
-            data-mention="${escapeHtml(publisherMention)}"
+            data-mention="${escapeHtml(publisherMention || '')}"
             data-requires-notification="${requiresNotification ? 'true' : 'false'}"
           >
-            <div class="publisher-topbar">
-              <div class="publisher-title-wrap">
-                <div class="publisher-title" onclick="copyPublisher('${sectionKey}', '${safeIndex}')">
-                  <span>${escapeHtml(publisher)}</span>
-                  <span class="count">(${items.length})</span>
-                  <span class="copied-msg" id="copied-${sectionKey}-${safeIndex}">Copiado ✅</span>
-                </div>
+            <div class="publisher-card-header">
+              <div class="publisher-title" onclick="copyPublisher('${sectionKey}', '${safeIndex}')">
+                <span>${escapeHtml(publisher)} (${items.length})</span>
+                <small id="copied-${sectionKey}-${safeIndex}" style="display:none;">Copiado ✅</small>
               </div>
 
-              <div class="header-checks">
+              <div class="publisher-status-row">
                 ${sentCheckbox}
                 ${confirmedCheckbox}
               </div>
@@ -234,7 +217,7 @@ const generateIntegratedHtmlReportByPublisher = ({
 
             <pre class="copy-lines" id="copy-lines-${sectionKey}-${safeIndex}">${escapeHtml(copyLines.join('\n'))}</pre>
 
-            <div class="message-block" onclick="copyPublisher('${sectionKey}', '${safeIndex}')">
+            <div class="message-block">
               ${messageBlockContent}
             </div>
 
@@ -256,16 +239,12 @@ const generateIntegratedHtmlReportByPublisher = ({
     return `
       <div class="no-notification-box">
         <div class="no-notification-header">
-          <div>
-            <strong>Clientes sin notificación requerida</strong>
-            <span>${publishers.length} clientes | ${totalRows} publicaciones</span>
-          </div>
-
+          <strong>Clientes sin notificación requerida</strong>
+          <span>${publishers.length} clientes | ${totalRows} publicaciones</span>
           <button class="small-collapse-btn" onclick="toggleNoNotificationBox('${sectionKey}')">
             Ver / Ocultar
           </button>
         </div>
-
         <div class="no-notification-body collapsed" id="no-notification-body-${sectionKey}">
           ${renderPublisherCards(groupedNoNotification, sectionKey, { noNotificationSection: true })}
         </div>
@@ -281,37 +260,30 @@ const generateIntegratedHtmlReportByPublisher = ({
 
     const sectionPublisherCount = Object.keys(notificationRequired).length;
     const sectionNoNotificationCount = Object.keys(noNotificationRequired).length;
-
     const cardsHtml = renderPublisherCards(notificationRequired, sectionKey, options);
-
-    const emptyMessage = rows.length === 0
-      ? `<div class="empty">No hay registros para esta sección.</div>`
-      : '';
-
+    const emptyMessage = rows.length === 0 ? '<div class="empty">No hay registros para esta sección.</div>' : '';
     const controls = options.removedSection ? '' : renderControls(sectionKey, defaultMessage);
-
-    const sectionProgressBox = '';
 
     const summaryText = options.removedSection
       ? `Total: ${rows.length}`
-      : `Total: ${rows.length} | Clientes que requieren notificación: ${sectionPublisherCount} | Sin notificación requerida: ${sectionNoNotificationCount} | Pendientes: <span id="pending-confirm-count-${sectionKey}">${sectionPublisherCount}</span>`;
+      : `Total: ${rows.length} | Clientes que requieren notificación: ${sectionPublisherCount} | Sin notificación requerida: ${sectionNoNotificationCount} | Pendientes: ${sectionPublisherCount}`;
 
     const pendingConfirmBox = options.removedSection
       ? ''
       : `
-          <div class="pending-confirm-box">
-            <div class="pending-confirm-header">
-              <strong>Clientes pendientes por confirmación</strong>
-              <button class="small-collapse-btn" onclick="togglePendingBox('${sectionKey}')">
-                Colapsar / Expandir
-              </button>
-            </div>
-
-            <div class="pending-confirm-body" id="pending-confirm-body-${sectionKey}">
-              <div class="pending-confirm-list" id="pending-confirm-list-${sectionKey}"></div>
-            </div>
+        <div class="pending-confirm-box">
+          <div class="pending-confirm-header">
+            <strong>Clientes pendientes por confirmación</strong>
+            <span id="pending-confirm-count-${sectionKey}">${sectionPublisherCount}</span>
+            <button class="small-collapse-btn" onclick="togglePendingBox('${sectionKey}')">
+              Colapsar / Expandir
+            </button>
           </div>
-        `;
+          <div class="pending-confirm-body" id="pending-confirm-body-${sectionKey}">
+            <div class="pending-confirm-list" id="pending-confirm-list-${sectionKey}"></div>
+          </div>
+        </div>
+      `;
 
     const noNotificationBox = renderNoNotificationBox(sectionKey, noNotificationRequired);
 
@@ -323,11 +295,9 @@ const generateIntegratedHtmlReportByPublisher = ({
             Colapsar / Expandir
           </button>
         </div>
-
         <div class="section-body" id="section-body-${sectionKey}">
-          <div class="section-summary">${summaryText}</div>
+          <div class="section-summary">${escapeHtml(summaryText)}</div>
           ${controls}
-          ${sectionProgressBox}
           ${pendingConfirmBox}
           ${emptyMessage}
           ${cardsHtml}
@@ -376,7 +346,6 @@ const generateIntegratedHtmlReportByPublisher = ({
     }
 
     const normalizedUrl = String(url).toLowerCase();
-
     const isVideo =
       normalizedUrl.includes('.mp4') ||
       normalizedUrl.includes('.mov') ||
@@ -387,7 +356,6 @@ const generateIntegratedHtmlReportByPublisher = ({
       return `
         <div class="asset-box">
           <div class="asset-label">${escapeHtml(label)}</div>
-
           <video
             class="asset-video-preview"
             src="${escapeHtml(url)}"
@@ -396,13 +364,7 @@ const generateIntegratedHtmlReportByPublisher = ({
             preload="metadata"
             playsinline
           ></video>
-
-          <a
-            class="asset-open-link"
-            href="${escapeHtml(url)}"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
+          <a class="asset-open-link" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">
             Open video
           </a>
         </div>
@@ -412,7 +374,6 @@ const generateIntegratedHtmlReportByPublisher = ({
     return `
       <div class="asset-box">
         <div class="asset-label">${escapeHtml(label)}</div>
-
         <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">
           <img class="asset-preview" src="${escapeHtml(url)}" alt="${escapeHtml(label)}">
         </a>
@@ -442,16 +403,12 @@ const generateIntegratedHtmlReportByPublisher = ({
     if (row.status === 'PREVIOUSLY_SEEN_REMOVED_FROM_DASHBOARD') {
       return `
         <div class="delivery-actions delivery-no-link">
-          Previously seen today, but now missing from current dashboards. Needs manual review if not in approved.
+          Previously seen, but now missing from current dashboards. Needs manual review if not in approved.
         </div>
       `;
     }
 
-    return `
-      <div class="delivery-actions delivery-no-link">
-        No detail URL
-      </div>
-    `;
+    return '<div class="delivery-actions delivery-no-link">No detail URL</div>';
   };
 
   const renderDeliveryHistoryInfo = (row) => {
@@ -483,10 +440,7 @@ const generateIntegratedHtmlReportByPublisher = ({
               ${escapeHtml(row.scheduled)} - ${escapeHtml(row.user)}
             </div>
           </div>
-
-          <div class="delivery-status ${statusClass}">
-            ${escapeHtml(statusLabel)}
-          </div>
+          <div class="delivery-status ${statusClass}">${escapeHtml(statusLabel)}</div>
         </div>
 
         <div class="delivery-source-row">
@@ -510,36 +464,36 @@ const generateIntegratedHtmlReportByPublisher = ({
     `;
   };
 
-  const renderDeliveryHistorySummaryGrid = (summary) => {
+  const renderDeliveryHistorySummaryGrid = (summary = {}) => {
     return `
       <div class="delivery-summary-grid">
         <div class="summary-card">
-          <div class="summary-number">${summary.totalExpected}</div>
+          <div class="summary-number">${summary.totalExpected || 0}</div>
           <div class="summary-label">Total esperado del día</div>
         </div>
 
         <div class="summary-card summary-new">
-          <div class="summary-number">${summary.completedTotal}</div>
+          <div class="summary-number">${summary.completedTotal || 0}</div>
           <div class="summary-label">Total completados</div>
         </div>
 
         <div class="summary-card summary-removed">
-          <div class="summary-number">${summary.pendingTotal}</div>
+          <div class="summary-number">${summary.pendingTotal || 0}</div>
           <div class="summary-label">Total pendientes</div>
         </div>
 
         <div class="summary-card">
-          <div class="summary-number">${summary.approved}</div>
+          <div class="summary-number">${summary.approved || 0}</div>
           <div class="summary-label">Approved</div>
         </div>
 
         <div class="summary-card">
-          <div class="summary-number">${summary.completedPendingApproval}</div>
+          <div class="summary-number">${summary.completedPendingApproval || 0}</div>
           <div class="summary-label">Completed pending approval</div>
         </div>
 
         <div class="summary-card summary-no-notification">
-          <div class="summary-number">${summary.activeNoScreenshotRecord}</div>
+          <div class="summary-number">${summary.activeNoScreenshotRecord || 0}</div>
           <div class="summary-label">Activos sin screenshot record</div>
         </div>
 
@@ -551,7 +505,7 @@ const generateIntegratedHtmlReportByPublisher = ({
     `;
   };
 
-  const renderDeliveryHistoryPanel = (historyItem, isActive) => {
+  const renderDeliveryPanel = (historyItem) => {
     const pendingHtml = historyItem.pending.length
       ? historyItem.pending.map(renderDeliveryCard).join('')
       : '<div class="empty">No hay publicaciones pendientes para este día.</div>';
@@ -562,12 +516,12 @@ const generateIntegratedHtmlReportByPublisher = ({
 
     return `
       <div
-        class="delivery-history-panel ${isActive ? 'active-history-panel' : ''}"
-        id="delivery-history-panel-${escapeHtml(historyItem.reportDate)}"
+        class="delivery-history-panel active-history-panel"
+        id="delivery-history-panel-${escapeHtml(historyItem.panelId)}"
         data-history-date="${escapeHtml(historyItem.reportDate)}"
-        data-total="${historyItem.summary.totalExpected}"
-        data-completed="${historyItem.summary.completedTotal}"
-        data-pending="${historyItem.summary.pendingTotal}"
+        data-total="${historyItem.summary.totalExpected || 0}"
+        data-completed="${historyItem.summary.completedTotal || 0}"
+        data-pending="${historyItem.summary.pendingTotal || 0}"
       >
         ${renderDeliveryHistorySummaryGrid(historyItem.summary)}
 
@@ -580,64 +534,79 @@ const generateIntegratedHtmlReportByPublisher = ({
     `;
   };
 
-  const renderDeliverySection = () => {
-    if (!deliveryMatcher) {
+  const buildDeliveryItemFromMatcher = ({ matcher, reportDateValue, panelId, label }) => {
+    const deliveries = matcher?.deliveries || [];
+
+    return {
+      panelId,
+      reportDate: reportDateValue || panelId,
+      label,
+      summary: matcher?.summary || {
+        totalExpected: 0,
+        approved: 0,
+        completedPendingApproval: 0,
+        completedTotal: 0,
+        pendingScreenshot: 0,
+        activeNoScreenshotRecord: 0,
+        previouslySeenRemovedFromDashboard: 0,
+        unknown: 0,
+        pendingTotal: 0
+      },
+      pending: matcher?.pending || deliveries.filter(row =>
+        row.status !== 'APPROVED' && row.status !== 'COMPLETED_PENDING_APPROVAL'
+      ),
+      completed: matcher?.completed || deliveries.filter(row =>
+        row.status === 'APPROVED' || row.status === 'COMPLETED_PENDING_APPROVAL'
+      ),
+      rows: deliveries
+    };
+  };
+
+  const renderDeliverySection = ({
+    sectionId,
+    sectionNumber,
+    title,
+    matcher,
+    reportDateValue,
+    displayDate,
+    label
+  }) => {
+    if (!matcher) {
       return `
-        <section class="report-section" id="delivery">
+        <section class="report-section" id="${sectionId}">
           <div class="section-title-row">
-            <h2>4. Screenshot Status</h2>
+            <h2>${sectionNumber}. ${escapeHtml(title)}</h2>
           </div>
           <div class="empty">No delivery matcher data available.</div>
         </section>
       `;
     }
 
-    const fallbackHistoryBundle = [
-      {
-        reportDate,
-        label: `Today - ${reportDate}`,
-        summary: deliveryMatcher.summary,
-        pending: deliveryMatcher.pending,
-        completed: deliveryMatcher.completed,
-        rows: deliveryMatcher.deliveries
-      }
-    ];
-
-    const historyBundle = deliveryHistoryBundle.length
-      ? deliveryHistoryBundle
-      : fallbackHistoryBundle;
-
-    const optionsHtml = historyBundle.map((item, index) => {
-      return `
-        <option value="${escapeHtml(item.reportDate)}" ${index === 0 ? 'selected' : ''}>
-          ${escapeHtml(item.label)} | Pending: ${item.summary.pendingTotal} | Completed: ${item.summary.completedTotal}
-        </option>
-      `;
-    }).join('');
-
-    const panelsHtml = historyBundle.map((item, index) => {
-      return renderDeliveryHistoryPanel(item, index === 0);
-    }).join('');
+    const historyItem = buildDeliveryItemFromMatcher({
+      matcher,
+      reportDateValue,
+      panelId: sectionId,
+      label
+    });
 
     return `
-      <section class="report-section" id="delivery">
+      <section class="report-section" id="${sectionId}">
         <div class="section-title-row">
-          <h2>4. Screenshot Status</h2>
-          <button class="collapse-btn" onclick="toggleSectionBody('delivery')">
+          <h2>${sectionNumber}. ${escapeHtml(title)}</h2>
+          <button class="collapse-btn" onclick="toggleSectionBody('${sectionId}')">
             Colapsar / Expandir
           </button>
         </div>
 
-        <div class="section-body" id="section-body-delivery">
+        <div class="section-body" id="section-body-${sectionId}">
           <div class="delivery-history-controls">
-            <label for="delivery-history-select">Histórico de fotos:</label>
-
-            <select id="delivery-history-select" onchange="showDeliveryHistoryDay(this.value)">
-              ${optionsHtml}
-            </select>
+            <strong>${escapeHtml(label)}</strong>
+            <span>${escapeHtml(displayDate || reportDateValue || '')}</span>
+            <span>Pending: ${historyItem.summary.pendingTotal || 0}</span>
+            <span>Completed: ${historyItem.summary.completedTotal || 0}</span>
           </div>
 
-          ${panelsHtml}
+          ${renderDeliveryPanel(historyItem)}
         </div>
       </section>
     `;
@@ -650,12 +619,10 @@ const generateIntegratedHtmlReportByPublisher = ({
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Reporte Integrado de Publishers</title>
-
   <style>
     ${reportCss}
   </style>
 </head>
-
 <body>
   <h1>Reporte Integrado de Publishers</h1>
 
@@ -706,7 +673,8 @@ const generateIntegratedHtmlReportByPublisher = ({
     <button class="tab-button active" onclick="showTab('todos', this)">Reporte completo (${allRows.length})</button>
     <button class="tab-button" onclick="showTab('after5pm', this)">5PM en adelante (${reminderRows.length})</button>
     <button class="tab-button" onclick="showTab('removed', this)">Removidos (${removedRows.length})</button>
-    <button class="tab-button" onclick="showTab('delivery', this)">Screenshot Status (${deliveryMatcher ? deliveryMatcher.summary.pendingTotal : 0} pending)</button>
+    <button class="tab-button" onclick="showTab('delivery', this)">Screenshot Status Today (${deliveryMatcher ? deliveryMatcher.summary.pendingTotal : 0} pending)</button>
+    <button class="tab-button" onclick="showTab('delivery-yesterday', this)">Screenshot Status Yesterday (${yesterdayDeliveryMatcher ? yesterdayDeliveryMatcher.summary.pendingTotal : 0} pending)</button>
   </div>
 
   ${renderSection(
@@ -731,7 +699,25 @@ const generateIntegratedHtmlReportByPublisher = ({
     { removedSection: true }
   )}
 
-  ${renderDeliverySection()}
+  ${renderDeliverySection({
+    sectionId: 'delivery',
+    sectionNumber: '4',
+    title: 'Screenshot Status Today',
+    matcher: deliveryMatcher,
+    reportDateValue: reportDate,
+    displayDate: todayString,
+    label: 'Today'
+  })}
+
+  ${renderDeliverySection({
+    sectionId: 'delivery-yesterday',
+    sectionNumber: '5',
+    title: 'Screenshot Status Yesterday',
+    matcher: yesterdayDeliveryMatcher,
+    reportDateValue: yesterdayReportDate,
+    displayDate: yesterdayString,
+    label: 'Yesterday'
+  })}
 
   <div class="fixed-progress-footer" id="whatsapp-progress-footer">
     <div class="fixed-progress-inner">
@@ -806,14 +792,14 @@ const generateIntegratedHtmlReportByPublisher = ({
 
   const filePath = shouldOverwriteReport
     ? path.join(
-        reportsFolder,
-        `reporte-publishers-integrado-${reportDate}.html`
-      )
+      reportsFolder,
+      `reporte-publishers-integrado-${reportDate}.html`
+    )
     : getUniqueReportFilePath(
-        reportsFolder,
-        'reporte-publishers-integrado',
-        reportDate
-      );
+      reportsFolder,
+      'reporte-publishers-integrado',
+      reportDate
+    );
 
   fs.writeFileSync(filePath, html, 'utf8');
 

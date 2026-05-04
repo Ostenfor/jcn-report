@@ -4,65 +4,53 @@
 require('dotenv').config();
 
 const { chromium } = require('playwright');
-
 const {
   normalize,
   allowedPublishersNormalized,
   getPublisherMention
 } = require('./src/config/publishers');
-
 const {
   getReportDateForFileName,
   getTodayStringRD,
   getReportsFolderPath
 } = require('./src/utils/fileUtils');
-
 const {
   loadPreviousSnapshot,
   saveSnapshot
 } = require('./src/services/snapshotService');
-
 const {
   buildDiff
 } = require('./src/services/diffService');
-
 const {
   loadDeliveryHistory,
   saveDeliveryHistory,
   loadRecentDeliveryHistoryBundle
 } = require('./src/services/deliveryHistoryService');
-
 const {
   printRawList,
   printPublisherCountsFromRows,
   printFinalGroupedByPublisher
 } = require('./src/utils/consoleUtils');
-
 const {
   parseDate,
   isAtOrAfter5PM,
   formatRowLine
 } = require('./src/utils/dateUtils');
-
 const {
   generateIntegratedHtmlReportByPublisher
 } = require('./src/reports/integratedReport');
-
 const {
   login
 } = require('./src/auth/login');
-
 const {
   crawlPosts
 } = require('./src/crawlers/postsCrawler');
-
 const {
   SCREENSHOTS_URL,
   SCREENSHOTS_TWOS_URL,
   APPROVED_SCREENSHOTS_URL,
   crawlScreenshots
 } = require('./src/crawlers/screenshotsCrawler');
-
 const {
   buildDeliveryMatcher,
   printDeliveryMatcherSummary
@@ -71,6 +59,57 @@ const {
 // END MODULE 01 - BOOT / IMPORTS
 // ==================================================
 
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+const getRDDate = (offsetDays = 0) => {
+  return new Date(Date.now() - offsetDays * ONE_DAY_MS);
+};
+
+const getDateStringRDByOffset = (offsetDays = 0) => {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Santo_Domingo',
+    month: '2-digit',
+    day: '2-digit',
+    year: 'numeric'
+  }).format(getRDDate(offsetDays));
+};
+
+const getReportDateForFileNameByOffset = (offsetDays = 0) => {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Santo_Domingo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(getRDDate(offsetDays));
+};
+
+const getScheduledDatePart = (row) => {
+  return row?.scheduled?.split(',')[0]?.trim() || '';
+};
+
+const filterRowsByDate = (rows, dateString) => {
+  return rows.filter(row => getScheduledDatePart(row) === dateString);
+};
+
+const filterRowsByWhitelist = (rows) => {
+  return rows.filter(row => allowedPublishersNormalized.has(normalize(row.website)));
+};
+
+const printDeliverySummaryBlock = (title, matcher) => {
+  console.log('');
+  console.log('==================================================');
+  console.log(title);
+  console.log('==================================================');
+  console.log(`Total esperado del día: ${matcher.summary.totalExpected}`);
+  console.log(`Aprobados: ${matcher.summary.approved}`);
+  console.log(`Completados pendiente aprobación: ${matcher.summary.completedPendingApproval}`);
+  console.log(`Total completados: ${matcher.summary.completedTotal}`);
+  console.log(`Total pendientes: ${matcher.summary.pendingTotal}`);
+  console.log(`Pendientes screenshot: ${matcher.summary.pendingScreenshot}`);
+  console.log(`Activos sin registro screenshot: ${matcher.summary.activeNoScreenshotRecord}`);
+  console.log(`Vistos antes pero removidos: ${matcher.summary.previouslySeenRemovedFromDashboard || 0}`);
+  console.log(`Unknown: ${matcher.summary.unknown || 0}`);
+};
 
 // ==================================================
 // MODULE 02 - BROWSER START
@@ -81,13 +120,12 @@ const {
   });
 
   const page = await browser.newPage();
-
   page.setDefaultTimeout(60000);
   page.setDefaultNavigationTimeout(60000);
+
   // ==================================================
   // END MODULE 02 - BROWSER START
   // ==================================================
-
 
   // ==================================================
   // MODULE 03 - MAIN FLOW
@@ -102,9 +140,19 @@ const {
     // 3.2 DATE CONTEXT
     // ------------------------------
     const todayString = getTodayStringRD();
-
+    const yesterdayString = getDateStringRDByOffset(1);
     const reportsFolder = getReportsFolderPath();
     const reportDate = getReportDateForFileName();
+    const yesterdayReportDate = getReportDateForFileNameByOffset(1);
+
+    console.log('');
+    console.log('==================================================');
+    console.log('DATE CONTEXT');
+    console.log('==================================================');
+    console.log(`Today RD display: ${todayString}`);
+    console.log(`Yesterday RD display: ${yesterdayString}`);
+    console.log(`Today report key: ${reportDate}`);
+    console.log(`Yesterday report key: ${yesterdayReportDate}`);
 
     // ------------------------------
     // 3.3 CRAWL POSTS
@@ -119,6 +167,7 @@ const {
     const screenshotsResult = await crawlScreenshots({
       page,
       todayString,
+      yesterdayString,
       allowedPublishersNormalized,
       normalize,
       url: SCREENSHOTS_URL,
@@ -131,6 +180,7 @@ const {
     const screenshotsTwosResult = await crawlScreenshots({
       page,
       todayString,
+      yesterdayString,
       allowedPublishersNormalized,
       normalize,
       url: SCREENSHOTS_TWOS_URL,
@@ -143,6 +193,7 @@ const {
     const approvedScreenshotsResult = await crawlScreenshots({
       page,
       todayString,
+      yesterdayString,
       allowedPublishersNormalized,
       normalize,
       url: APPROVED_SCREENSHOTS_URL,
@@ -157,20 +208,15 @@ const {
     // ------------------------------
     // 3.8 FILTER POSTS BY DATE
     // ------------------------------
-    const rowsToday = rows.filter(r => {
-      const datePart = r.scheduled.split(',')[0]?.trim();
-      return datePart === todayString;
-    });
-
-    const rowsRemovedByDate = rows.filter(r => {
-      const datePart = r.scheduled.split(',')[0]?.trim();
-      return datePart !== todayString;
-    });
+    const rowsToday = filterRowsByDate(rows, todayString);
+    const rowsYesterday = filterRowsByDate(rows, yesterdayString);
+    const rowsRemovedByDate = rows.filter(row => getScheduledDatePart(row) !== todayString);
 
     // ------------------------------
     // 3.9 DELIVERY MATCHER WITH HISTORY
     // ------------------------------
     const deliveryHistoryRows = loadDeliveryHistory(reportsFolder, reportDate);
+    const yesterdayDeliveryHistoryRows = loadDeliveryHistory(reportsFolder, yesterdayReportDate);
 
     const deliveryMatcher = buildDeliveryMatcher({
       postsRows: rowsToday,
@@ -180,55 +226,51 @@ const {
       historyRows: deliveryHistoryRows
     });
 
+    const yesterdayDeliveryMatcher = buildDeliveryMatcher({
+      postsRows: rowsYesterday,
+      screenshotsRows: screenshotsResult.rowsYesterday,
+      screenshotsTwosRows: screenshotsTwosResult.rowsYesterday,
+      approvedRows: approvedScreenshotsResult.rowsYesterday,
+      historyRows: yesterdayDeliveryHistoryRows
+    });
+
     printDeliveryMatcherSummary(deliveryMatcher);
-
     printRawList(`3. FILTRO SOLO HOY (${todayString})`, rowsToday, formatRowLine);
+    printRawList(`3.1 FILTRO SOLO AYER (${yesterdayString})`, rowsYesterday, formatRowLine);
     printRawList(`4. REMOVIDOS POR FECHA (NO SON DE HOY ${todayString})`, rowsRemovedByDate, formatRowLine);
-
     printPublisherCountsFromRows('5. PUBLICADORES ENCONTRADOS HOY', rowsToday);
+    printPublisherCountsFromRows('5.1 PUBLICADORES ENCONTRADOS AYER', rowsYesterday);
     printPublisherCountsFromRows('6. PUBLICADORES REMOVIDOS POR FECHA', rowsRemovedByDate);
 
     // ------------------------------
     // 3.10 FILTER POSTS BY PUBLISHER WHITELIST
     // ------------------------------
-    const rowsFiltered = rowsToday.filter(r =>
-      allowedPublishersNormalized.has(normalize(r.website))
-    );
-
-    const rowsRemovedByWhitelist = rowsToday.filter(r =>
-      !allowedPublishersNormalized.has(normalize(r.website))
+    const rowsFiltered = filterRowsByWhitelist(rowsToday);
+    const rowsFilteredYesterday = filterRowsByWhitelist(rowsYesterday);
+    const rowsRemovedByWhitelist = rowsToday.filter(row =>
+      !allowedPublishersNormalized.has(normalize(row.website))
     );
 
     printRawList('7. FILTRO POR TU LISTA', rowsFiltered, formatRowLine);
+    printRawList('7.1 FILTRO POR TU LISTA - AYER', rowsFilteredYesterday, formatRowLine);
     printRawList('8. REMOVIDOS POR TU LISTA', rowsRemovedByWhitelist, formatRowLine);
-
     printPublisherCountsFromRows('9. PUBLICADORES FINALES DESPUÉS DEL FILTRO', rowsFiltered);
+    printPublisherCountsFromRows('9.1 PUBLICADORES FINALES DESPUÉS DEL FILTRO - AYER', rowsFilteredYesterday);
     printPublisherCountsFromRows('10. PUBLICADORES REMOVIDOS POR TU LISTA', rowsRemovedByWhitelist);
 
     rowsFiltered.sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
+    rowsFilteredYesterday.sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
 
     // ------------------------------
     // 3.11 FULL DELIVERY SUMMARY
     // ------------------------------
-    console.log('');
-    console.log('==================================================');
-    console.log('RESUMEN FOTOS VS CICLO COMPLETO');
-    console.log('==================================================');
-    console.log(`Total esperado del día: ${deliveryMatcher.summary.totalExpected}`);
-    console.log(`Aprobados: ${deliveryMatcher.summary.approved}`);
-    console.log(`Completados pendiente aprobación: ${deliveryMatcher.summary.completedPendingApproval}`);
-    console.log(`Total completados: ${deliveryMatcher.summary.completedTotal}`);
-    console.log(`Total pendientes: ${deliveryMatcher.summary.pendingTotal}`);
-    console.log(`Pendientes screenshot: ${deliveryMatcher.summary.pendingScreenshot}`);
-    console.log(`Activos sin registro screenshot: ${deliveryMatcher.summary.activeNoScreenshotRecord}`);
-    console.log(`Vistos antes pero removidos: ${deliveryMatcher.summary.previouslySeenRemovedFromDashboard || 0}`);
-    console.log(`Unknown: ${deliveryMatcher.summary.unknown || 0}`);
+    printDeliverySummaryBlock('RESUMEN FOTOS VS CICLO COMPLETO - HOY', deliveryMatcher);
+    printDeliverySummaryBlock('RESUMEN FOTOS VS CICLO COMPLETO - AYER', yesterdayDeliveryMatcher);
 
     // ------------------------------
     // 3.12 SNAPSHOT DIFF
     // ------------------------------
     const previousKeys = await loadPreviousSnapshot(reportsFolder, reportDate);
-
     const {
       rowsWithStatus,
       newRows,
@@ -238,7 +280,6 @@ const {
 
     rowsWithStatus.sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
     removedRows.sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
-
     const rowsFilteredAfter5PM = rowsWithStatus.filter(row => isAtOrAfter5PM(row.scheduled));
 
     // ------------------------------
@@ -278,6 +319,7 @@ const {
     // 3.14 SAVE DELIVERY HISTORY AND LOAD 3-DAY BUNDLE
     // ------------------------------
     saveDeliveryHistory(reportsFolder, reportDate, deliveryMatcher.deliveries);
+    saveDeliveryHistory(reportsFolder, yesterdayReportDate, yesterdayDeliveryMatcher.deliveries);
 
     const deliveryHistoryBundle = loadRecentDeliveryHistoryBundle(
       reportsFolder,
@@ -307,7 +349,11 @@ const {
       sameRows,
       generatedAtRD,
       reportDate,
+      yesterdayReportDate,
+      todayString,
+      yesterdayString,
       deliveryMatcher,
+      yesterdayDeliveryMatcher,
       deliveryHistoryBundle
     });
 
@@ -315,10 +361,10 @@ const {
     // 3.16 SAVE SNAPSHOT
     // ------------------------------
     saveSnapshot(reportsFolder, reportDate, rowsFiltered);
+
     // ==================================================
     // END MODULE 03 - MAIN FLOW
     // ==================================================
-
 
     // ==================================================
     // MODULE 04 - CLEANUP / ERROR HANDLING
@@ -329,10 +375,8 @@ const {
     console.error('ERROR');
     console.error('==================================================');
     console.error(error.message);
-
     console.log('');
     console.log('URL donde falló:', page.url());
-
     await page.waitForTimeout(10000);
   } finally {
     await browser.close();
