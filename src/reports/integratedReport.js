@@ -2,6 +2,8 @@ const fs = require('fs');
 const path = require('path');
 
 const {
+  normalize,
+  allowedPublishersNormalized,
   getWhatsappGroupName,
   getPublisherMention,
   publisherRequiresNotification,
@@ -44,10 +46,59 @@ const generateIntegratedHtmlReportByPublisher = ({
   deliveryHistoryBundle = []
 }) => {
   const reportCss = buildReportCss();
+
+  const isAllowedDeliveryPublisher = (row) => {
+    return allowedPublishersNormalized.has(normalize(row.website));
+  };
+
+  const filterDeliveryMatcherByPublisherList = (matcher) => {
+    if (!matcher) return null;
+
+    const allDeliveries = matcher.deliveries || [];
+    const deliveries = allDeliveries.filter(isAllowedDeliveryPublisher);
+
+    const completedStatuses = new Set([
+      'APPROVED',
+      'COMPLETED_PENDING_APPROVAL'
+    ]);
+
+    const pending = (matcher.pending || allDeliveries.filter(row => !completedStatuses.has(row.status)))
+      .filter(isAllowedDeliveryPublisher);
+
+    const completed = (matcher.completed || allDeliveries.filter(row => completedStatuses.has(row.status)))
+      .filter(isAllowedDeliveryPublisher);
+
+    const countByStatus = (status) => {
+      return deliveries.filter(row => row.status === status).length;
+    };
+
+    return {
+      ...matcher,
+      deliveries,
+      pending,
+      completed,
+      summary: {
+        ...(matcher.summary || {}),
+        totalExpected: deliveries.length,
+        approved: countByStatus('APPROVED'),
+        completedPendingApproval: countByStatus('COMPLETED_PENDING_APPROVAL'),
+        pendingScreenshot: countByStatus('PENDING_SCREENSHOT'),
+        activeNoScreenshotRecord: countByStatus('ACTIVE_NO_SCREENSHOT_RECORD'),
+        previouslySeenRemovedFromDashboard: countByStatus('PREVIOUSLY_SEEN_REMOVED_FROM_DASHBOARD'),
+        unknown: countByStatus('UNKNOWN'),
+        completedTotal: completed.length,
+        pendingTotal: pending.length
+      }
+    };
+  };
+
+  const filteredDeliveryMatcher = filterDeliveryMatcherByPublisherList(deliveryMatcher);
+  const filteredYesterdayDeliveryMatcher = filterDeliveryMatcherByPublisherList(yesterdayDeliveryMatcher);
+
   const reportScripts = buildReportScripts({
     reportDate,
-    deliveryMatcher,
-    yesterdayDeliveryMatcher
+    deliveryMatcher: filteredDeliveryMatcher,
+    yesterdayDeliveryMatcher: filteredYesterdayDeliveryMatcher
   });
 
   const getPublisherCount = (rows) => {
@@ -460,7 +511,10 @@ const generateIntegratedHtmlReportByPublisher = ({
     const statusClass = getDeliveryStatusClass(row.status);
 
     return `
-      <div class="delivery-card ${statusClass}">
+      <div
+        class="delivery-card ${statusClass}"
+        data-delivery-publisher="${escapeHtml(row.website)}"
+      >
         <div class="delivery-card-top">
           <div>
             <div class="delivery-title">
@@ -536,6 +590,34 @@ const generateIntegratedHtmlReportByPublisher = ({
   };
 
   const renderDeliveryPanel = (historyItem) => {
+    const publisherOptions = Array.from(
+      new Set((historyItem.rows || []).map(row => row.website).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b));
+
+    const filterHtml = `
+      <div class="delivery-filter-bar">
+        <label>
+          Filtrar publisher:
+          <select
+            class="delivery-publisher-filter"
+            onchange="filterDeliveryPanelPublishers('${escapeHtml(historyItem.panelId)}', this.value)"
+          >
+            <option value="">Todos los publishers</option>
+            ${publisherOptions.map(publisher => `
+              <option value="${escapeHtml(publisher)}">${escapeHtml(publisher)}</option>
+            `).join('')}
+          </select>
+        </label>
+
+        <span
+          class="delivery-filter-count"
+          id="delivery-filter-count-${escapeHtml(historyItem.panelId)}"
+        >
+          Mostrando ${historyItem.rows.length} de ${historyItem.rows.length}
+        </span>
+      </div>
+    `;
+
     const pendingHtml = historyItem.pending.length
       ? historyItem.pending.map(renderDeliveryCard).join('')
       : '<div class="empty">No hay publicaciones pendientes para este día.</div>';
@@ -554,6 +636,7 @@ const generateIntegratedHtmlReportByPublisher = ({
         data-pending="${historyItem.summary.pendingTotal || 0}"
       >
         ${renderDeliveryHistorySummaryGrid(historyItem.summary)}
+        ${filterHtml}
 
         <h3 class="delivery-heading">Pendientes</h3>
         ${pendingHtml}
@@ -703,8 +786,8 @@ const generateIntegratedHtmlReportByPublisher = ({
     <button class="tab-button active" onclick="showTab('todos', this)">Reporte completo (${allRows.length})</button>
     <button class="tab-button" onclick="showTab('after5pm', this)">5PM en adelante (${reminderRows.length})</button>
     <button class="tab-button" onclick="showTab('removed', this)">Removidos (${removedRows.length})</button>
-    <button class="tab-button" onclick="showTab('delivery', this)">Screenshot Status Today (${deliveryMatcher ? deliveryMatcher.summary.pendingTotal : 0} pending)</button>
-    <button class="tab-button" onclick="showTab('delivery-yesterday', this)">Screenshot Status Yesterday (${yesterdayDeliveryMatcher ? yesterdayDeliveryMatcher.summary.pendingTotal : 0} pending)</button>
+    <button class="tab-button" onclick="showTab('delivery', this)">Screenshot Status Today (${filteredDeliveryMatcher ? filteredDeliveryMatcher.summary.pendingTotal : 0} pending)</button>
+    <button class="tab-button" onclick="showTab('delivery-yesterday', this)">Screenshot Status Yesterday (${filteredYesterdayDeliveryMatcher ? filteredYesterdayDeliveryMatcher.summary.pendingTotal : 0} pending)</button>
   </div>
 
   ${renderSection(
@@ -733,7 +816,7 @@ const generateIntegratedHtmlReportByPublisher = ({
     sectionId: 'delivery',
     sectionNumber: '4',
     title: 'Screenshot Status Today',
-    matcher: deliveryMatcher,
+    matcher: filteredDeliveryMatcher,
     reportDateValue: reportDate,
     displayDate: todayString,
     label: 'Today'
@@ -743,7 +826,7 @@ const generateIntegratedHtmlReportByPublisher = ({
     sectionId: 'delivery-yesterday',
     sectionNumber: '5',
     title: 'Screenshot Status Yesterday',
-    matcher: yesterdayDeliveryMatcher,
+    matcher: filteredYesterdayDeliveryMatcher,
     reportDateValue: yesterdayReportDate,
     displayDate: yesterdayString,
     label: 'Yesterday'

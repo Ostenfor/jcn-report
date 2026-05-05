@@ -598,6 +598,33 @@ const buildReportScripts = ({
       }
     }
 
+    function filterDeliveryPanelPublishers(panelId, publisherName) {
+      const panel = document.getElementById('delivery-history-panel-' + panelId);
+      if (!panel) return;
+
+      const cards = Array.from(panel.querySelectorAll('.delivery-card'));
+      let visibleCount = 0;
+
+      cards.forEach(card => {
+        const cardPublisher = card.dataset.deliveryPublisher || '';
+        const shouldShow = !publisherName || cardPublisher === publisherName;
+
+        card.style.display = shouldShow ? '' : 'none';
+
+        if (shouldShow) {
+          visibleCount += 1;
+        }
+      });
+
+      const countEl = document.getElementById('delivery-filter-count-' + panelId);
+
+      if (countEl) {
+        const total = cards.length;
+        const label = publisherName || 'Todos los publishers';
+        countEl.innerText = 'Mostrando ' + visibleCount + ' de ' + total + ' | ' + label;
+      }
+    }
+
     updateSectionMessages('todos');
     updateSectionMessages('after5pm');
     restoreSavedStates();

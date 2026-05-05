@@ -770,6 +770,47 @@ const buildReportCss = () => {
       font-weight: 800;
     }
 
+    .delivery-filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 0 0 18px 0;
+      padding: 12px;
+      background: rgba(59,130,246,0.07);
+      border: 1px solid rgba(96,165,250,0.25);
+      border-radius: 14px;
+    }
+
+    .delivery-filter-bar label {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: #bfdbfe;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .delivery-publisher-filter {
+      min-width: 260px;
+      max-width: 420px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--bg-soft);
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 800;
+      outline: none;
+    }
+
+    .delivery-filter-count {
+      color: #fde68a;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
     .delivery-history-panel {
       display: none;
     }
@@ -1169,6 +1210,22 @@ const buildReportCss = () => {
       .delivery-history-controls {
         align-items: stretch;
         flex-direction: column;
+      }
+
+      .delivery-filter-bar {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .delivery-filter-bar label {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .delivery-publisher-filter {
+        width: 100%;
+        min-width: 0;
+        max-width: none;
       }
 
       .delivery-card {
