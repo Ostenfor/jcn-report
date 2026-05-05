@@ -771,16 +771,24 @@ const buildReportCss = () => {
     }
 
     .delivery-filter-bar {
+      position: sticky;
+      top: 8px;
+      z-index: 90;
+
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
+
       margin: 0 0 18px 0;
       padding: 12px;
-      background: rgba(59,130,246,0.07);
-      border: 1px solid rgba(96,165,250,0.25);
+
+      background: rgba(12, 17, 24, 0.97);
+      border: 1px solid rgba(96,165,250,0.38);
       border-radius: 14px;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.35);
+      backdrop-filter: blur(10px);
     }
 
     .delivery-filter-bar label {
@@ -1213,8 +1221,15 @@ const buildReportCss = () => {
       }
 
       .delivery-filter-bar {
+        position: sticky;
+        top: 8px;
+        z-index: 90;
+
         align-items: stretch;
         flex-direction: column;
+
+        margin-bottom: 14px;
+        padding: 10px;
       }
 
       .delivery-filter-bar label {
