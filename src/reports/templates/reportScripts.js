@@ -59,7 +59,7 @@ const buildReportScripts = ({
       }
 
       if (value === 'saturday') {
-        return 'hello ' + mention + ' this are the saturday publications friendly reminder in advance';
+        return 'Hello ' + mention + ' these are the Saturday publications. Sending this friendly reminder in advance.';
       }
 
       if (value === 'updated') {

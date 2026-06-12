@@ -148,7 +148,7 @@ const generateIntegratedHtmlReportByPublisher = ({
           <select id="message-select-${sectionKey}" onchange="updateSectionMessages('${sectionKey}')">
             <option value="hello" ${defaultMessage === 'hello' ? 'selected' : ''}>hello @ for today we have</option>
             <option value="reminder" ${defaultMessage === 'reminder' ? 'selected' : ''}>last friendly reminder for today @</option>
-            <option value="saturday" ${defaultMessage === 'saturday' ? 'selected' : ''}>hello @ this are the saturday publications friendly reminder in advance</option>
+            <option value="saturday" ${defaultMessage === 'saturday' ? 'selected' : ''}>Hello @ these are the Saturday publications. Sending this friendly reminder in advance.</option>
             <option value="updated" ${defaultMessage === 'updated' ? 'selected' : ''}>List updated @</option>
           </select>
         </label>

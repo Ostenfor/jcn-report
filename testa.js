@@ -335,7 +335,7 @@ const printDeliverySummaryBlock = (title, matcher) => {
     printFinalGroupedByPublisher({
       title: '15. RESULTADO FINAL AGRUPADO - SABADO EN ADVANCE',
       rows: saturdayRows,
-      messageHeader: 'hello @ this are the saturday publications friendly reminder in advance',
+      messageHeader: 'Hello @ these are the Saturday publications. Sending this friendly reminder in advance.',
       parseDate,
       formatRowLine,
       getPublisherMention
