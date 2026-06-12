@@ -64,7 +64,7 @@ const publisherConfigRows = [
   {
     publisher: 'SY Alerts',
     group: 'JCN SY 2025',
-    notes: 'Status broken link'
+    notes: 'No notes'
   },
   {
     publisher: 'Five Towns Central',

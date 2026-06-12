@@ -58,6 +58,10 @@ const buildReportScripts = ({
         return 'last friendly reminder for today ' + mention;
       }
 
+      if (value === 'saturday') {
+        return 'hello ' + mention + ' this are the saturday publications friendly reminder in advance';
+      }
+
       if (value === 'updated') {
         return 'List updated ' + mention;
       }
@@ -129,7 +133,7 @@ const buildReportScripts = ({
         button.classList.add('active');
       }
 
-      if (sectionId === 'todos' || sectionId === 'after5pm') {
+      if (sectionId === 'todos' || sectionId === 'after5pm' || sectionId === 'saturday') {
         showProgressFooter('whatsapp');
         updateSectionMessages(sectionId);
         updateSectionStatus(sectionId);
@@ -244,6 +248,7 @@ const buildReportScripts = ({
     function updateAllSectionStatuses() {
       updateSectionStatus('todos');
       updateSectionStatus('after5pm');
+      updateSectionStatus('saturday');
     }
 
     function applySendedState(sentKey, checked) {
@@ -625,8 +630,33 @@ const buildReportScripts = ({
       }
     }
 
+    function filterImportantClients(query) {
+      const normalized = String(query || '').trim().toLowerCase();
+      const grid = document.getElementById('important-client-grid');
+      if (!grid) return;
+
+      const cards = Array.from(grid.querySelectorAll('.important-client-card'));
+      let visibleCount = 0;
+
+      cards.forEach(card => {
+        const searchText = card.dataset.clientSearch || '';
+        const shouldShow = !normalized || searchText.includes(normalized);
+        card.style.display = shouldShow ? '' : 'none';
+
+        if (shouldShow) {
+          visibleCount += 1;
+        }
+      });
+
+      const count = document.getElementById('important-client-count');
+      if (count) {
+        count.innerText = visibleCount + ' de ' + cards.length;
+      }
+    }
+
     updateSectionMessages('todos');
     updateSectionMessages('after5pm');
+    updateSectionMessages('saturday');
     restoreSavedStates();
     updateAllSectionStatuses();
     updateSectionStatus('todos');

@@ -3,6 +3,8 @@ const path = require('path');
 
 const {
   normalize,
+  splitNotes,
+  publisherConfigRows,
   allowedPublishersNormalized,
   getWhatsappGroupName,
   getPublisherMention,
@@ -33,6 +35,7 @@ const {
 const generateIntegratedHtmlReportByPublisher = ({
   allRows,
   reminderRows,
+  saturdayRows = [],
   removedRows,
   newRows,
   sameRows,
@@ -41,6 +44,7 @@ const generateIntegratedHtmlReportByPublisher = ({
   yesterdayReportDate = '',
   todayString = '',
   yesterdayString = '',
+  tomorrowString = '',
   deliveryMatcher = null,
   yesterdayDeliveryMatcher = null,
   deliveryHistoryBundle = []
@@ -144,6 +148,7 @@ const generateIntegratedHtmlReportByPublisher = ({
           <select id="message-select-${sectionKey}" onchange="updateSectionMessages('${sectionKey}')">
             <option value="hello" ${defaultMessage === 'hello' ? 'selected' : ''}>hello @ for today we have</option>
             <option value="reminder" ${defaultMessage === 'reminder' ? 'selected' : ''}>last friendly reminder for today @</option>
+            <option value="saturday" ${defaultMessage === 'saturday' ? 'selected' : ''}>hello @ this are the saturday publications friendly reminder in advance</option>
             <option value="updated" ${defaultMessage === 'updated' ? 'selected' : ''}>List updated @</option>
           </select>
         </label>
@@ -383,6 +388,84 @@ const generateIntegratedHtmlReportByPublisher = ({
           ${emptyMessage}
           ${cardsHtml}
           ${noNotificationBox}
+        </div>
+      </section>
+    `;
+  };
+
+  const renderImportantClientsSection = () => {
+    const clients = publisherConfigRows
+      .slice()
+      .sort((a, b) => a.publisher.localeCompare(b.publisher));
+
+    const clientCards = clients.map(row => {
+      const notes = splitNotes(row.notes);
+      const aliases = row.aliases || [];
+      const searchText = [
+        row.publisher,
+        row.group,
+        row.notes,
+        aliases.join(' '),
+        row.requiresNotification === false ? 'no notification' : 'notification'
+      ].filter(Boolean).join(' ');
+
+      const noteLabels = notes.length
+        ? notes.map(note => `<span class="note-label">${escapeHtml(note)}</span>`).join('')
+        : '<span class="note-label muted-note">No notes</span>';
+
+      const aliasesHtml = aliases.length
+        ? `<div class="client-aliases">Aliases: ${aliases.map(alias => escapeHtml(alias)).join(', ')}</div>`
+        : '';
+
+      const notificationLabel = row.requiresNotification === false
+        ? '<span class="client-status no-notify">No notification</span>'
+        : '<span class="client-status notify">Notification required</span>';
+
+      return `
+        <div class="important-client-card" data-client-search="${escapeHtml(searchText.toLowerCase())}">
+          <div class="important-client-top">
+            <div>
+              <h3>${escapeHtml(row.publisher)}</h3>
+              ${aliasesHtml}
+            </div>
+            ${notificationLabel}
+          </div>
+
+          <div class="client-group-row">
+            <strong>WhatsApp:</strong>
+            <span>${escapeHtml(row.group || 'N/A')}</span>
+          </div>
+
+          <div class="client-notes-row">
+            <strong>Notes:</strong>
+            <div class="notes-list">${noteLabels}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <section class="report-section" id="important-clients">
+        <div class="section-title-row">
+          <h2>7. Clientes importantes para filtro</h2>
+          <button class="collapse-btn" onclick="toggleSectionBody('important-clients')">
+            Colapsar / Expandir
+          </button>
+        </div>
+        <div class="section-body" id="section-body-important-clients">
+          <div class="section-summary">${clients.length} clientes configurados para busqueda manual.</div>
+          <div class="client-search-bar">
+            <input
+              type="search"
+              id="important-client-search"
+              placeholder="Buscar cliente, grupo, alias o nota..."
+              oninput="filterImportantClients(this.value)"
+            >
+            <span id="important-client-count">${clients.length} de ${clients.length}</span>
+          </div>
+          <div class="important-client-grid" id="important-client-grid" data-total="${clients.length}">
+            ${clientCards}
+          </div>
         </div>
       </section>
     `;
@@ -785,9 +868,11 @@ const generateIntegratedHtmlReportByPublisher = ({
   <div class="tabs">
     <button class="tab-button active" onclick="showTab('todos', this)">Reporte completo (${allRows.length})</button>
     <button class="tab-button" onclick="showTab('after5pm', this)">5PM en adelante (${reminderRows.length})</button>
+    <button class="tab-button" onclick="showTab('saturday', this)">Saturday advance (${saturdayRows.length})</button>
     <button class="tab-button" onclick="showTab('removed', this)">Removidos (${removedRows.length})</button>
     <button class="tab-button" onclick="showTab('delivery', this)">Screenshot Status Today (${filteredDeliveryMatcher ? filteredDeliveryMatcher.summary.pendingTotal : 0} pending)</button>
     <button class="tab-button" onclick="showTab('delivery-yesterday', this)">Screenshot Status Yesterday (${filteredYesterdayDeliveryMatcher ? filteredYesterdayDeliveryMatcher.summary.pendingTotal : 0} pending)</button>
+    <button class="tab-button" onclick="showTab('important-clients', this)">Clientes importantes (${publisherConfigRows.length})</button>
   </div>
 
   ${renderSection(
@@ -805,8 +890,15 @@ const generateIntegratedHtmlReportByPublisher = ({
   )}
 
   ${renderSection(
+    'saturday',
+    `3. Saturday advance - ${tomorrowString}`,
+    saturdayRows,
+    'saturday'
+  )}
+
+  ${renderSection(
     'removed',
-    '3. Removidos en esta versión',
+    '4. Removidos en esta versión',
     removedRows,
     '',
     { removedSection: true }
@@ -814,7 +906,7 @@ const generateIntegratedHtmlReportByPublisher = ({
 
   ${renderDeliverySection({
     sectionId: 'delivery',
-    sectionNumber: '4',
+    sectionNumber: '5',
     title: 'Screenshot Status Today',
     matcher: filteredDeliveryMatcher,
     reportDateValue: reportDate,
@@ -824,13 +916,15 @@ const generateIntegratedHtmlReportByPublisher = ({
 
   ${renderDeliverySection({
     sectionId: 'delivery-yesterday',
-    sectionNumber: '5',
+    sectionNumber: '6',
     title: 'Screenshot Status Yesterday',
     matcher: filteredYesterdayDeliveryMatcher,
     reportDateValue: yesterdayReportDate,
     displayDate: yesterdayString,
     label: 'Yesterday'
   })}
+
+  ${renderImportantClientsSection()}
 
   <div class="fixed-progress-footer" id="whatsapp-progress-footer">
     <div class="fixed-progress-inner">

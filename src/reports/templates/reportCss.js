@@ -637,6 +637,126 @@ const buildReportCss = () => {
       border: 1px solid rgba(245,158,11,0.35);
     }
 
+    .client-search-bar {
+      position: sticky;
+      top: 8px;
+      z-index: 70;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px;
+      margin-bottom: 16px;
+      background: rgba(12, 17, 24, 0.97);
+      border: 1px solid rgba(96,165,250,0.38);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+    }
+
+    .client-search-bar input {
+      flex: 1;
+      min-width: 180px;
+      min-height: 40px;
+      padding: 9px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--bg-soft);
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 800;
+      outline: none;
+    }
+
+    .client-search-bar span {
+      color: #fde68a;
+      font-size: 13px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .important-client-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .important-client-card {
+      background: linear-gradient(180deg, rgba(18,26,36,0.98), rgba(15,23,42,0.98));
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: var(--shadow);
+      min-width: 0;
+    }
+
+    .important-client-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .important-client-top h3 {
+      margin: 0;
+      font-size: 17px;
+      line-height: 1.25;
+      color: #ffffff;
+    }
+
+    .client-aliases {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      overflow-wrap: anywhere;
+    }
+
+    .client-status {
+      flex-shrink: 0;
+      border-radius: 999px;
+      padding: 5px 9px;
+      font-size: 11px;
+      font-weight: 900;
+      white-space: nowrap;
+      border: 1px solid var(--line);
+    }
+
+    .client-status.notify {
+      color: #bbf7d0;
+      background: rgba(34,197,94,0.12);
+      border-color: rgba(34,197,94,0.35);
+    }
+
+    .client-status.no-notify {
+      color: #fde68a;
+      background: rgba(245,158,11,0.14);
+      border-color: rgba(245,158,11,0.38);
+    }
+
+    .client-group-row,
+    .client-notes-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      color: #e5e7eb;
+      font-size: 13px;
+      line-height: 1.35;
+      margin-top: 10px;
+      overflow-wrap: anywhere;
+    }
+
+    .client-group-row strong,
+    .client-notes-row strong {
+      color: #bfdbfe;
+      min-width: 76px;
+      font-weight: 900;
+    }
+
+    .muted-note {
+      opacity: 0.65;
+    }
+
     .toast {
       position: fixed;
       left: 50%;
@@ -1183,6 +1303,30 @@ const buildReportCss = () => {
 
       .line {
         font-size: 13px;
+      }
+
+      .client-search-bar {
+        align-items: stretch;
+        flex-direction: column;
+        padding: 10px;
+      }
+
+      .client-search-bar input {
+        width: 100%;
+        min-width: 0;
+      }
+
+      .important-client-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+
+      .important-client-top {
+        flex-direction: column;
+      }
+
+      .client-status {
+        white-space: normal;
       }
 
       .toast {

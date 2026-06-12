@@ -83,6 +83,10 @@ const getReportDateForFileNameByOffset = (offsetDays = 0) => {
   }).format(getRDDate(offsetDays));
 };
 
+const getTomorrowStringRD = () => {
+  return getDateStringRDByOffset(-1);
+};
+
 const getScheduledDatePart = (row) => {
   return row?.scheduled?.split(',')[0]?.trim() || '';
 };
@@ -141,6 +145,7 @@ const printDeliverySummaryBlock = (title, matcher) => {
     // ------------------------------
     const todayString = getTodayStringRD();
     const yesterdayString = getDateStringRDByOffset(1);
+    const tomorrowString = getTomorrowStringRD();
     const reportsFolder = getReportsFolderPath();
     const reportDate = getReportDateForFileName();
     const yesterdayReportDate = getReportDateForFileNameByOffset(1);
@@ -151,6 +156,7 @@ const printDeliverySummaryBlock = (title, matcher) => {
     console.log('==================================================');
     console.log(`Today RD display: ${todayString}`);
     console.log(`Yesterday RD display: ${yesterdayString}`);
+    console.log(`Tomorrow RD display: ${tomorrowString}`);
     console.log(`Today report key: ${reportDate}`);
     console.log(`Yesterday report key: ${yesterdayReportDate}`);
 
@@ -210,6 +216,7 @@ const printDeliverySummaryBlock = (title, matcher) => {
     // ------------------------------
     const rowsToday = filterRowsByDate(rows, todayString);
     const rowsYesterday = filterRowsByDate(rows, yesterdayString);
+    const rowsTomorrow = filterRowsByDate(rows, tomorrowString);
     const rowsRemovedByDate = rows.filter(row => getScheduledDatePart(row) !== todayString);
 
     // ------------------------------
@@ -237,9 +244,11 @@ const printDeliverySummaryBlock = (title, matcher) => {
     printDeliveryMatcherSummary(deliveryMatcher);
     printRawList(`3. FILTRO SOLO HOY (${todayString})`, rowsToday, formatRowLine);
     printRawList(`3.1 FILTRO SOLO AYER (${yesterdayString})`, rowsYesterday, formatRowLine);
+    printRawList(`3.2 FILTRO SOLO MANANA (${tomorrowString})`, rowsTomorrow, formatRowLine);
     printRawList(`4. REMOVIDOS POR FECHA (NO SON DE HOY ${todayString})`, rowsRemovedByDate, formatRowLine);
     printPublisherCountsFromRows('5. PUBLICADORES ENCONTRADOS HOY', rowsToday);
     printPublisherCountsFromRows('5.1 PUBLICADORES ENCONTRADOS AYER', rowsYesterday);
+    printPublisherCountsFromRows('5.2 PUBLICADORES ENCONTRADOS MANANA', rowsTomorrow);
     printPublisherCountsFromRows('6. PUBLICADORES REMOVIDOS POR FECHA', rowsRemovedByDate);
 
     // ------------------------------
@@ -247,19 +256,23 @@ const printDeliverySummaryBlock = (title, matcher) => {
     // ------------------------------
     const rowsFiltered = filterRowsByWhitelist(rowsToday);
     const rowsFilteredYesterday = filterRowsByWhitelist(rowsYesterday);
+    const rowsFilteredTomorrow = filterRowsByWhitelist(rowsTomorrow);
     const rowsRemovedByWhitelist = rowsToday.filter(row =>
       !allowedPublishersNormalized.has(normalize(row.website))
     );
 
     printRawList('7. FILTRO POR TU LISTA', rowsFiltered, formatRowLine);
     printRawList('7.1 FILTRO POR TU LISTA - AYER', rowsFilteredYesterday, formatRowLine);
+    printRawList('7.2 FILTRO POR TU LISTA - MANANA', rowsFilteredTomorrow, formatRowLine);
     printRawList('8. REMOVIDOS POR TU LISTA', rowsRemovedByWhitelist, formatRowLine);
     printPublisherCountsFromRows('9. PUBLICADORES FINALES DESPUÉS DEL FILTRO', rowsFiltered);
     printPublisherCountsFromRows('9.1 PUBLICADORES FINALES DESPUÉS DEL FILTRO - AYER', rowsFilteredYesterday);
+    printPublisherCountsFromRows('9.2 PUBLICADORES FINALES DESPUES DEL FILTRO - MANANA', rowsFilteredTomorrow);
     printPublisherCountsFromRows('10. PUBLICADORES REMOVIDOS POR TU LISTA', rowsRemovedByWhitelist);
 
     rowsFiltered.sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
     rowsFilteredYesterday.sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
+    rowsFilteredTomorrow.sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
 
     // ------------------------------
     // 3.11 FULL DELIVERY SUMMARY
@@ -281,6 +294,10 @@ const printDeliverySummaryBlock = (title, matcher) => {
     rowsWithStatus.sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
     removedRows.sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
     const rowsFilteredAfter5PM = rowsWithStatus.filter(row => isAtOrAfter5PM(row.scheduled));
+    const saturdayRows = rowsFilteredTomorrow.map(row => ({
+      ...row,
+      isNew: false
+    }));
 
     // ------------------------------
     // 3.13 CONSOLE OUTPUT
@@ -315,6 +332,15 @@ const printDeliverySummaryBlock = (title, matcher) => {
       getPublisherMention
     });
 
+    printFinalGroupedByPublisher({
+      title: '15. RESULTADO FINAL AGRUPADO - SABADO EN ADVANCE',
+      rows: saturdayRows,
+      messageHeader: 'hello @ this are the saturday publications friendly reminder in advance',
+      parseDate,
+      formatRowLine,
+      getPublisherMention
+    });
+
     // ------------------------------
     // 3.14 SAVE DELIVERY HISTORY AND LOAD 3-DAY BUNDLE
     // ------------------------------
@@ -344,6 +370,7 @@ const printDeliverySummaryBlock = (title, matcher) => {
     generateIntegratedHtmlReportByPublisher({
       allRows: rowsWithStatus,
       reminderRows: rowsFilteredAfter5PM,
+      saturdayRows,
       removedRows,
       newRows,
       sameRows,
@@ -352,6 +379,7 @@ const printDeliverySummaryBlock = (title, matcher) => {
       yesterdayReportDate,
       todayString,
       yesterdayString,
+      tomorrowString,
       deliveryMatcher,
       yesterdayDeliveryMatcher,
       deliveryHistoryBundle
