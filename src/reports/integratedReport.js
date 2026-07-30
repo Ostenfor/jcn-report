@@ -40,6 +40,7 @@ const generateIntegratedHtmlReportByPublisher = ({
   newRows,
   sameRows,
   generatedAtRD,
+  generatedAtEpochMs = Date.now(),
   reportDate,
   yesterdayReportDate = '',
   todayString = '',
@@ -101,6 +102,7 @@ const generateIntegratedHtmlReportByPublisher = ({
 
   const reportScripts = buildReportScripts({
     reportDate,
+    generatedAtEpochMs,
     deliveryMatcher: filteredDeliveryMatcher,
     yesterdayDeliveryMatcher: filteredYesterdayDeliveryMatcher
   });
@@ -820,11 +822,24 @@ const generateIntegratedHtmlReportByPublisher = ({
   </style>
 </head>
 <body>
+  <div
+    class="freshness-warning freshness-warning-hidden"
+    id="freshness-warning"
+    role="alert"
+    aria-live="assertive"
+  >
+    <div class="freshness-warning-icon" aria-hidden="true">⚠</div>
+    <div>
+      <div class="freshness-warning-title" id="freshness-warning-title"></div>
+      <div class="freshness-warning-detail" id="freshness-warning-detail"></div>
+    </div>
+  </div>
+
   <h1>Reporte Integrado de Publishers</h1>
 
   <div class="generated-time">
     <span>Generado a las:</span>
-    <strong>${escapeHtml(generatedAtRD)}</strong>
+    <strong id="generated-at-value">${escapeHtml(generatedAtRD)}</strong>
   </div>
 
   <div class="top-summary">

@@ -356,6 +356,8 @@ const printDeliverySummaryBlock = (title, matcher) => {
     // ------------------------------
     // 3.15 HTML REPORT
     // ------------------------------
+    const generatedAt = new Date();
+    const generatedAtEpochMs = generatedAt.getTime();
     const generatedAtRD = new Intl.DateTimeFormat('en-US', {
       timeZone: 'America/Santo_Domingo',
       month: '2-digit',
@@ -365,7 +367,7 @@ const printDeliverySummaryBlock = (title, matcher) => {
       minute: '2-digit',
       second: '2-digit',
       hour12: true
-    }).format(new Date());
+    }).format(generatedAt);
 
     generateIntegratedHtmlReportByPublisher({
       allRows: rowsWithStatus,
@@ -375,6 +377,7 @@ const printDeliverySummaryBlock = (title, matcher) => {
       newRows,
       sameRows,
       generatedAtRD,
+      generatedAtEpochMs,
       reportDate,
       yesterdayReportDate,
       todayString,

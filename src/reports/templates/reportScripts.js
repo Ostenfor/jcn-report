@@ -1,5 +1,6 @@
 const buildReportScripts = ({
   reportDate,
+  generatedAtEpochMs,
   deliveryMatcher = null,
   yesterdayDeliveryMatcher = null
 }) => {
@@ -13,6 +14,10 @@ const buildReportScripts = ({
 
   return `
     const REPORT_DATE = ${JSON.stringify(reportDate)};
+    const GENERATED_AT_EPOCH_MS = ${JSON.stringify(generatedAtEpochMs)};
+    const REPORT_TIME_ZONE = 'America/Santo_Domingo';
+    const STALE_WARNING_MS = 5 * 60 * 60 * 1000;
+    const UNRELIABLE_WARNING_MS = 24 * 60 * 60 * 1000;
     const STORAGE_VERSION = 'v4';
 
     const DELIVERY_TOTAL = ${JSON.stringify(deliveryTotal)};
@@ -25,6 +30,94 @@ const buildReportScripts = ({
 
     const SENDED_PREFIX = 'jcn:' + STORAGE_VERSION + ':sended:' + REPORT_DATE + ':';
     const CONFIRMED_PREFIX = 'jcn:' + STORAGE_VERSION + ':publisher-confirmed:' + REPORT_DATE + ':';
+
+    function getDateKeyForTimeZone(date, timeZone) {
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).formatToParts(date);
+      const values = {};
+
+      parts.forEach(part => {
+        if (part.type !== 'literal') values[part.type] = part.value;
+      });
+
+      return values.year + '-' + values.month + '-' + values.day;
+    }
+
+    function formatFreshnessAge(ageMs) {
+      const totalMinutes = Math.max(0, Math.floor(ageMs / 60000));
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+
+      if (hours < 1) return minutes + ' minutos';
+      return hours + ' horas y ' + minutes + ' minutos';
+    }
+
+    function updateFreshnessWarning() {
+      const warning = document.getElementById('freshness-warning');
+      const title = document.getElementById('freshness-warning-title');
+      const detail = document.getElementById('freshness-warning-detail');
+
+      if (!warning || !title || !detail) return;
+
+      const nowMs = Date.now();
+      const currentRDDate = getDateKeyForTimeZone(new Date(nowMs), REPORT_TIME_ZONE);
+      const generatedAtIsValid = Number.isFinite(GENERATED_AT_EPOCH_MS);
+      const ageMs = generatedAtIsValid
+        ? Math.max(0, nowMs - GENERATED_AT_EPOCH_MS)
+        : Number.POSITIVE_INFINITY;
+      const reportIsTodayInRD = REPORT_DATE === currentRDDate;
+      const generatedLabel =
+        document.getElementById('generated-at-value')?.innerText ||
+        'fecha desconocida';
+
+      warning.classList.remove(
+        'freshness-warning-hidden',
+        'freshness-warning-yellow',
+        'freshness-warning-red'
+      );
+
+      if (
+        !generatedAtIsValid ||
+        !reportIsTodayInRD ||
+        ageMs >= UNRELIABLE_WARNING_MS
+      ) {
+        warning.classList.add('freshness-warning-red');
+        title.innerText = 'INFORMACIÓN NO CONFIABLE — ESTE REPORTE NO ESTÁ ACTUALIZADO';
+        detail.innerText =
+          'NO USES ESTOS DATOS PARA TRABAJAR. Reporte: ' +
+          REPORT_DATE +
+          ' | Fecha actual en República Dominicana: ' +
+          currentRDDate +
+          ' | Última actualización: ' +
+          generatedLabel +
+          (generatedAtIsValid
+            ? ' (hace ' + formatFreshnessAge(ageMs) + ').'
+            : '. No fue posible verificar cuándo se generó.');
+        document.title = '⛔ REPORTE DESACTUALIZADO — JCN';
+        return;
+      }
+
+      if (ageMs >= STALE_WARNING_MS) {
+        warning.classList.add('freshness-warning-yellow');
+        title.innerText = 'ATENCIÓN — EL REPORTE LLEVA MÁS DE 5 HORAS SIN ACTUALIZARSE';
+        detail.innerText =
+          'Verifica la automatización antes de confiar en cambios recientes. ' +
+          'Última actualización: ' +
+          generatedLabel +
+          ' (hace ' +
+          formatFreshnessAge(ageMs) +
+          ').';
+        document.title = '⚠ REPORTE CON RETRASO — JCN';
+        return;
+      }
+
+      warning.classList.add('freshness-warning-hidden');
+      document.title = 'Reporte Integrado de Publishers';
+    }
 
     const todosSection = document.getElementById('todos');
     if (todosSection) {
@@ -662,6 +755,8 @@ const buildReportScripts = ({
     updateSectionStatus('todos');
     showProgressFooter('whatsapp');
     updateDeliveryFooterProgress();
+    updateFreshnessWarning();
+    window.setInterval(updateFreshnessWarning, 60000);
   `;
 };
 
