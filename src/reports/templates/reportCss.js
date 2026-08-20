@@ -1737,6 +1737,162 @@ const buildReportCss = () => {
       background: rgba(14, 165, 233, 0.16);
     }
 
+    .summary-context-title {
+      margin: 18px 0 8px;
+      color: #94a3b8;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .status-journey {
+      margin: 12px 0 8px;
+      padding: 11px 12px 9px;
+      border: 1px solid #263449;
+      border-radius: 12px;
+      background: rgba(2, 6, 23, 0.42);
+    }
+
+    .journey-main-track {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(95px, 1fr));
+      gap: 5px;
+    }
+
+    .journey-main-track::before {
+      content: '';
+      position: absolute;
+      top: 13px;
+      left: 12.5%;
+      right: 12.5%;
+      height: 3px;
+      border-radius: 999px;
+      background: #334155;
+    }
+
+    .journey-step {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      justify-items: center;
+      gap: 5px;
+      border: 0;
+      padding: 0 3px;
+      color: #64748b;
+      background: transparent;
+      font-size: 10px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .journey-dot {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border: 3px solid #334155;
+      border-radius: 50%;
+      color: transparent;
+      background: #0f172a;
+      transition: 0.18s ease;
+    }
+
+    .journey-step.journey-done {
+      color: #86efac;
+    }
+
+    .journey-step.journey-done .journey-dot {
+      border-color: #22c55e;
+      color: #052e16;
+      background: #4ade80;
+    }
+
+    .journey-step.journey-active {
+      color: #e0f2fe;
+    }
+
+    .journey-step.journey-active .journey-dot {
+      border-color: #38bdf8;
+      color: #ffffff;
+      background: #0284c7;
+      box-shadow: 0 0 0 5px rgba(56, 189, 248, 0.14);
+    }
+
+    .journey-exceptions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      justify-content: center;
+      margin-top: 11px;
+      padding-top: 9px;
+      border-top: 1px solid #1e293b;
+    }
+
+    .journey-exception {
+      border: 1px solid #334155;
+      border-radius: 999px;
+      padding: 5px 9px;
+      color: #94a3b8;
+      background: #111827;
+      font-size: 10px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .journey-exception > span {
+      opacity: 0;
+    }
+
+    .journey-exception.journey-active > span {
+      opacity: 1;
+    }
+
+    .journey-exception.journey-active {
+      border-color: #f59e0b;
+      color: #fef3c7;
+      background: rgba(245, 158, 11, 0.17);
+      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.08);
+    }
+
+    .delivery-flag-button.journey-active {
+      border-color: #fb7185;
+      color: #ffe4e6;
+      background: rgba(244, 63, 94, 0.16);
+    }
+
+    .tracking-origin {
+      margin-top: 7px;
+      color: #64748b;
+      font-size: 9px;
+      text-align: right;
+    }
+
+    .tracking-origin.manual-active {
+      color: #fbbf24;
+      font-weight: 800;
+    }
+
+    .delivery-evidence {
+      margin-top: 9px;
+      border-top: 1px solid #243041;
+      padding-top: 8px;
+    }
+
+    .delivery-evidence summary {
+      width: fit-content;
+      color: #7dd3fc;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .delivery-evidence[open] summary {
+      margin-bottom: 10px;
+    }
+
     .delivery-updated-at {
       margin-top: 8px;
       color: #64748b;
@@ -1745,7 +1901,7 @@ const buildReportCss = () => {
 
     .compact-tracking {
       display: grid;
-      grid-template-columns: minmax(150px, 1fr) auto minmax(175px, auto) auto;
+      grid-template-columns: minmax(150px, 1fr) auto auto;
       gap: 8px;
       align-items: center;
       margin-top: 9px;
@@ -1753,6 +1909,28 @@ const buildReportCss = () => {
       border: 1px solid #334155;
       border-radius: 9px;
       background: rgba(2, 6, 23, 0.55);
+    }
+
+    .compact-tracking .status-journey {
+      grid-column: 1 / -1;
+      width: 100%;
+      margin: 2px 0 0;
+      padding: 8px 10px 6px;
+    }
+
+    .status-journey-compact .journey-dot {
+      width: 22px;
+      height: 22px;
+      border-width: 2px;
+    }
+
+    .status-journey-compact .journey-main-track::before {
+      top: 10px;
+    }
+
+    .status-journey-compact .journey-step,
+    .status-journey-compact .journey-exception {
+      font-size: 9px;
     }
 
     .tracking-inline-status {
@@ -1806,19 +1984,24 @@ const buildReportCss = () => {
       .compact-tracking {
         grid-template-columns: 1fr auto;
       }
+
+      .compact-tracking .status-journey {
+        grid-column: 1 / -1;
+      }
     }
 
     @media (max-width: 560px) {
-      .manual-control-grid,
       .compact-tracking {
         grid-template-columns: 1fr;
       }
 
-      .compact-status-select,
-      .tracking-manage-btn,
-      .return-auto-btn {
+      .tracking-manage-btn {
         width: 100%;
         max-width: none;
+      }
+
+      .journey-main-track {
+        grid-template-columns: repeat(4, minmax(62px, 1fr));
       }
 
       .delivery-delay-clock {

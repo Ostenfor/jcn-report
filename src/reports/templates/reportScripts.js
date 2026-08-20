@@ -142,16 +142,17 @@ const buildReportScripts = ({
       ACTIVE_NO_SCREENSHOT_RECORD: 'Activo - sin registro de captura',
       PREVIOUSLY_SEEN_REMOVED_FROM_DASHBOARD: 'Desapareció - revisar',
       UNKNOWN: 'Requiere revisión',
+      MANUAL_SCHEDULED: 'Programado',
       MANUAL_COMPLETED: 'Completado manualmente',
-      NO_RESPONSE: 'Cliente no respondió',
       NEEDS_REVIEW: 'Requiere revisión manual',
-      RESCHEDULED: 'Reprogramado',
+      RESCHEDULED: 'Se movió',
       REMOVED_CANCELLED: 'Eliminado / cancelado'
     };
 
     const CLOSED_DELIVERY_STATUSES = new Set([
       'APPROVED',
       'MANUAL_COMPLETED',
+      'RESCHEDULED',
       'REMOVED_CANCELLED'
     ]);
 
@@ -210,7 +211,17 @@ const buildReportScripts = ({
 
       try {
         const raw = localStorage.getItem(DELIVERY_OVERRIDE_PREFIX + deliveryKey);
-        return raw ? JSON.parse(raw) : null;
+        const parsed = raw ? JSON.parse(raw) : null;
+
+        if (parsed?.status === 'NO_RESPONSE') {
+          return {
+            ...parsed,
+            status: 'PENDING_SCREENSHOT',
+            flags: { ...(parsed.flags || {}), noResponse: true }
+          };
+        }
+
+        return parsed;
       } catch (error) {
         return null;
       }
@@ -219,15 +230,16 @@ const buildReportScripts = ({
     function saveDeliveryOverride(deliveryKey, value) {
       if (!deliveryKey) return;
 
-      if (!value || !value.status) {
+      const hasFlags = Boolean(value?.flags && Object.values(value.flags).some(Boolean));
+
+      if (!value || (!value.status && !hasFlags)) {
         localStorage.removeItem(DELIVERY_OVERRIDE_PREFIX + deliveryKey);
       } else {
         localStorage.setItem(
           DELIVERY_OVERRIDE_PREFIX + deliveryKey,
           JSON.stringify({
             status: value.status,
-            note: value.note || '',
-            rescheduledAt: value.rescheduledAt || '',
+            flags: value.flags || {},
             updatedAt: new Date().toISOString()
           })
         );
@@ -240,7 +252,9 @@ const buildReportScripts = ({
       const deliveryKey = element?.dataset?.deliveryKey || '';
       const automaticStatus = element?.dataset?.autoStatus || 'UNKNOWN';
       const override = getDeliveryOverride(deliveryKey);
-      const status = override?.status || automaticStatus;
+      const status = automaticStatus === 'APPROVED'
+        ? 'APPROVED'
+        : override?.status || automaticStatus;
 
       return {
         deliveryKey,
@@ -298,21 +312,33 @@ const buildReportScripts = ({
       if (status === 'COMPLETED_PENDING_APPROVAL') return 'status-completed';
       if (status === 'REMOVED_CANCELLED') return 'status-cancelled';
       if (status === 'RESCHEDULED') return 'status-rescheduled';
-      if (status === 'NO_RESPONSE') return 'status-no-response';
       if (status === 'UNKNOWN' || status === 'NEEDS_REVIEW' || status === 'PREVIOUSLY_SEEN_REMOVED_FROM_DASHBOARD') return 'status-unknown';
       return 'status-pending';
+    }
+
+    function getJourneyStage(status, targetMs, nowMs) {
+      if (status === 'APPROVED' || status === 'MANUAL_COMPLETED') return 'COMPLETED';
+      if (status === 'COMPLETED_PENDING_APPROVAL') return 'SCREENSHOT_UPLOADED';
+      if (status === 'RESCHEDULED') return 'MOVED';
+      if (status === 'REMOVED_CANCELLED') return 'REMOVED';
+      if (status === 'UNKNOWN' || status === 'NEEDS_REVIEW' || status === 'PREVIOUSLY_SEEN_REMOVED_FROM_DASHBOARD') return 'REVIEW';
+      if (status === 'PENDING_SCREENSHOT') return 'PENDING_CAPTURE';
+      if (status === 'MANUAL_SCHEDULED') return 'SCHEDULED';
+      if (status === 'ACTIVE_NO_SCREENSHOT_RECORD') {
+        return Number.isFinite(targetMs) && nowMs < targetMs ? 'SCHEDULED' : 'PENDING_CAPTURE';
+      }
+      return 'PENDING_CAPTURE';
     }
 
     function updateOneDeliveryElement(element, nowMs) {
       const state = getEffectiveDeliveryState(element);
       const override = state.override;
       const label = DELIVERY_STATUS_LABELS[state.status] || state.status;
-      const targetValue = state.status === 'RESCHEDULED' && override?.rescheduledAt
-        ? override.rescheduledAt
-        : element.dataset.scheduled;
+      const targetValue = element.dataset.scheduled;
       const targetMs = parseScheduledEpoch(targetValue);
       const delayMs = Number.isFinite(targetMs) ? nowMs - targetMs : 0;
       const isOverdue = !state.closed && Number.isFinite(targetMs) && delayMs >= 0;
+      const journeyStage = getJourneyStage(state.status, targetMs, nowMs);
 
       element.dataset.effectiveStatus = state.status;
       element.dataset.isClosed = state.closed ? 'true' : 'false';
@@ -325,6 +351,20 @@ const buildReportScripts = ({
       element.querySelectorAll('.delivery-status').forEach(statusEl => {
         statusEl.innerText = label;
         statusEl.className = 'delivery-status ' + getStatusCssClass(state.status);
+      });
+
+      const mainStages = ['SCHEDULED', 'PENDING_CAPTURE', 'SCREENSHOT_UPLOADED', 'COMPLETED'];
+      const activeMainIndex = mainStages.indexOf(journeyStage);
+
+      element.querySelectorAll('[data-stage]').forEach(step => {
+        const stage = step.dataset.stage;
+        const stageIndex = mainStages.indexOf(stage);
+        step.classList.toggle('journey-active', stage === journeyStage);
+        step.classList.toggle(
+          'journey-done',
+          (activeMainIndex >= 0 && stageIndex >= 0 && stageIndex < activeMainIndex) ||
+          (activeMainIndex < 0 && stageIndex === 0)
+        );
       });
 
       let timerText = 'Hora no disponible';
@@ -371,30 +411,16 @@ const buildReportScripts = ({
         }
       }
 
-      element.querySelectorAll('.delivery-status-select').forEach(select => {
-        select.value = override?.status || '';
+      element.querySelectorAll('[data-delivery-flag]').forEach(flagButton => {
+        const enabled = Boolean(override?.flags?.[flagButton.dataset.deliveryFlag]);
+        flagButton.classList.toggle('journey-active', enabled);
       });
 
-      element.querySelectorAll('.delivery-note-input').forEach(input => {
-        if (document.activeElement !== input) input.value = override?.note || '';
-      });
-
-      element.querySelectorAll('.delivery-reschedule-input').forEach(input => {
-        if (document.activeElement !== input) input.value = override?.rescheduledAt || '';
-        input.disabled = state.status !== 'RESCHEDULED';
-      });
-
-      element.querySelectorAll('.manual-override-badge').forEach(badge => {
-        badge.innerText = override
-          ? 'Corrección manual activa'
-          : 'Usando estado automático';
-        badge.classList.toggle('manual-active', Boolean(override));
-      });
-
-      element.querySelectorAll('.delivery-updated-at').forEach(updated => {
-        updated.innerText = override?.updatedAt
-          ? 'Cambio manual: ' + new Date(override.updatedAt).toLocaleString()
-          : 'Detección automática: ' + (DELIVERY_STATUS_LABELS[state.automaticStatus] || state.automaticStatus);
+      element.querySelectorAll('.tracking-origin').forEach(origin => {
+        origin.innerText = override?.status
+          ? 'Ajustado por ti'
+          : 'Detectado por el sistema';
+        origin.classList.toggle('manual-active', Boolean(override?.status));
       });
     }
 
@@ -446,9 +472,7 @@ const buildReportScripts = ({
         const state = getEffectiveDeliveryState(element);
         if (state.closed) return;
 
-        const targetValue = state.status === 'RESCHEDULED' && state.override?.rescheduledAt
-          ? state.override.rescheduledAt
-          : element.dataset.scheduled;
+        const targetValue = element.dataset.scheduled;
         const targetMs = parseScheduledEpoch(targetValue);
         if (!Number.isFinite(targetMs) || nowMs < targetMs) return;
 
@@ -495,55 +519,50 @@ const buildReportScripts = ({
       updateDeliveryFooterProgress();
     }
 
-    function setDeliveryManualStatus(select) {
-      const trackable = select.closest('.delivery-trackable');
+    function setDeliveryStage(event, button) {
+      if (event) event.stopPropagation();
+      const trackable = button.closest('.delivery-trackable');
+      if (!trackable) return;
+
+      const statusByStage = {
+        SCHEDULED: 'MANUAL_SCHEDULED',
+        PENDING_CAPTURE: 'PENDING_SCREENSHOT',
+        SCREENSHOT_UPLOADED: 'COMPLETED_PENDING_APPROVAL',
+        COMPLETED: 'MANUAL_COMPLETED',
+        MOVED: 'RESCHEDULED',
+        REMOVED: 'REMOVED_CANCELLED',
+        REVIEW: 'NEEDS_REVIEW'
+      };
+      const status = statusByStage[button.dataset.stage];
+      if (!status) return;
+
+      const deliveryKey = trackable.dataset.deliveryKey;
+      const current = getDeliveryOverride(deliveryKey) || {};
+      saveDeliveryOverride(deliveryKey, {
+        ...current,
+        status
+      });
+      showToast('Estado actualizado por ti en todas las vistas.');
+    }
+
+    function toggleDeliveryFlag(event, button) {
+      if (event) event.stopPropagation();
+      const trackable = button.closest('.delivery-trackable');
       if (!trackable) return;
 
       const deliveryKey = trackable.dataset.deliveryKey;
       const current = getDeliveryOverride(deliveryKey) || {};
-
-      if (!select.value) {
-        saveDeliveryOverride(deliveryKey, null);
-        showToast('El anuncio volvió al estado automático.');
-        return;
-      }
+      const flagName = button.dataset.deliveryFlag;
+      const flags = {
+        ...(current.flags || {}),
+        [flagName]: !current.flags?.[flagName]
+      };
 
       saveDeliveryOverride(deliveryKey, {
         ...current,
-        status: select.value
+        flags
       });
-      showToast('Estado manual guardado en todas las vistas.');
-    }
-
-    function saveDeliveryControl(control) {
-      const trackable = control.closest('.delivery-trackable');
-      if (!trackable) return;
-
-      const deliveryKey = trackable.dataset.deliveryKey;
-      const current = getDeliveryOverride(deliveryKey) || {};
-      const selectedStatus = trackable.querySelector('.delivery-status-select')?.value || current.status || '';
-      const note = trackable.querySelector('.delivery-note-input')?.value || current.note || '';
-      const rescheduledAt = trackable.querySelector('.delivery-reschedule-input')?.value || current.rescheduledAt || '';
-
-      if (!selectedStatus) {
-        showToast('Selecciona primero un estado manual.');
-        updateDeliveryTracking();
-        return;
-      }
-
-      saveDeliveryOverride(deliveryKey, {
-        status: selectedStatus,
-        note,
-        rescheduledAt
-      });
-      showToast('Control manual actualizado.');
-    }
-
-    function returnDeliveryToAutomatic(button) {
-      const trackable = button.closest('.delivery-trackable');
-      if (!trackable) return;
-      saveDeliveryOverride(trackable.dataset.deliveryKey, null);
-      showToast('Se restauró la detección automática.');
+      showToast(flags[flagName] ? 'Marcado: no respondió.' : 'Marca removida.');
     }
 
     function filterWorkQueue(sectionId, query, mode) {

@@ -247,14 +247,38 @@ const generateIntegratedHtmlReportByPublisher = ({
     return labels[status] || status || 'Sin detectar';
   };
 
-  const renderManualStatusOptions = () => `
-    <option value="">Automático</option>
-    <option value="MANUAL_COMPLETED">Completado manualmente</option>
-    <option value="PENDING_SCREENSHOT">Captura pendiente</option>
-    <option value="NO_RESPONSE">Cliente no respondió</option>
-    <option value="NEEDS_REVIEW">Requiere revisión</option>
-    <option value="RESCHEDULED">Reprogramado</option>
-    <option value="REMOVED_CANCELLED">Eliminado / cancelado</option>
+  const renderStatusJourney = ({ compact = false } = {}) => `
+    <div class="status-journey ${compact ? 'status-journey-compact' : ''}" aria-label="Progreso del anuncio">
+      <div class="journey-main-track">
+        <button type="button" class="journey-step" data-stage="SCHEDULED" onclick="setDeliveryStage(event, this)">
+          <span class="journey-dot">✓</span><span>Programado</span>
+        </button>
+        <button type="button" class="journey-step" data-stage="PENDING_CAPTURE" onclick="setDeliveryStage(event, this)">
+          <span class="journey-dot">✓</span><span>Esperando captura</span>
+        </button>
+        <button type="button" class="journey-step" data-stage="SCREENSHOT_UPLOADED" onclick="setDeliveryStage(event, this)">
+          <span class="journey-dot">✓</span><span>Captura subida</span>
+        </button>
+        <button type="button" class="journey-step" data-stage="COMPLETED" onclick="setDeliveryStage(event, this)">
+          <span class="journey-dot">✓</span><span>Completado</span>
+        </button>
+      </div>
+      <div class="journey-exceptions">
+        <button type="button" class="journey-exception" data-stage="MOVED" onclick="setDeliveryStage(event, this)">
+          <span>✓</span> Se movió
+        </button>
+        <button type="button" class="journey-exception" data-stage="REMOVED" onclick="setDeliveryStage(event, this)">
+          <span>✓</span> Eliminado
+        </button>
+        <button type="button" class="journey-exception" data-stage="REVIEW" onclick="setDeliveryStage(event, this)">
+          <span>!</span> Revisar
+        </button>
+        <button type="button" class="journey-exception delivery-flag-button" data-delivery-flag="noResponse" onclick="toggleDeliveryFlag(event, this)">
+          <span>✓</span> No respondió
+        </button>
+      </div>
+      <div class="tracking-origin">Detectado por el sistema</div>
+    </div>
   `;
 
   const renderCompactTracking = (row) => {
@@ -271,15 +295,9 @@ const generateIntegratedHtmlReportByPublisher = ({
       >
         <span class="tracking-inline-status">${escapeHtml(getAutomaticStatusLabel(automaticStatus))}</span>
         <span class="tracking-inline-timer">Calculando...</span>
-        <select
-          class="delivery-status-select compact-status-select"
-          aria-label="Cambiar estado del anuncio"
-          onchange="setDeliveryManualStatus(this)"
-        >
-          ${renderManualStatusOptions()}
-        </select>
+        ${renderStatusJourney({ compact: true })}
         <button type="button" class="tracking-manage-btn" onclick="openMasterForDelivery(event, this)">
-          Gestionar
+          Ver detalle
         </button>
       </div>
     `;
@@ -747,58 +765,26 @@ const generateIntegratedHtmlReportByPublisher = ({
           </div>
         </div>
 
-        <div class="delivery-source-row">
-          <span>Posts: ${row.existsInPosts ? 'YES' : 'NO'}</span>
-          <span>Screenshots: ${row.existsInScreenshots ? 'YES' : 'NO'}</span>
-          <span>Screenshots Two: ${row.existsInScreenshotsTwos ? 'YES' : 'NO'}</span>
-          <span>Approved: ${row.existsInApproved ? 'YES' : 'NO'}</span>
-          <span>History: ${row.existsInHistory ? 'YES' : 'NO'}</span>
-        </div>
-
-        ${renderDeliveryHistoryInfo(row)}
-
-        <div class="delivery-manual-control">
-          <div class="manual-control-heading">
-            <strong>Control manual</strong>
-            <span class="manual-override-badge">Usando estado automático</span>
-          </div>
-          <div class="manual-control-grid">
-            <label>
-              Estado operativo
-              <select class="delivery-status-select" onchange="setDeliveryManualStatus(this)">
-                ${renderManualStatusOptions()}
-              </select>
-            </label>
-            <label class="reschedule-field">
-              Nueva fecha y hora
-              <input class="delivery-reschedule-input" type="datetime-local" onchange="saveDeliveryControl(this)">
-            </label>
-            <label class="delivery-note-field">
-              Nota
-              <input
-                class="delivery-note-input"
-                type="text"
-                maxlength="240"
-                placeholder="Ej. cliente no respondió"
-                onchange="saveDeliveryControl(this)"
-              >
-            </label>
-            <button type="button" class="return-auto-btn" onclick="returnDeliveryToAutomatic(this)">
-              Volver a automático
-            </button>
-          </div>
-          <div class="delivery-updated-at"></div>
-        </div>
+        ${renderStatusJourney()}
 
         ${exitBanner}
 
-        <div class="delivery-assets">
-          ${renderAssetBox('Media', row.media)}
-          ${renderAssetBox('Screenshot', row.screenshot)}
-          ${renderAssetBox('Screenshot Two', row.screenshotTwo)}
-        </div>
-
-        ${renderDeliveryAction(row)}
+        <details class="delivery-evidence">
+          <summary>Ver evidencia y origen de datos</summary>
+          <div class="delivery-source-row">
+            <span>Past Due: ${row.existsInPosts ? 'SÍ' : 'NO'}</span>
+            <span>Screenshots: ${row.existsInScreenshots ? 'SÍ' : 'NO'}</span>
+            <span>Glenn Screenshots: ${row.existsInScreenshotsTwos ? 'SÍ' : 'NO'}</span>
+            <span>Approved: ${row.existsInApproved ? 'SÍ' : 'NO'}</span>
+          </div>
+          ${renderDeliveryHistoryInfo(row)}
+          <div class="delivery-assets">
+            ${renderAssetBox('Media', row.media)}
+            ${renderAssetBox('Screenshot', row.screenshot)}
+            ${renderAssetBox('Screenshot Two', row.screenshotTwo)}
+          </div>
+          ${renderDeliveryAction(row)}
+        </details>
       </div>
     `;
   };
@@ -1117,15 +1103,16 @@ const generateIntegratedHtmlReportByPublisher = ({
     <strong id="generated-at-value">${escapeHtml(generatedAtRD)}</strong>
   </div>
 
+  <div class="summary-context-title">Recordatorios y mensajes del día</div>
   <div class="top-summary">
     <div class="summary-card">
       <div class="summary-number">${allRows.length}</div>
-      <div class="summary-label">Publicaciones</div>
+      <div class="summary-label">Anuncios en Reporte completo</div>
     </div>
 
     <div class="summary-card">
       <div class="summary-number">${totalPublishersCount}</div>
-      <div class="summary-label">Clientes total día</div>
+      <div class="summary-label">Clientes en recordatorios</div>
     </div>
 
     <div class="summary-card">
@@ -1154,27 +1141,25 @@ const generateIntegratedHtmlReportByPublisher = ({
       Activar alertas por hora
     </button>
     <button class="reset-all-btn" onclick="resetAllTodayProgress()">
-      Reset todo el día
+      Reset recordatorios
     </button>
   </div>
 
   <div class="tabs">
     <button class="tab-button active" onclick="showTab('master', this)">Master Dashboard (${masterDeliveries.length})</button>
     <button class="tab-button" onclick="showTab('overnight', this)">Amanecidos (${overnightDeliveries.length})</button>
-    <button class="tab-button" onclick="showTab('todos', this)">Reporte completo (${allRows.length})</button>
-    <button class="tab-button" onclick="showTab('after5pm', this)">5PM en adelante (${reminderRows.length})</button>
+    <button class="tab-button" onclick="showTab('todos', this)">Reporte completo · Recordatorios (${allRows.length})</button>
+    <button class="tab-button" onclick="showTab('after5pm', this)">5PM · Recordatorios (${reminderRows.length})</button>
     <button class="tab-button" onclick="showTab('saturday', this)">Saturday advance (${saturdayRows.length})</button>
     <button class="tab-button" onclick="showTab('queue-exits', this)">Salieron de la cola (${queueExitRows.length})</button>
-    <button class="tab-button" onclick="showTab('delivery', this)">Control de hoy (${filteredDeliveryMatcher ? filteredDeliveryMatcher.summary.pendingTotal : 0} pendientes)</button>
-    <button class="tab-button" onclick="showTab('delivery-yesterday', this)">Control de ayer (${filteredYesterdayDeliveryMatcher ? filteredYesterdayDeliveryMatcher.summary.pendingTotal : 0} pendientes)</button>
     <button class="tab-button" onclick="showTab('important-clients', this)">Clientes importantes (${publisherConfigRows.length})</button>
   </div>
 
   ${renderWorkQueueSection({
     sectionId: 'master',
-    title: 'Master Dashboard - Mi trabajo ahora',
+    title: 'Seguimiento de capturas - Mi trabajo ahora',
     rows: masterDeliveries,
-    description: 'Una sola cola para amanecidos, pendientes de hoy, retrasos y correcciones manuales.',
+    description: 'Estados de captura de hoy y pendientes amanecidos. Pulsa un estado solamente cuando necesites corregirlo.',
     emptyText: 'No hay anuncios que requieran seguimiento.'
   })}
 
@@ -1182,7 +1167,7 @@ const generateIntegratedHtmlReportByPublisher = ({
     sectionId: 'overnight',
     title: 'Amanecidos - Pendientes del día anterior',
     rows: overnightDeliveries.map(row => ({ ...row, workScope: 'overnight' })),
-    description: 'El reloj conserva la hora original y continúa hasta completar, cancelar o reprogramar.',
+    description: 'El reloj conserva la hora original hasta completar o marcar que se movió.',
     emptyText: 'No quedaron anuncios amanecidos.'
   })}
 
@@ -1208,26 +1193,6 @@ const generateIntegratedHtmlReportByPublisher = ({
   )}
 
   ${renderQueueExitSection()}
-
-  ${renderDeliverySection({
-    sectionId: 'delivery',
-    sectionNumber: '5',
-    title: 'Control de screenshots de hoy',
-    matcher: filteredDeliveryMatcher,
-    reportDateValue: reportDate,
-    displayDate: todayString,
-    label: 'Today'
-  })}
-
-  ${renderDeliverySection({
-    sectionId: 'delivery-yesterday',
-    sectionNumber: '6',
-    title: 'Control de screenshots de ayer',
-    matcher: filteredYesterdayDeliveryMatcher,
-    reportDateValue: yesterdayReportDate,
-    displayDate: yesterdayString,
-    label: 'Yesterday'
-  })}
 
   ${renderImportantClientsSection()}
 
@@ -1266,7 +1231,7 @@ const generateIntegratedHtmlReportByPublisher = ({
           <span class="fixed-progress-number">
             <span id="footer-delivery-completed-count">0</span>/<span id="footer-delivery-completed-total">0</span>
           </span>
-          <span class="fixed-progress-label">Completed</span>
+          <span class="fixed-progress-label">Completados</span>
         </div>
         <div class="fixed-progress-track">
           <div class="fixed-progress-fill" id="footer-delivery-completed-fill"></div>
@@ -1278,7 +1243,7 @@ const generateIntegratedHtmlReportByPublisher = ({
           <span class="fixed-progress-number">
             <span id="footer-delivery-pending-count">0</span>/<span id="footer-delivery-pending-total">0</span>
           </span>
-          <span class="fixed-progress-label">Pending</span>
+          <span class="fixed-progress-label">Pendientes</span>
         </div>
         <div class="fixed-progress-track">
           <div class="fixed-progress-fill" id="footer-delivery-pending-fill"></div>

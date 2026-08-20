@@ -183,19 +183,21 @@ assert.strictEqual(shouldStopAfterPage({
     await page.getByRole('button', { name: /Master Dashboard/ }).click();
     const todayCard = page.locator('#master .delivery-card').filter({ hasText: 'Client Today' });
     const deliveryKey = await todayCard.getAttribute('data-delivery-key');
-    await todayCard.locator('.delivery-status-select').selectOption('MANUAL_COMPLETED');
+    await todayCard.locator('[data-stage="COMPLETED"]').click();
 
     assert.strictEqual(await todayCard.getAttribute('data-is-closed'), 'true');
-    await page.getByRole('button', { name: /5PM en adelante/ }).click();
+    await page.getByRole('button', { name: /5PM/ }).click();
     await page.waitForSelector('#after5pm.active');
-    await page.locator('#after5pm .tracking-inline-status', { hasText: 'Completado manualmente' }).waitFor();
+    await page.locator('#after5pm [data-stage="COMPLETED"].journey-active').waitFor();
 
-    await page.locator('#after5pm .compact-status-select').selectOption('RESCHEDULED');
+    await page.locator('#after5pm [data-stage="MOVED"]').click();
     await page.getByRole('button', { name: /Master Dashboard/ }).click();
     await page.locator('#master .work-queue-toolbar select').selectOption('all');
-    await todayCard.locator('.delivery-reschedule-input').fill('2099-08-20T18:00');
-    await todayCard.locator('.delivery-reschedule-input').dispatchEvent('change');
-    await page.getByText(/Falta:/).first().waitFor();
+    await todayCard.locator('[data-stage="MOVED"].journey-active').waitFor();
+    assert.strictEqual(await todayCard.getAttribute('data-is-closed'), 'true');
+
+    await todayCard.locator('[data-delivery-flag="noResponse"]').click();
+    await todayCard.locator('[data-delivery-flag="noResponse"].journey-active').waitFor();
 
     assert.ok(deliveryKey, 'The delivery key should be shared across views');
     if (process.env.JCN_KEEP_TEST_REPORT === 'true') {
