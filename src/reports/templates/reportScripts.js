@@ -30,6 +30,8 @@ const buildReportScripts = ({
 
     const SENDED_PREFIX = 'jcn:' + STORAGE_VERSION + ':sended:' + REPORT_DATE + ':';
     const CONFIRMED_PREFIX = 'jcn:' + STORAGE_VERSION + ':publisher-confirmed:' + REPORT_DATE + ':';
+    const DELIVERY_OVERRIDE_PREFIX = 'jcn:v5:delivery-override:';
+    const DELIVERY_ALERT_PREFIX = 'jcn:v5:delivery-alert-hour:';
 
     function getDateKeyForTimeZone(date, timeZone) {
       const parts = new Intl.DateTimeFormat('en-US', {
@@ -119,9 +121,9 @@ const buildReportScripts = ({
       document.title = 'Reporte Integrado de Publishers';
     }
 
-    const todosSection = document.getElementById('todos');
-    if (todosSection) {
-      todosSection.classList.add('active');
+    const masterSection = document.getElementById('master');
+    if (masterSection) {
+      masterSection.classList.add('active');
     }
 
     function escapeForHtml(text) {
@@ -132,6 +134,26 @@ const buildReportScripts = ({
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#039;');
     }
+
+    const DELIVERY_STATUS_LABELS = {
+      APPROVED: 'Completado y aprobado',
+      COMPLETED_PENDING_APPROVAL: 'Captura subida - falta aprobar',
+      PENDING_SCREENSHOT: 'Captura pendiente',
+      ACTIVE_NO_SCREENSHOT_RECORD: 'Activo - sin registro de captura',
+      PREVIOUSLY_SEEN_REMOVED_FROM_DASHBOARD: 'Desapareció - revisar',
+      UNKNOWN: 'Requiere revisión',
+      MANUAL_COMPLETED: 'Completado manualmente',
+      NO_RESPONSE: 'Cliente no respondió',
+      NEEDS_REVIEW: 'Requiere revisión manual',
+      RESCHEDULED: 'Reprogramado',
+      REMOVED_CANCELLED: 'Eliminado / cancelado'
+    };
+
+    const CLOSED_DELIVERY_STATUSES = new Set([
+      'APPROVED',
+      'MANUAL_COMPLETED',
+      'REMOVED_CANCELLED'
+    ]);
 
     function getMention(sectionKey) {
       const checked = document.getElementById('mention-switch-' + sectionKey)?.checked;
@@ -183,6 +205,388 @@ const buildReportScripts = ({
       }, 3500);
     }
 
+    function getDeliveryOverride(deliveryKey) {
+      if (!deliveryKey) return null;
+
+      try {
+        const raw = localStorage.getItem(DELIVERY_OVERRIDE_PREFIX + deliveryKey);
+        return raw ? JSON.parse(raw) : null;
+      } catch (error) {
+        return null;
+      }
+    }
+
+    function saveDeliveryOverride(deliveryKey, value) {
+      if (!deliveryKey) return;
+
+      if (!value || !value.status) {
+        localStorage.removeItem(DELIVERY_OVERRIDE_PREFIX + deliveryKey);
+      } else {
+        localStorage.setItem(
+          DELIVERY_OVERRIDE_PREFIX + deliveryKey,
+          JSON.stringify({
+            status: value.status,
+            note: value.note || '',
+            rescheduledAt: value.rescheduledAt || '',
+            updatedAt: new Date().toISOString()
+          })
+        );
+      }
+
+      updateDeliveryTracking();
+    }
+
+    function getEffectiveDeliveryState(element) {
+      const deliveryKey = element?.dataset?.deliveryKey || '';
+      const automaticStatus = element?.dataset?.autoStatus || 'UNKNOWN';
+      const override = getDeliveryOverride(deliveryKey);
+      const status = override?.status || automaticStatus;
+
+      return {
+        deliveryKey,
+        automaticStatus,
+        override,
+        status,
+        closed: CLOSED_DELIVERY_STATUSES.has(status)
+      };
+    }
+
+    function parseScheduledEpoch(value) {
+      const text = String(value || '').trim();
+      const dashboardMatch = text.match(
+        /^(\\d{2})\\/(\\d{2})\\/(\\d{4}),\\s*(\\d{1,2}):(\\d{2})\\s*(AM|PM)\\s*(EST|EDT)$/i
+      );
+
+      if (dashboardMatch) {
+        const month = Number(dashboardMatch[1]);
+        const day = Number(dashboardMatch[2]);
+        const year = Number(dashboardMatch[3]);
+        let hour = Number(dashboardMatch[4]);
+        const minute = Number(dashboardMatch[5]);
+        const ampm = dashboardMatch[6].toUpperCase();
+        const zone = dashboardMatch[7].toUpperCase();
+
+        if (ampm === 'PM' && hour !== 12) hour += 12;
+        if (ampm === 'AM' && hour === 12) hour = 0;
+
+        const offsetHours = zone === 'EDT' ? 4 : 5;
+        return Date.UTC(year, month - 1, day, hour + offsetHours, minute);
+      }
+
+      if (/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}/.test(text)) {
+        const localDate = new Date(text);
+        return localDate.getTime();
+      }
+
+      const fallback = new Date(text);
+      return fallback.getTime();
+    }
+
+    function formatTrackingDuration(milliseconds) {
+      const totalMinutes = Math.max(0, Math.floor(Math.abs(milliseconds) / 60000));
+      const days = Math.floor(totalMinutes / 1440);
+      const hours = Math.floor((totalMinutes % 1440) / 60);
+      const minutes = totalMinutes % 60;
+
+      if (days > 0) return days + 'd ' + hours + 'h ' + minutes + 'm';
+      if (hours > 0) return hours + 'h ' + minutes + 'm';
+      return minutes + 'm';
+    }
+
+    function getStatusCssClass(status) {
+      if (status === 'APPROVED' || status === 'MANUAL_COMPLETED') return 'status-approved';
+      if (status === 'COMPLETED_PENDING_APPROVAL') return 'status-completed';
+      if (status === 'REMOVED_CANCELLED') return 'status-cancelled';
+      if (status === 'RESCHEDULED') return 'status-rescheduled';
+      if (status === 'NO_RESPONSE') return 'status-no-response';
+      if (status === 'UNKNOWN' || status === 'NEEDS_REVIEW' || status === 'PREVIOUSLY_SEEN_REMOVED_FROM_DASHBOARD') return 'status-unknown';
+      return 'status-pending';
+    }
+
+    function updateOneDeliveryElement(element, nowMs) {
+      const state = getEffectiveDeliveryState(element);
+      const override = state.override;
+      const label = DELIVERY_STATUS_LABELS[state.status] || state.status;
+      const targetValue = state.status === 'RESCHEDULED' && override?.rescheduledAt
+        ? override.rescheduledAt
+        : element.dataset.scheduled;
+      const targetMs = parseScheduledEpoch(targetValue);
+      const delayMs = Number.isFinite(targetMs) ? nowMs - targetMs : 0;
+      const isOverdue = !state.closed && Number.isFinite(targetMs) && delayMs >= 0;
+
+      element.dataset.effectiveStatus = state.status;
+      element.dataset.isClosed = state.closed ? 'true' : 'false';
+      element.dataset.isOverdue = isOverdue ? 'true' : 'false';
+
+      element.querySelectorAll('.tracking-inline-status').forEach(statusEl => {
+        statusEl.innerText = label;
+      });
+
+      element.querySelectorAll('.delivery-status').forEach(statusEl => {
+        statusEl.innerText = label;
+        statusEl.className = 'delivery-status ' + getStatusCssClass(state.status);
+      });
+
+      let timerText = 'Hora no disponible';
+
+      if (state.closed) {
+        timerText = 'Seguimiento cerrado';
+      } else if (Number.isFinite(targetMs)) {
+        timerText = delayMs >= 0
+          ? 'Retraso: ' + formatTrackingDuration(delayMs)
+          : 'Falta: ' + formatTrackingDuration(delayMs);
+      }
+
+      element.querySelectorAll('.tracking-inline-timer, .delivery-delay-clock').forEach(timer => {
+        timer.innerText = timerText;
+      });
+
+      if (element.classList.contains('delivery-card')) {
+        element.classList.remove(
+          'status-approved',
+          'status-completed',
+          'status-pending',
+          'status-missing',
+          'status-unknown',
+          'status-cancelled',
+          'status-rescheduled',
+          'status-no-response',
+          'delay-level-1',
+          'delay-level-2',
+          'delay-level-3'
+        );
+        element.classList.add(getStatusCssClass(state.status));
+
+        if (isOverdue) {
+          const overdueHours = delayMs / 3600000;
+          element.classList.add(
+            overdueHours >= 3
+              ? 'delay-level-3'
+              : overdueHours >= 2
+                ? 'delay-level-2'
+                : overdueHours >= 1
+                  ? 'delay-level-1'
+                  : 'delay-level-1'
+          );
+        }
+      }
+
+      element.querySelectorAll('.delivery-status-select').forEach(select => {
+        select.value = override?.status || '';
+      });
+
+      element.querySelectorAll('.delivery-note-input').forEach(input => {
+        if (document.activeElement !== input) input.value = override?.note || '';
+      });
+
+      element.querySelectorAll('.delivery-reschedule-input').forEach(input => {
+        if (document.activeElement !== input) input.value = override?.rescheduledAt || '';
+        input.disabled = state.status !== 'RESCHEDULED';
+      });
+
+      element.querySelectorAll('.manual-override-badge').forEach(badge => {
+        badge.innerText = override
+          ? 'Corrección manual activa'
+          : 'Usando estado automático';
+        badge.classList.toggle('manual-active', Boolean(override));
+      });
+
+      element.querySelectorAll('.delivery-updated-at').forEach(updated => {
+        updated.innerText = override?.updatedAt
+          ? 'Cambio manual: ' + new Date(override.updatedAt).toLocaleString()
+          : 'Detección automática: ' + (DELIVERY_STATUS_LABELS[state.automaticStatus] || state.automaticStatus);
+      });
+    }
+
+    function updateMasterMetrics() {
+      document.querySelectorAll('.work-queue-section').forEach(section => {
+        const cards = Array.from(section.querySelectorAll('.delivery-card[data-delivery-key]'));
+        const actionable = cards.filter(card => card.dataset.isClosed !== 'true').length;
+        const overdue = cards.filter(card => card.dataset.isOverdue === 'true').length;
+        const overnight = cards.filter(card => card.dataset.workScope === 'overnight' && card.dataset.isClosed !== 'true').length;
+        const closed = cards.filter(card => card.dataset.isClosed === 'true').length;
+
+        const values = { actionable, overdue, overnight, closed };
+        section.querySelectorAll('[data-master-count]').forEach(counter => {
+          counter.innerText = values[counter.dataset.masterCount] || 0;
+        });
+      });
+    }
+
+    function requestTrackingNotifications() {
+      if (!('Notification' in window)) {
+        showToast('Este navegador no permite notificaciones del sistema. Las alertas visuales seguirán activas.');
+        return;
+      }
+
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          showToast('Alertas por hora activadas.');
+          new Notification('JCN Master Dashboard', {
+            body: 'Las alertas de seguimiento están activas.'
+          });
+        } else {
+          showToast('No se concedió permiso. Los relojes y colores seguirán funcionando.');
+        }
+      });
+    }
+
+    function processDeliveryHourAlerts(nowMs) {
+      const unique = new Map();
+
+      document.querySelectorAll('.delivery-trackable[data-delivery-key]').forEach(element => {
+        if (!unique.has(element.dataset.deliveryKey)) {
+          unique.set(element.dataset.deliveryKey, element);
+        }
+      });
+
+      const alerts = [];
+
+      unique.forEach((element, deliveryKey) => {
+        const state = getEffectiveDeliveryState(element);
+        if (state.closed) return;
+
+        const targetValue = state.status === 'RESCHEDULED' && state.override?.rescheduledAt
+          ? state.override.rescheduledAt
+          : element.dataset.scheduled;
+        const targetMs = parseScheduledEpoch(targetValue);
+        if (!Number.isFinite(targetMs) || nowMs < targetMs) return;
+
+        const overdueHours = Math.floor((nowMs - targetMs) / 3600000);
+        if (overdueHours < 1) return;
+
+        const storageKey = DELIVERY_ALERT_PREFIX + deliveryKey;
+        const lastAlertedHour = Number(localStorage.getItem(storageKey) || 0);
+        if (overdueHours <= lastAlertedHour) return;
+
+        localStorage.setItem(storageKey, String(overdueHours));
+        const card = Array.from(document.querySelectorAll('.delivery-card[data-delivery-key]'))
+          .find(item => item.dataset.deliveryKey === deliveryKey);
+        const title = card?.querySelector('.delivery-title')?.innerText || 'Anuncio pendiente';
+        alerts.push({ title, overdueHours });
+      });
+
+      if (!alerts.length) return;
+
+      const newest = alerts[alerts.length - 1];
+      showToast(
+        '<strong>Seguimiento vencido:</strong><br>' +
+        escapeForHtml(newest.title) + ' lleva ' + newest.overdueHours + 'h de retraso.' +
+        (alerts.length > 1 ? '<br>Hay ' + alerts.length + ' alertas nuevas.' : '')
+      );
+
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('JCN: seguimiento de ' + newest.overdueHours + 'h', {
+          body: newest.title + (alerts.length > 1 ? ' y ' + (alerts.length - 1) + ' más.' : '')
+        });
+      }
+    }
+
+    function updateDeliveryTracking() {
+      const nowMs = Date.now();
+      document.querySelectorAll('.delivery-trackable[data-delivery-key]').forEach(element => {
+        updateOneDeliveryElement(element, nowMs);
+      });
+      updateMasterMetrics();
+      document.querySelectorAll('.work-queue-section').forEach(section => {
+        filterWorkQueue(section.id);
+      });
+      processDeliveryHourAlerts(nowMs);
+      updateDeliveryFooterProgress();
+    }
+
+    function setDeliveryManualStatus(select) {
+      const trackable = select.closest('.delivery-trackable');
+      if (!trackable) return;
+
+      const deliveryKey = trackable.dataset.deliveryKey;
+      const current = getDeliveryOverride(deliveryKey) || {};
+
+      if (!select.value) {
+        saveDeliveryOverride(deliveryKey, null);
+        showToast('El anuncio volvió al estado automático.');
+        return;
+      }
+
+      saveDeliveryOverride(deliveryKey, {
+        ...current,
+        status: select.value
+      });
+      showToast('Estado manual guardado en todas las vistas.');
+    }
+
+    function saveDeliveryControl(control) {
+      const trackable = control.closest('.delivery-trackable');
+      if (!trackable) return;
+
+      const deliveryKey = trackable.dataset.deliveryKey;
+      const current = getDeliveryOverride(deliveryKey) || {};
+      const selectedStatus = trackable.querySelector('.delivery-status-select')?.value || current.status || '';
+      const note = trackable.querySelector('.delivery-note-input')?.value || current.note || '';
+      const rescheduledAt = trackable.querySelector('.delivery-reschedule-input')?.value || current.rescheduledAt || '';
+
+      if (!selectedStatus) {
+        showToast('Selecciona primero un estado manual.');
+        updateDeliveryTracking();
+        return;
+      }
+
+      saveDeliveryOverride(deliveryKey, {
+        status: selectedStatus,
+        note,
+        rescheduledAt
+      });
+      showToast('Control manual actualizado.');
+    }
+
+    function returnDeliveryToAutomatic(button) {
+      const trackable = button.closest('.delivery-trackable');
+      if (!trackable) return;
+      saveDeliveryOverride(trackable.dataset.deliveryKey, null);
+      showToast('Se restauró la detección automática.');
+    }
+
+    function filterWorkQueue(sectionId, query, mode) {
+      const section = document.getElementById(sectionId);
+      if (!section) return;
+
+      if (query !== null && query !== undefined) section.dataset.queueSearch = String(query).trim().toLowerCase();
+      if (mode) section.dataset.queueMode = mode;
+
+      const search = section.dataset.queueSearch || '';
+      const selectedMode = section.dataset.queueMode || 'actionable';
+
+      section.querySelectorAll('.work-queue-list .delivery-card').forEach(card => {
+        const closed = card.dataset.isClosed === 'true';
+        const matchesMode = selectedMode === 'all' || (selectedMode === 'closed' ? closed : !closed);
+        const matchesSearch = !search || card.innerText.toLowerCase().includes(search);
+        card.style.display = matchesMode && matchesSearch ? '' : 'none';
+      });
+    }
+
+    function openMasterForDelivery(event, source) {
+      if (event) event.stopPropagation();
+      const trackable = source.closest('.delivery-trackable');
+      if (!trackable) return;
+
+      const masterButton = Array.from(document.querySelectorAll('.tab-button'))
+        .find(button => button.getAttribute('onclick')?.includes("'master'"));
+      showTab('master', masterButton);
+
+      const deliveryKey = trackable.dataset.deliveryKey;
+      const target = Array.from(document.querySelectorAll('#master .delivery-card'))
+        .find(card => card.dataset.deliveryKey === deliveryKey);
+
+      if (target) {
+        const master = document.getElementById('master');
+        master.dataset.queueMode = 'all';
+        filterWorkQueue('master');
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        target.classList.add('tracking-highlight');
+        setTimeout(() => target.classList.remove('tracking-highlight'), 2200);
+      }
+    }
+
     function showProgressFooter(type) {
       const whatsappFooter = document.getElementById('whatsapp-progress-footer');
       const deliveryFooter = document.getElementById('delivery-progress-footer');
@@ -205,7 +609,11 @@ const buildReportScripts = ({
     }
 
     function isDeliverySection(sectionId) {
-      return sectionId === 'delivery' || sectionId === 'delivery-yesterday';
+      return sectionId === 'master' ||
+        sectionId === 'overnight' ||
+        sectionId === 'queue-exits' ||
+        sectionId === 'delivery' ||
+        sectionId === 'delivery-yesterday';
     }
 
     function showTab(sectionId, button) {
@@ -235,6 +643,7 @@ const buildReportScripts = ({
 
       if (isDeliverySection(sectionId)) {
         showProgressFooter('delivery');
+        updateDeliveryTracking();
         updateDeliveryFooterProgress();
         return;
       }
@@ -245,7 +654,7 @@ const buildReportScripts = ({
 
     function getActiveSectionKey() {
       const active = document.querySelector('.report-section.active');
-      return active ? active.id : 'todos';
+      return active ? active.id : 'master';
     }
 
     function toggleSectionBody(sectionKey) {
@@ -472,19 +881,33 @@ const buildReportScripts = ({
 
       const activeSectionId = activeSection ? activeSection.id : '';
 
-      const deliveryTotal = activePanel
+      const activeTrackingCards = activeSection
+        ? Array.from(activeSection.querySelectorAll('.delivery-card[data-delivery-key]'))
+        : [];
+
+      const useLiveTrackingCounts = activeSectionId === 'master' ||
+        activeSectionId === 'overnight' ||
+        activeSectionId === 'queue-exits';
+
+      const deliveryTotal = useLiveTrackingCounts
+        ? activeTrackingCards.length
+        : activePanel
         ? Number(activePanel.dataset.total || 0)
         : activeSectionId === 'delivery-yesterday'
           ? DELIVERY_YESTERDAY_TOTAL
           : DELIVERY_TOTAL;
 
-      const deliveryCompleted = activePanel
+      const deliveryCompleted = useLiveTrackingCounts
+        ? activeTrackingCards.filter(card => card.dataset.isClosed === 'true').length
+        : activePanel
         ? Number(activePanel.dataset.completed || 0)
         : activeSectionId === 'delivery-yesterday'
           ? DELIVERY_YESTERDAY_COMPLETED
           : DELIVERY_COMPLETED;
 
-      const deliveryPending = activePanel
+      const deliveryPending = useLiveTrackingCounts
+        ? activeTrackingCards.filter(card => card.dataset.isClosed !== 'true').length
+        : activePanel
         ? Number(activePanel.dataset.pending || 0)
         : activeSectionId === 'delivery-yesterday'
           ? DELIVERY_YESTERDAY_PENDING
@@ -753,10 +1176,12 @@ const buildReportScripts = ({
     restoreSavedStates();
     updateAllSectionStatuses();
     updateSectionStatus('todos');
-    showProgressFooter('whatsapp');
+    updateDeliveryTracking();
+    showProgressFooter('delivery');
     updateDeliveryFooterProgress();
     updateFreshnessWarning();
     window.setInterval(updateFreshnessWarning, 60000);
+    window.setInterval(updateDeliveryTracking, 60000);
   `;
 };
 

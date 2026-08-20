@@ -31,6 +31,9 @@ const {
 const {
   buildReportScripts
 } = require('./templates/reportScripts');
+const {
+  buildDeliveryKey
+} = require('../services/screenshotMatcherService');
 
 const generateIntegratedHtmlReportByPublisher = ({
   allRows,
@@ -100,6 +103,69 @@ const generateIntegratedHtmlReportByPublisher = ({
   const filteredDeliveryMatcher = filterDeliveryMatcherByPublisherList(deliveryMatcher);
   const filteredYesterdayDeliveryMatcher = filterDeliveryMatcherByPublisherList(yesterdayDeliveryMatcher);
 
+  const automaticClosedStatuses = new Set(['APPROVED']);
+  const todayDeliveries = filteredDeliveryMatcher?.deliveries || [];
+  const yesterdayDeliveries = filteredYesterdayDeliveryMatcher?.deliveries || [];
+  const overnightDeliveries = yesterdayDeliveries.filter(row =>
+    !automaticClosedStatuses.has(row.status)
+  );
+  const masterDeliveries = [
+    ...overnightDeliveries.map(row => ({ ...row, workScope: 'overnight' })),
+    ...todayDeliveries.map(row => ({ ...row, workScope: 'today' }))
+  ].sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
+
+  const deliveryByKey = new Map(
+    [...todayDeliveries, ...yesterdayDeliveries].map(row => [row.key, row])
+  );
+
+  const getQueueExitReason = delivery => {
+    let exitReason = 'DISAPPEARED_REVIEW';
+
+    if (delivery?.status === 'APPROVED') {
+      exitReason = 'COMPLETED_APPROVED';
+    } else if (delivery?.status === 'COMPLETED_PENDING_APPROVAL') {
+      exitReason = 'SCREENSHOT_UPLOADED';
+    } else if (delivery?.status === 'PENDING_SCREENSHOT') {
+      exitReason = 'LEFT_POSTS_SCREENSHOT_PENDING';
+    } else if (delivery?.status === 'PREVIOUSLY_SEEN_REMOVED_FROM_DASHBOARD') {
+      exitReason = 'DISAPPEARED_REVIEW';
+    }
+
+    return exitReason;
+  };
+
+  const queueExitMap = new Map();
+
+  removedRows.forEach(row => {
+    const key = buildDeliveryKey(row);
+    const delivery = deliveryByKey.get(key);
+    queueExitMap.set(key, {
+      ...row,
+      key,
+      delivery,
+      exitReason: getQueueExitReason(delivery)
+    });
+  });
+
+  todayDeliveries
+    .filter(row => !row.existsInPosts && (
+      row.existsInApproved ||
+      row.existsInScreenshots ||
+      row.existsInScreenshotsTwos ||
+      row.existsInHistory
+    ))
+    .forEach(delivery => {
+      queueExitMap.set(delivery.key, {
+        ...delivery,
+        delivery,
+        exitReason: getQueueExitReason(delivery)
+      });
+    });
+
+  const queueExitRows = Array.from(queueExitMap.values()).sort((a, b) => {
+    return parseDate(a.scheduled) - parseDate(b.scheduled);
+  });
+
   const reportScripts = buildReportScripts({
     reportDate,
     generatedAtEpochMs,
@@ -168,6 +234,57 @@ const generateIntegratedHtmlReportByPublisher = ({
     `;
   };
 
+  const getAutomaticStatusLabel = (status) => {
+    const labels = {
+      APPROVED: 'Completado y aprobado',
+      COMPLETED_PENDING_APPROVAL: 'Captura subida - falta aprobar',
+      PENDING_SCREENSHOT: 'Captura pendiente',
+      ACTIVE_NO_SCREENSHOT_RECORD: 'Activo - sin registro de captura',
+      PREVIOUSLY_SEEN_REMOVED_FROM_DASHBOARD: 'Desapareció - revisar',
+      UNKNOWN: 'Requiere revisión'
+    };
+
+    return labels[status] || status || 'Sin detectar';
+  };
+
+  const renderManualStatusOptions = () => `
+    <option value="">Automático</option>
+    <option value="MANUAL_COMPLETED">Completado manualmente</option>
+    <option value="PENDING_SCREENSHOT">Captura pendiente</option>
+    <option value="NO_RESPONSE">Cliente no respondió</option>
+    <option value="NEEDS_REVIEW">Requiere revisión</option>
+    <option value="RESCHEDULED">Reprogramado</option>
+    <option value="REMOVED_CANCELLED">Eliminado / cancelado</option>
+  `;
+
+  const renderCompactTracking = (row) => {
+    const key = buildDeliveryKey(row);
+    const delivery = deliveryByKey.get(key);
+    const automaticStatus = delivery?.status || 'ACTIVE_NO_SCREENSHOT_RECORD';
+
+    return `
+      <div
+        class="compact-tracking delivery-trackable"
+        data-delivery-key="${escapeHtml(key)}"
+        data-auto-status="${escapeHtml(automaticStatus)}"
+        data-scheduled="${escapeHtml(row.scheduled)}"
+      >
+        <span class="tracking-inline-status">${escapeHtml(getAutomaticStatusLabel(automaticStatus))}</span>
+        <span class="tracking-inline-timer">Calculando...</span>
+        <select
+          class="delivery-status-select compact-status-select"
+          aria-label="Cambiar estado del anuncio"
+          onchange="setDeliveryManualStatus(this)"
+        >
+          ${renderManualStatusOptions()}
+        </select>
+        <button type="button" class="tracking-manage-btn" onclick="openMasterForDelivery(event, this)">
+          Gestionar
+        </button>
+      </div>
+    `;
+  };
+
   const renderPublisherCards = (groupedByPublisher, sectionKey, options = {}) => {
     return Object.keys(groupedByPublisher)
       .sort((a, b) => a.localeCompare(b))
@@ -192,6 +309,7 @@ const generateIntegratedHtmlReportByPublisher = ({
               ${escapeHtml(formatRowLine(item))}
               ${badge}
               ${removedBadge}
+              ${options.removedSection ? '' : renderCompactTracking(item)}
             </div>
           `;
         }).join('');
@@ -475,12 +593,12 @@ const generateIntegratedHtmlReportByPublisher = ({
 
   const getDeliveryStatusLabel = (status) => {
     const labels = {
-      APPROVED: 'Approved',
-      COMPLETED_PENDING_APPROVAL: 'Completed - Pending Approval',
-      PENDING_SCREENSHOT: 'Pending Screenshot',
-      ACTIVE_NO_SCREENSHOT_RECORD: 'Active - Waiting for Screenshot Record',
-      PREVIOUSLY_SEEN_REMOVED_FROM_DASHBOARD: 'Previously Seen - Removed From Dashboard',
-      UNKNOWN: 'Unknown'
+      APPROVED: 'Completado y aprobado',
+      COMPLETED_PENDING_APPROVAL: 'Captura subida - falta aprobar',
+      PENDING_SCREENSHOT: 'Captura pendiente',
+      ACTIVE_NO_SCREENSHOT_RECORD: 'Activo - esperando registro de captura',
+      PREVIOUSLY_SEEN_REMOVED_FROM_DASHBOARD: 'Desapareció del dashboard - revisar',
+      UNKNOWN: 'Requiere revisión'
     };
 
     return labels[status] || status || 'Unknown';
@@ -594,11 +712,25 @@ const generateIntegratedHtmlReportByPublisher = ({
   const renderDeliveryCard = (row) => {
     const statusLabel = getDeliveryStatusLabel(row.status);
     const statusClass = getDeliveryStatusClass(row.status);
+    const workScope = row.workScope || '';
+    const exitLabels = {
+      COMPLETED_APPROVED: 'Salió de la cola: completado y aprobado',
+      SCREENSHOT_UPLOADED: 'Salió de la cola: captura subida, falta confirmar aprobación',
+      LEFT_POSTS_SCREENSHOT_PENDING: 'Salió de Past Due, pero la captura sigue pendiente',
+      DISAPPEARED_REVIEW: 'Salió de la cola sin explicación: requiere revisión'
+    };
+    const exitBanner = row.exitReason
+      ? `<div class="queue-exit-reason exit-${escapeHtml(row.exitReason.toLowerCase())}">${escapeHtml(exitLabels[row.exitReason] || row.exitReason)}</div>`
+      : '';
 
     return `
       <div
-        class="delivery-card ${statusClass}"
+        class="delivery-card delivery-trackable ${statusClass}"
         data-delivery-publisher="${escapeHtml(row.website)}"
+        data-delivery-key="${escapeHtml(row.key || buildDeliveryKey(row))}"
+        data-auto-status="${escapeHtml(row.status || 'UNKNOWN')}"
+        data-scheduled="${escapeHtml(row.scheduled)}"
+        data-work-scope="${escapeHtml(workScope)}"
       >
         <div class="delivery-card-top">
           <div>
@@ -609,7 +741,10 @@ const generateIntegratedHtmlReportByPublisher = ({
               ${escapeHtml(row.scheduled)} - ${escapeHtml(row.user)}
             </div>
           </div>
-          <div class="delivery-status ${statusClass}">${escapeHtml(statusLabel)}</div>
+          <div>
+            <div class="delivery-status ${statusClass}">${escapeHtml(statusLabel)}</div>
+            <div class="delivery-delay-clock">Calculando seguimiento...</div>
+          </div>
         </div>
 
         <div class="delivery-source-row">
@@ -621,6 +756,41 @@ const generateIntegratedHtmlReportByPublisher = ({
         </div>
 
         ${renderDeliveryHistoryInfo(row)}
+
+        <div class="delivery-manual-control">
+          <div class="manual-control-heading">
+            <strong>Control manual</strong>
+            <span class="manual-override-badge">Usando estado automático</span>
+          </div>
+          <div class="manual-control-grid">
+            <label>
+              Estado operativo
+              <select class="delivery-status-select" onchange="setDeliveryManualStatus(this)">
+                ${renderManualStatusOptions()}
+              </select>
+            </label>
+            <label class="reschedule-field">
+              Nueva fecha y hora
+              <input class="delivery-reschedule-input" type="datetime-local" onchange="saveDeliveryControl(this)">
+            </label>
+            <label class="delivery-note-field">
+              Nota
+              <input
+                class="delivery-note-input"
+                type="text"
+                maxlength="240"
+                placeholder="Ej. cliente no respondió"
+                onchange="saveDeliveryControl(this)"
+              >
+            </label>
+            <button type="button" class="return-auto-btn" onclick="returnDeliveryToAutomatic(this)">
+              Volver a automático
+            </button>
+          </div>
+          <div class="delivery-updated-at"></div>
+        </div>
+
+        ${exitBanner}
 
         <div class="delivery-assets">
           ${renderAssetBox('Media', row.media)}
@@ -810,13 +980,118 @@ const generateIntegratedHtmlReportByPublisher = ({
     `;
   };
 
+  const renderWorkQueueSection = ({
+    sectionId,
+    title,
+    rows,
+    description,
+    emptyText
+  }) => {
+    const cards = rows.length
+      ? rows.map(renderDeliveryCard).join('')
+      : `<div class="empty">${escapeHtml(emptyText)}</div>`;
+
+    return `
+      <section class="report-section work-queue-section" id="${escapeHtml(sectionId)}">
+        <div class="section-title-row">
+          <div>
+            <h2>${escapeHtml(title)}</h2>
+            <p class="section-description">${escapeHtml(description)}</p>
+          </div>
+          <button class="collapse-btn" onclick="toggleSectionBody('${escapeHtml(sectionId)}')">
+            Colapsar / Expandir
+          </button>
+        </div>
+        <div class="section-body" id="section-body-${escapeHtml(sectionId)}">
+          <div class="master-summary-grid">
+            <div class="master-metric metric-action">
+              <strong data-master-count="actionable">0</strong>
+              <span>Requieren acción</span>
+            </div>
+            <div class="master-metric metric-overdue">
+              <strong data-master-count="overdue">0</strong>
+              <span>Con retraso</span>
+            </div>
+            <div class="master-metric metric-overnight">
+              <strong data-master-count="overnight">0</strong>
+              <span>Amanecidos</span>
+            </div>
+            <div class="master-metric metric-closed">
+              <strong data-master-count="closed">0</strong>
+              <span>Cerrados</span>
+            </div>
+          </div>
+          <div class="work-queue-toolbar">
+            <label>
+              Buscar
+              <input type="search" placeholder="Cliente, publisher o estado..." oninput="filterWorkQueue('${escapeHtml(sectionId)}', this.value)">
+            </label>
+            <label>
+              Mostrar
+              <select onchange="filterWorkQueue('${escapeHtml(sectionId)}', null, this.value)">
+                <option value="actionable">Solo pendientes</option>
+                <option value="all">Todos</option>
+                <option value="closed">Solo cerrados</option>
+              </select>
+            </label>
+          </div>
+          <div class="work-queue-list" data-work-queue="${escapeHtml(sectionId)}">
+            ${cards}
+          </div>
+        </div>
+      </section>
+    `;
+  };
+
+  const renderQueueExitSection = () => {
+    const cards = queueExitRows.map(exit => {
+      const fallbackStatus = exit.exitReason === 'COMPLETED_APPROVED'
+        ? 'APPROVED'
+        : exit.exitReason === 'SCREENSHOT_UPLOADED'
+          ? 'COMPLETED_PENDING_APPROVAL'
+          : 'PREVIOUSLY_SEEN_REMOVED_FROM_DASHBOARD';
+
+      return renderDeliveryCard({
+        ...(exit.delivery || exit),
+        key: exit.key,
+        status: exit.delivery?.status || fallbackStatus,
+        media: exit.delivery?.media || exit.media,
+        screenshot: exit.delivery?.screenshot,
+        screenshotTwo: exit.delivery?.screenshotTwo,
+        existsInPosts: Boolean(exit.delivery?.existsInPosts),
+        existsInScreenshots: Boolean(exit.delivery?.existsInScreenshots),
+        existsInScreenshotsTwos: Boolean(exit.delivery?.existsInScreenshotsTwos),
+        existsInApproved: Boolean(exit.delivery?.existsInApproved),
+        existsInHistory: Boolean(exit.delivery?.existsInHistory),
+        exitReason: exit.exitReason,
+        workScope: 'exit'
+      });
+    }).join('');
+
+    return `
+      <section class="report-section" id="queue-exits">
+        <div class="section-title-row">
+          <div>
+            <h2>Salieron de la cola</h2>
+            <p class="section-description">Distingue aprobados, capturas subidas y desapariciones que necesitan revisión.</p>
+          </div>
+          <button class="collapse-btn" onclick="toggleSectionBody('queue-exits')">Colapsar / Expandir</button>
+        </div>
+        <div class="section-body" id="section-body-queue-exits">
+          <div class="section-summary">Total de movimientos detectados: ${queueExitRows.length}</div>
+          ${cards || '<div class="empty">No hay salidas nuevas de la cola.</div>'}
+        </div>
+      </section>
+    `;
+  };
+
   const html = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Reporte Integrado de Publishers</title>
+  <title>JCN Master Dashboard</title>
   <style>
     ${reportCss}
   </style>
@@ -835,7 +1110,7 @@ const generateIntegratedHtmlReportByPublisher = ({
     </div>
   </div>
 
-  <h1>Reporte Integrado de Publishers</h1>
+  <h1>JCN Master Dashboard</h1>
 
   <div class="generated-time">
     <span>Generado a las:</span>
@@ -869,26 +1144,47 @@ const generateIntegratedHtmlReportByPublisher = ({
     </div>
 
     <div class="summary-card summary-removed">
-      <div class="summary-number">${removedRows.length}</div>
-      <div class="summary-label">Removidos</div>
+      <div class="summary-number">${queueExitRows.length}</div>
+      <div class="summary-label">Salieron de la cola</div>
     </div>
   </div>
 
   <div class="global-reset-row">
+    <button class="notification-btn" onclick="requestTrackingNotifications()">
+      Activar alertas por hora
+    </button>
     <button class="reset-all-btn" onclick="resetAllTodayProgress()">
       Reset todo el día
     </button>
   </div>
 
   <div class="tabs">
-    <button class="tab-button active" onclick="showTab('todos', this)">Reporte completo (${allRows.length})</button>
+    <button class="tab-button active" onclick="showTab('master', this)">Master Dashboard (${masterDeliveries.length})</button>
+    <button class="tab-button" onclick="showTab('overnight', this)">Amanecidos (${overnightDeliveries.length})</button>
+    <button class="tab-button" onclick="showTab('todos', this)">Reporte completo (${allRows.length})</button>
     <button class="tab-button" onclick="showTab('after5pm', this)">5PM en adelante (${reminderRows.length})</button>
     <button class="tab-button" onclick="showTab('saturday', this)">Saturday advance (${saturdayRows.length})</button>
-    <button class="tab-button" onclick="showTab('removed', this)">Removidos (${removedRows.length})</button>
-    <button class="tab-button" onclick="showTab('delivery', this)">Screenshot Status Today (${filteredDeliveryMatcher ? filteredDeliveryMatcher.summary.pendingTotal : 0} pending)</button>
-    <button class="tab-button" onclick="showTab('delivery-yesterday', this)">Screenshot Status Yesterday (${filteredYesterdayDeliveryMatcher ? filteredYesterdayDeliveryMatcher.summary.pendingTotal : 0} pending)</button>
+    <button class="tab-button" onclick="showTab('queue-exits', this)">Salieron de la cola (${queueExitRows.length})</button>
+    <button class="tab-button" onclick="showTab('delivery', this)">Control de hoy (${filteredDeliveryMatcher ? filteredDeliveryMatcher.summary.pendingTotal : 0} pendientes)</button>
+    <button class="tab-button" onclick="showTab('delivery-yesterday', this)">Control de ayer (${filteredYesterdayDeliveryMatcher ? filteredYesterdayDeliveryMatcher.summary.pendingTotal : 0} pendientes)</button>
     <button class="tab-button" onclick="showTab('important-clients', this)">Clientes importantes (${publisherConfigRows.length})</button>
   </div>
+
+  ${renderWorkQueueSection({
+    sectionId: 'master',
+    title: 'Master Dashboard - Mi trabajo ahora',
+    rows: masterDeliveries,
+    description: 'Una sola cola para amanecidos, pendientes de hoy, retrasos y correcciones manuales.',
+    emptyText: 'No hay anuncios que requieran seguimiento.'
+  })}
+
+  ${renderWorkQueueSection({
+    sectionId: 'overnight',
+    title: 'Amanecidos - Pendientes del día anterior',
+    rows: overnightDeliveries.map(row => ({ ...row, workScope: 'overnight' })),
+    description: 'El reloj conserva la hora original y continúa hasta completar, cancelar o reprogramar.',
+    emptyText: 'No quedaron anuncios amanecidos.'
+  })}
 
   ${renderSection(
     'todos',
@@ -911,18 +1207,12 @@ const generateIntegratedHtmlReportByPublisher = ({
     'saturday'
   )}
 
-  ${renderSection(
-    'removed',
-    '4. Removidos en esta versión',
-    removedRows,
-    '',
-    { removedSection: true }
-  )}
+  ${renderQueueExitSection()}
 
   ${renderDeliverySection({
     sectionId: 'delivery',
     sectionNumber: '5',
-    title: 'Screenshot Status Today',
+    title: 'Control de screenshots de hoy',
     matcher: filteredDeliveryMatcher,
     reportDateValue: reportDate,
     displayDate: todayString,
@@ -932,7 +1222,7 @@ const generateIntegratedHtmlReportByPublisher = ({
   ${renderDeliverySection({
     sectionId: 'delivery-yesterday',
     sectionNumber: '6',
-    title: 'Screenshot Status Yesterday',
+    title: 'Control de screenshots de ayer',
     matcher: filteredYesterdayDeliveryMatcher,
     reportDateValue: yesterdayReportDate,
     displayDate: yesterdayString,

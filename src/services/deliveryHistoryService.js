@@ -259,9 +259,17 @@ const saveDeliveryHistory = (reportsFolder, reportDate, deliveries) => {
 
     const previous = map.get(row.key);
     const cleaned = cleanDeliveryForHistory(row);
+    const seenInCurrentDashboard = Boolean(
+      row.existsInPosts ||
+      row.existsInScreenshots ||
+      row.existsInScreenshotsTwos ||
+      row.existsInApproved
+    );
 
     cleaned.firstSeenAt = previous?.firstSeenAt || now;
-    cleaned.lastSeenAt = now;
+    cleaned.lastSeenAt = seenInCurrentDashboard
+      ? now
+      : previous?.lastSeenAt || now;
 
     map.set(row.key, cleaned);
   });
@@ -311,10 +319,15 @@ const pruneDeliveryHistory = (reportsFolder, daysToKeep = 3) => {
   return filesToDelete;
 };
 
-const loadRecentDeliveryHistoryBundle = (reportsFolder, currentReportDate, daysToKeep = 3) => {
+const loadRecentDeliveryHistoryBundle = (
+  reportsFolder,
+  currentReportDate,
+  daysToShow = 3,
+  daysToKeep = 90
+) => {
   pruneDeliveryHistory(reportsFolder, daysToKeep);
 
-  const files = getHistoryFiles(reportsFolder).slice(0, daysToKeep);
+  const files = getHistoryFiles(reportsFolder).slice(0, daysToShow);
 
   const bundle = files.map((file, index) => {
     try {

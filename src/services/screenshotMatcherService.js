@@ -119,11 +119,25 @@ const resolveDeliveryStatus = (item) => {
     return 'APPROVED';
   }
 
+  const previousStatus = history?.status || history?.lastKnownStatus || null;
+
+  // An approved delivery is terminal. Keep it closed even if an older approved
+  // record is no longer visible on the current dashboard page.
+  if (previousStatus === 'APPROVED') {
+    return 'APPROVED';
+  }
+
   if (hasScreenshot(screenshotsTwos)) {
     return 'COMPLETED_PENDING_APPROVAL';
   }
 
   if (hasScreenshot(screenshots)) {
+    return 'COMPLETED_PENDING_APPROVAL';
+  }
+
+  // Preserve evidence already observed in a prior crawl while the item moves
+  // between screenshot queues.
+  if (previousStatus === 'COMPLETED_PENDING_APPROVAL') {
     return 'COMPLETED_PENDING_APPROVAL';
   }
 

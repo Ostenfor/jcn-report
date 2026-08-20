@@ -3,6 +3,10 @@ name: Generate JCN Report
 on:
   workflow_dispatch:
 
+  schedule:
+    # Refresh at minute 7 of every hour so timers and dashboard changes stay current.
+    - cron: "7 * * * *"
+
   push:
     branches:
       - main

@@ -1561,6 +1561,270 @@ const buildReportCss = () => {
         font-size: 12.5px;
       }
     }
+
+    .section-description {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .master-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .master-metric {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+      background: rgba(15, 23, 42, 0.78);
+    }
+
+    .master-metric strong {
+      display: block;
+      font-size: 28px;
+      line-height: 1;
+      margin-bottom: 7px;
+    }
+
+    .master-metric span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .metric-action strong,
+    .metric-overdue strong {
+      color: #fb7185;
+    }
+
+    .metric-overnight strong {
+      color: #fbbf24;
+    }
+
+    .metric-closed strong {
+      color: #4ade80;
+    }
+
+    .work-queue-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: end;
+      padding: 12px;
+      margin-bottom: 16px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.72);
+    }
+
+    .work-queue-toolbar label {
+      display: grid;
+      gap: 5px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .work-queue-toolbar input,
+    .work-queue-toolbar select,
+    .delivery-manual-control input,
+    .delivery-manual-control select,
+    .compact-status-select {
+      min-height: 38px;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 7px 9px;
+      color: var(--text);
+      background: #0f172a;
+    }
+
+    .work-queue-toolbar input {
+      width: min(360px, 72vw);
+    }
+
+    .delivery-delay-clock {
+      margin-top: 7px;
+      color: #fbbf24;
+      font-size: 12px;
+      font-weight: 800;
+      text-align: right;
+    }
+
+    .delivery-card.delay-level-1 {
+      box-shadow: inset 4px 0 0 #f59e0b;
+    }
+
+    .delivery-card.delay-level-2 {
+      box-shadow: inset 5px 0 0 #f97316;
+    }
+
+    .delivery-card.delay-level-3 {
+      box-shadow: inset 6px 0 0 #ef4444, 0 0 24px rgba(239, 68, 68, 0.12);
+    }
+
+    .delivery-card.status-cancelled {
+      border-color: #64748b;
+      opacity: 0.78;
+    }
+
+    .delivery-card.status-rescheduled {
+      border-color: #a78bfa;
+    }
+
+    .delivery-card.status-no-response {
+      border-color: #fb7185;
+    }
+
+    .delivery-manual-control {
+      margin: 14px 0;
+      padding: 12px;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      background: rgba(2, 6, 23, 0.46);
+    }
+
+    .manual-control-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .manual-override-badge {
+      padding: 4px 8px;
+      border-radius: 999px;
+      color: var(--muted);
+      background: #1e293b;
+      font-size: 11px;
+    }
+
+    .manual-override-badge.manual-active {
+      color: #fde68a;
+      background: rgba(245, 158, 11, 0.18);
+    }
+
+    .manual-control-grid {
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) minmax(190px, 1fr) minmax(220px, 2fr) auto;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .manual-control-grid label {
+      display: grid;
+      gap: 5px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .return-auto-btn,
+    .tracking-manage-btn,
+    .notification-btn {
+      min-height: 38px;
+      border: 1px solid #475569;
+      border-radius: 8px;
+      padding: 7px 11px;
+      color: #e2e8f0;
+      background: #1e293b;
+      cursor: pointer;
+    }
+
+    .notification-btn {
+      border-color: #0ea5e9;
+      color: #e0f2fe;
+      background: rgba(14, 165, 233, 0.16);
+    }
+
+    .delivery-updated-at {
+      margin-top: 8px;
+      color: #64748b;
+      font-size: 10px;
+    }
+
+    .compact-tracking {
+      display: grid;
+      grid-template-columns: minmax(150px, 1fr) auto minmax(175px, auto) auto;
+      gap: 8px;
+      align-items: center;
+      margin-top: 9px;
+      padding: 8px;
+      border: 1px solid #334155;
+      border-radius: 9px;
+      background: rgba(2, 6, 23, 0.55);
+    }
+
+    .tracking-inline-status {
+      color: #e2e8f0;
+      font-size: 11px;
+      font-weight: 750;
+    }
+
+    .tracking-inline-timer {
+      color: #fbbf24;
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .compact-status-select {
+      max-width: 230px;
+      font-size: 11px;
+    }
+
+    .queue-exit-reason {
+      margin: 12px 0;
+      padding: 9px 11px;
+      border-radius: 9px;
+      color: #fef3c7;
+      background: rgba(245, 158, 11, 0.14);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .tracking-highlight {
+      animation: trackingPulse 0.7s ease-in-out 3;
+    }
+
+    @keyframes trackingPulse {
+      50% {
+        outline: 4px solid rgba(56, 189, 248, 0.45);
+        transform: translateY(-2px);
+      }
+    }
+
+    @media (max-width: 900px) {
+      .master-summary-grid {
+        grid-template-columns: repeat(2, minmax(130px, 1fr));
+      }
+
+      .manual-control-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .compact-tracking {
+        grid-template-columns: 1fr auto;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .manual-control-grid,
+      .compact-tracking {
+        grid-template-columns: 1fr;
+      }
+
+      .compact-status-select,
+      .tracking-manage-btn,
+      .return-auto-btn {
+        width: 100%;
+        max-width: none;
+      }
+
+      .delivery-delay-clock {
+        text-align: left;
+      }
+    }
   `;
 };
 

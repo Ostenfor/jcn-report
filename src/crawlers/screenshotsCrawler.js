@@ -1,4 +1,5 @@
 const { safeGoto } = require('../utils/navigationUtils');
+const { shouldStopAfterPage } = require('../utils/paginationUtils');
 
 const SCREENSHOTS_URL = 'https://dashboard.jewishcontentnetwork.com/admin/resources/screenshots';
 const SCREENSHOTS_TWOS_URL = 'https://dashboard.jewishcontentnetwork.com/admin/resources/screenshots-twos';
@@ -156,7 +157,7 @@ const crawlScreenshots = async ({
     await page.waitForTimeout(2000);
   }
 
-  const result = await page.evaluate(() => {
+  const extractCurrentScreenshotTable = async () => page.evaluate(() => {
     const cleanText = (value) => {
       return String(value || '')
         .replace(/\n/g, ' ')
@@ -264,6 +265,61 @@ const crawlScreenshots = async ({
       rows
     };
   });
+
+  const result = await extractCurrentScreenshotTable();
+  const seenRows = new Set(
+    result.rows.map(row => row.detailUrl || row.cellsText.join('|||'))
+  );
+  let crawledPageCount = 1;
+
+  for (let pageNumber = 2; pageNumber <= 100; pageNumber++) {
+    if (shouldStopAfterPage({
+      headers: result.headers,
+      rows: result.rows.slice(-75),
+      oldestDateString: yesterdayString || todayString
+    })) {
+      console.log(`${title}: se alcanzaron fechas anteriores a ${yesterdayString || todayString}.`);
+      break;
+    }
+
+    const nextButton = page.locator('button[dusk="next"]:visible, button[rel="next"]:visible').first();
+
+    if (await nextButton.count() === 0 || await nextButton.isDisabled()) {
+      break;
+    }
+
+    const previousTableText = await page.locator('table tbody').innerText();
+    await nextButton.click();
+
+    try {
+      await page.waitForFunction(previousText => {
+        const tbody = document.querySelector('table tbody');
+        return tbody && tbody.innerText !== previousText;
+      }, previousTableText, { timeout: 30000 });
+    } catch {
+      console.log(`La página ${pageNumber} de ${title} no cambió; se detiene la paginación.`);
+      break;
+    }
+
+    const pageResult = await extractCurrentScreenshotTable();
+    let newRowsOnPage = 0;
+
+    pageResult.rows.forEach(row => {
+      const key = row.detailUrl || row.cellsText.join('|||');
+      if (seenRows.has(key)) return;
+      seenRows.add(key);
+      result.rows.push(row);
+      newRowsOnPage += 1;
+    });
+
+    crawledPageCount += 1;
+    console.log(`${title}: página ${pageNumber}, ${newRowsOnPage} filas nuevas.`);
+
+    if (newRowsOnPage === 0) break;
+  }
+
+  rowCount = result.rows.length;
+  console.log(`${title}: ${crawledPageCount} páginas y ${rowCount} filas revisadas.`);
 
   const headerMap = buildHeaderMap(result.headers);
 
@@ -401,6 +457,7 @@ const crawlScreenshots = async ({
       missingScreenshotYesterday: rowsMissingScreenshotYesterday.length
     },
     rowCount,
+    crawledPageCount,
     headers: result.headers,
     headerMap,
     indexes: {
