@@ -165,7 +165,9 @@ const printDeliverySummaryBlock = (title, matcher) => {
     // ------------------------------
     const {
       rows
-    } = await crawlPosts(page);
+    } = await crawlPosts(page, {
+      oldestDateString: yesterdayString
+    });
 
     // ------------------------------
     // 3.4 CRAWL SCREENSHOTS
