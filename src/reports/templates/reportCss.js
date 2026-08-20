@@ -1847,6 +1847,51 @@ const buildReportCss = () => {
       color: #fbbf24;
     }
 
+    .master-nocturnal-group,
+    .master-day-group + .master-nocturnal-group {
+      border-color: rgba(129, 140, 248, 0.55);
+      background: rgba(79, 70, 229, 0.075);
+    }
+
+    .master-nocturnal-group h3 {
+      color: #a5b4fc;
+    }
+
+    .master-group-description {
+      margin: -5px 0 12px;
+      color: #a5b4fc;
+      font-size: 12px;
+    }
+
+    .master-nocturnal-group .delivery-card {
+      border-color: rgba(129, 140, 248, 0.45);
+      box-shadow: inset 4px 0 0 #6366f1;
+    }
+
+    .nocturnal-notice {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 7px;
+      margin: 10px 0;
+      padding: 9px 10px;
+      border: 1px solid rgba(129, 140, 248, 0.45);
+      border-radius: 10px;
+      color: #c7d2fe;
+      background: rgba(49, 46, 129, 0.28);
+      font-size: 11px;
+    }
+
+    .nocturnal-tag {
+      padding: 4px 8px;
+      border-radius: 999px;
+      color: #eef2ff;
+      background: #4f46e5;
+      font-size: 10px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
     .master-overnight-group .delivery-card[data-overnight-candidate="false"]:not([data-overnight-cohort="true"]) {
       display: none;
     }

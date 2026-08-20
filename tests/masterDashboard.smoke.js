@@ -111,8 +111,18 @@ assert.strictEqual(shouldStopAfterPage({
     process.env.REPORT_OVERWRITE = 'true';
 
     const todayPending = createDelivery({
-      scheduled: '08/20/2026, 08:00 AM EDT',
+      scheduled: '08/20/2026, 10:00 AM EDT',
       user: 'Client Today',
+      status: 'PENDING_SCREENSHOT'
+    });
+    const todayDawn = createDelivery({
+      scheduled: '08/20/2026, 02:00 AM EDT',
+      user: 'Client Dawn',
+      status: 'PENDING_SCREENSHOT'
+    });
+    const todayNocturnal = createDelivery({
+      scheduled: '08/20/2026, 08:00 PM EDT',
+      user: 'Client Night',
       status: 'PENDING_SCREENSHOT'
     });
     const todayApproved = createDelivery({
@@ -161,7 +171,7 @@ assert.strictEqual(shouldStopAfterPage({
       todayString: '08/20/2026',
       yesterdayString: '08/19/2026',
       tomorrowString: '08/21/2026',
-      deliveryMatcher: createMatcher([todayPending, todayApproved, todayRemoved]),
+      deliveryMatcher: createMatcher([todayPending, todayDawn, todayNocturnal, todayApproved, todayRemoved]),
       yesterdayDeliveryMatcher: createMatcher([yesterdayPending]),
       deliveryHistoryBundle: []
     });
@@ -183,14 +193,22 @@ assert.strictEqual(shouldStopAfterPage({
     assert.strictEqual(await page.locator('.tab-group-tracking .tab-button').count(), 2);
     assert.strictEqual(await page.locator('.tab-group-reminders .tab-button').count(), 2);
     assert.strictEqual(await page.locator('.tab-group-screenshots .tab-button').count(), 2);
-    assert.strictEqual(await page.locator('#master .delivery-card').count(), 4);
+    assert.strictEqual(await page.locator('#master .delivery-card').count(), 6);
     assert.strictEqual(await page.locator('#master [data-master-group="today"] .delivery-card').count(), 3);
-    assert.strictEqual(await page.locator('#master [data-master-group="overnight"] .delivery-card').count(), 1);
+    assert.strictEqual(await page.locator('#master [data-master-group="overnight"] .delivery-card').count(), 2);
+    assert.strictEqual(await page.locator('#master [data-master-group="nocturnal"] .delivery-card').count(), 1);
     await page.getByRole('heading', { name: 'Hoy (3)' }).waitFor();
-    await page.getByRole('heading', { name: 'Amanecidos del día (1)' }).waitFor();
+    await page.getByRole('heading', { name: 'Amanecidos del día (2)' }).waitFor();
+    await page.getByRole('heading', { name: 'Nocturnos — para amanecida (1)' }).waitFor();
     const overnightCard = page.locator('#master [data-master-group="overnight"] .delivery-card').filter({ hasText: 'Client Overnight' });
     assert.strictEqual(await overnightCard.getAttribute('data-overnight-cohort'), 'true');
-    assert.strictEqual(await page.locator('#master .master-delivery-assets').count(), 4);
+    const dawnCard = page.locator('#master [data-master-group="overnight"] .delivery-card').filter({ hasText: 'Client Dawn' });
+    assert.strictEqual(await dawnCard.getAttribute('data-overnight-cohort'), 'true');
+    const nocturnalCard = page.locator('#master [data-master-group="nocturnal"] .delivery-card').filter({ hasText: 'Client Night' });
+    await nocturnalCard.getByText('Nocturno', { exact: true }).waitFor();
+    await nocturnalCard.getByText('Para amanecida', { exact: true }).waitFor();
+    await nocturnalCard.getByText(/No requiere acción durante tu turno/).waitFor();
+    assert.strictEqual(await page.locator('#master .master-delivery-assets').count(), 6);
     assert.strictEqual(await page.locator('#master .delivery-manual-control').count(), 0);
     assert.strictEqual(await page.locator('#master button[data-stage]').count(), 0);
     assert.strictEqual(await page.locator('#master .journey-exceptions').count(), 0);
@@ -204,6 +222,7 @@ assert.strictEqual(shouldStopAfterPage({
     assert.strictEqual(await page.locator('#overdue-alert-list .overdue-alert-group').nth(1).getAttribute('data-alert-scope'), 'yesterday');
     await page.getByRole('heading', { name: /Pendientes de hoy/ }).waitFor();
     await page.getByRole('heading', { name: /Pendientes de ayer \/ amanecidos/ }).waitFor();
+    assert.strictEqual(await page.locator('#overdue-alert-list').getByText(/Client Night/).count(), 0);
     await page.locator('#overdue-alert-list .overdue-alert-item button').first().click();
     assert.ok(await page.locator('#overdue-alert-list .overdue-alert-item').count() >= 1);
     await page.getByRole('button', { name: 'Cerrar todos' }).click();
@@ -227,12 +246,12 @@ assert.strictEqual(shouldStopAfterPage({
       updateDeliveryTracking();
     });
     assert.strictEqual(await overnightCard.isVisible(), false, 'Resolved overnight work leaves Master and remains in the register');
-    assert.strictEqual(await page.locator('#master [data-overnight-cohort-count]').innerText(), '1');
+    assert.strictEqual(await page.locator('#master [data-overnight-cohort-count]').innerText(), '2');
 
     await page.getByRole('button', { name: /Registro del día/ }).click();
     await page.waitForSelector('#master-history.active');
-    assert.strictEqual(await page.locator('#master-history .master-history-row').count(), 4);
-    assert.strictEqual(await page.locator('#master-history .master-history-today .master-history-row').count(), 3);
+    assert.strictEqual(await page.locator('#master-history .master-history-row').count(), 6);
+    assert.strictEqual(await page.locator('#master-history .master-history-today .master-history-row').count(), 5);
     assert.strictEqual(await page.locator('#master-history .master-history-yesterday .master-history-row').count(), 1);
     const pendingHistoryRow = page.locator('#master-history .master-history-row').filter({ hasText: 'Client Today' });
     assert.strictEqual(await pendingHistoryRow.locator('.history-reschedule-btn').isVisible(), false);

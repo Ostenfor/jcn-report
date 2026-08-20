@@ -621,7 +621,8 @@ const buildReportScripts = ({
     function updateMasterMetrics() {
       document.querySelectorAll('.work-queue-section').forEach(section => {
         const cards = Array.from(section.querySelectorAll('.delivery-card[data-delivery-key]'))
-          .filter(card => (card.dataset.workScope !== 'overnight' || card.dataset.overnightCohort === 'true') &&
+          .filter(card => card.dataset.workScope !== 'nocturnal' &&
+            (card.dataset.workScope !== 'overnight' || card.dataset.overnightCohort === 'true') &&
             card.dataset.isInterrupted !== 'true' && card.dataset.isClosed !== 'true');
         const actionable = cards.filter(card => card.dataset.isClosed !== 'true').length;
         const overdue = cards.filter(card => card.dataset.isOverdue === 'true').length;
@@ -657,6 +658,7 @@ const buildReportScripts = ({
       const unique = new Map();
 
       document.querySelectorAll('#master .delivery-card[data-delivery-key]').forEach(element => {
+        if (element.dataset.workScope === 'nocturnal') return;
         if (element.dataset.workScope === 'overnight' && element.dataset.overnightCohort !== 'true') return;
         if (!unique.has(element.dataset.deliveryKey)) {
           unique.set(element.dataset.deliveryKey, element);
@@ -1253,7 +1255,11 @@ const buildReportScripts = ({
       const activeSectionId = activeSection ? activeSection.id : '';
 
       const activeTrackingCards = activeSection
-        ? Array.from(activeSection.querySelectorAll('.delivery-card[data-delivery-key]'))
+        ? Array.from(activeSection.querySelectorAll('.delivery-card[data-delivery-key]')).filter(card =>
+            card.dataset.workScope !== 'nocturnal' &&
+            (card.dataset.workScope !== 'overnight' || card.dataset.overnightCohort === 'true') &&
+            card.dataset.isInterrupted !== 'true'
+          )
         : [];
 
       const useLiveTrackingCounts = activeSectionId === 'master' ||

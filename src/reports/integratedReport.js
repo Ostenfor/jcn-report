@@ -114,22 +114,54 @@ const generateIntegratedHtmlReportByPublisher = ({
   ]);
   const todayDeliveries = filteredDeliveryMatcher?.deliveries || [];
   const yesterdayDeliveries = filteredYesterdayDeliveryMatcher?.deliveries || [];
+  const getScheduledHour = (scheduled) => {
+    const match = String(scheduled || '').match(/,\s*(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    if (!match) return null;
+    let hour = Number(match[1]) % 12;
+    if (match[3].toUpperCase() === 'PM') hour += 12;
+    return hour;
+  };
+  const getTodayWorkScope = (row) => {
+    const hour = getScheduledHour(row.scheduled);
+    if (hour !== null && hour >= 17) return 'nocturnal';
+    if (hour !== null && hour < 9) return 'overnight';
+    return 'today';
+  };
+  const isAutomaticMasterActive = (row) =>
+    !automaticClosedStatuses.has(row.status) && !automaticInterruptedStatuses.has(row.status);
   const overnightDeliveries = yesterdayDeliveries.filter(row =>
     !automaticClosedStatuses.has(row.status)
   );
   const todayMasterDeliveries = todayDeliveries
+    .filter(row => getTodayWorkScope(row) === 'today')
     .map(row => ({ ...row, workScope: 'today' }))
+    .sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
+  const dawnMasterDeliveries = todayDeliveries
+    .filter(row => getTodayWorkScope(row) === 'overnight')
+    .map(row => ({
+      ...row,
+      workScope: 'overnight',
+      overnightInitialPending: isAutomaticMasterActive(row),
+      overnightOrigin: 'dawn'
+    }))
     .sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
   const overnightMasterDeliveries = yesterdayDeliveries
     .map(row => ({
       ...row,
       workScope: 'overnight',
-      overnightInitialPending: !automaticClosedStatuses.has(row.status)
+      overnightInitialPending: isAutomaticMasterActive(row),
+      overnightOrigin: 'previous-day'
     }))
+    .concat(dawnMasterDeliveries)
+    .sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
+  const nocturnalMasterDeliveries = todayDeliveries
+    .filter(row => getTodayWorkScope(row) === 'nocturnal' && isAutomaticMasterActive(row))
+    .map(row => ({ ...row, workScope: 'nocturnal' }))
     .sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
   const masterDeliveries = [
     ...todayMasterDeliveries,
-    ...overnightDeliveries
+    ...overnightDeliveries,
+    ...dawnMasterDeliveries
   ];
   const masterActiveDeliveryCount = masterDeliveries.filter(row =>
     !automaticClosedStatuses.has(row.status) && !automaticInterruptedStatuses.has(row.status)
@@ -270,11 +302,11 @@ const generateIntegratedHtmlReportByPublisher = ({
     return labels[status] || status || 'Sin detectar';
   };
 
-  const renderStatusJourney = ({ compact = false } = {}) => `
+  const renderStatusJourney = ({ compact = false, nocturnal = false } = {}) => `
     <div class="status-journey ${compact ? 'status-journey-compact' : ''}" aria-label="Progreso del anuncio">
       <div class="journey-main-track">
         <div class="journey-step" data-stage="SCHEDULED">
-          <span class="journey-dot">✓</span><span>Programado</span>
+          <span class="journey-dot">✓</span><span>${nocturnal ? 'Para amanecida' : 'Programado'}</span>
         </div>
         <div class="journey-step" data-stage="PENDING_CAPTURE">
           <span class="journey-dot">✓</span><span>Esperando captura</span>
@@ -764,6 +796,15 @@ const generateIntegratedHtmlReportByPublisher = ({
     const exitBanner = row.exitReason
       ? `<div class="queue-exit-reason exit-${escapeHtml(row.exitReason.toLowerCase())}">${escapeHtml(exitLabels[row.exitReason] || row.exitReason)}</div>`
       : '';
+    const nocturnalNotice = workScope === 'nocturnal'
+      ? `
+        <div class="nocturnal-notice">
+          <span class="nocturnal-tag">Nocturno</span>
+          <strong>Programado después de las 5PM.</strong>
+          <span>No requiere acción durante tu turno; pasará automáticamente a Amanecidos.</span>
+        </div>
+      `
+      : '';
 
     return `
       <div
@@ -790,7 +831,8 @@ const generateIntegratedHtmlReportByPublisher = ({
           </div>
         </div>
 
-        ${renderStatusJourney()}
+        ${nocturnalNotice}
+        ${renderStatusJourney({ nocturnal: workScope === 'nocturnal' })}
 
         ${exitBanner}
 
@@ -1058,6 +1100,7 @@ const generateIntegratedHtmlReportByPublisher = ({
     title,
     todayRows,
     overnightRows,
+    nocturnalRows,
     description,
     emptyText
   }) => {
@@ -1067,6 +1110,9 @@ const generateIntegratedHtmlReportByPublisher = ({
     const overnightCards = overnightRows.length
       ? overnightRows.map(renderMasterDeliveryCard).join('')
       : '';
+    const nocturnalCards = nocturnalRows.length
+      ? nocturnalRows.map(renderMasterDeliveryCard).join('')
+      : '<div class="empty">No hay anuncios nocturnos programados.</div>';
 
     return `
       <section class="report-section work-queue-section" id="${escapeHtml(sectionId)}">
@@ -1114,10 +1160,17 @@ const generateIntegratedHtmlReportByPublisher = ({
             </div>
           </div>
           <div class="master-day-group master-overnight-group" data-master-group="overnight">
-            <h3>Amanecidos del día (<span data-overnight-cohort-count>${overnightDeliveries.length}</span>)</h3>
+            <h3>Amanecidos del día (<span data-overnight-cohort-count>${overnightDeliveries.length + dawnMasterDeliveries.length}</span>)</h3>
             <div class="work-queue-list" data-work-queue="${escapeHtml(sectionId)}-overnight">
               ${overnightCards}
               <div class="empty overnight-cohort-empty" style="display:none;">No quedaron anuncios amanecidos.</div>
+            </div>
+          </div>
+          <div class="master-day-group master-nocturnal-group" data-master-group="nocturnal">
+            <h3>Nocturnos — para amanecida (${nocturnalRows.length})</h3>
+            <p class="master-group-description">Programados desde las 5PM. No cuentan como trabajo pendiente de este turno.</p>
+            <div class="work-queue-list" data-work-queue="${escapeHtml(sectionId)}-nocturnal">
+              ${nocturnalCards}
             </div>
           </div>
         </div>
@@ -1369,6 +1422,7 @@ const generateIntegratedHtmlReportByPublisher = ({
     title: 'Seguimiento de capturas - Mi trabajo ahora',
     todayRows: todayMasterDeliveries,
     overnightRows: overnightMasterDeliveries,
+    nocturnalRows: nocturnalMasterDeliveries,
     description: 'Seguimiento automático de capturas pendientes de hoy y de los amanecidos. Los estados interrumpidos pasan al Registro del día.',
     emptyText: 'No hay anuncios que requieran seguimiento.'
   })}
