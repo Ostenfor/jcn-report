@@ -1185,6 +1185,8 @@ const generateIntegratedHtmlReportByPublisher = ({
       'NEEDS_REVIEW',
       'REMOVED_CANCELLED'
     ].includes(row.status);
+    const scheduledHour = getScheduledHour(row.scheduled);
+    const isNocturnal = scheduledHour !== null && scheduledHour >= 17;
 
     return `
     <div
@@ -1197,9 +1199,11 @@ const generateIntegratedHtmlReportByPublisher = ({
       data-previous-status="${escapeHtml(row.previousStatus || '')}"
       data-first-seen="${escapeHtml(row.firstSeenAt || '')}"
       data-last-seen="${escapeHtml(row.lastSeenAt || '')}"
+      data-history-nocturnal="${isNocturnal ? 'true' : 'false'}"
     >
       <div class="history-client">
         <strong>${escapeHtml(row.website)}</strong>
+        ${isNocturnal ? '<span class="nocturnal-tag">Nocturno</span>' : ''}
         <span>${escapeHtml(row.type)} · ${escapeHtml(row.user)}</span>
       </div>
       <div class="history-scheduled">${escapeHtml(row.scheduled)}</div>

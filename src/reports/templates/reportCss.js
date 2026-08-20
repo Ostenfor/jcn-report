@@ -1999,6 +1999,15 @@ const buildReportCss = () => {
       font-size: 11px;
     }
 
+    .history-client .nocturnal-tag {
+      width: fit-content;
+      padding: 3px 7px;
+      color: #eef2ff;
+      background: #4f46e5;
+      font-size: 9px;
+      font-weight: 900;
+    }
+
     .history-status-label {
       width: fit-content;
       padding: 5px 8px;

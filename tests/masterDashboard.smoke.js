@@ -253,6 +253,7 @@ assert.strictEqual(shouldStopAfterPage({
     assert.strictEqual(await page.locator('#master-history .master-history-row').count(), 6);
     assert.strictEqual(await page.locator('#master-history .master-history-today .master-history-row').count(), 5);
     assert.strictEqual(await page.locator('#master-history .master-history-yesterday .master-history-row').count(), 1);
+    assert.strictEqual(await page.locator('#master-history [data-history-nocturnal="true"] .nocturnal-tag').count(), 2);
     const pendingHistoryRow = page.locator('#master-history .master-history-row').filter({ hasText: 'Client Today' });
     assert.strictEqual(await pendingHistoryRow.locator('.history-reschedule-btn').isVisible(), false);
     const interruptedHistoryRow = page.locator('#master-history .master-history-row').filter({ hasText: 'Client Interrupted' });
