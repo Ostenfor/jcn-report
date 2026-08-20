@@ -177,6 +177,9 @@ assert.strictEqual(shouldStopAfterPage({
     assert.strictEqual(await page.locator('#master [data-master-group="overnight"] .delivery-card').count(), 1);
     await page.getByRole('heading', { name: 'Hoy (2)' }).waitFor();
     await page.getByRole('heading', { name: 'Amanecidos del día (1)' }).waitFor();
+    assert.strictEqual(await page.locator('#master .work-queue-toolbar select').inputValue(), 'all');
+    const overnightCard = page.locator('#master [data-master-group="overnight"] .delivery-card').filter({ hasText: 'Client Overnight' });
+    assert.strictEqual(await overnightCard.getAttribute('data-overnight-cohort'), 'true');
     assert.strictEqual(await page.locator('#master .master-delivery-assets').count(), 3);
     assert.strictEqual(await page.locator('#master .delivery-manual-control').count(), 0);
     await page.getByRole('button', { name: /Removidos/ }).click();
@@ -190,7 +193,18 @@ assert.strictEqual(shouldStopAfterPage({
     await todayCard.locator('[data-stage="COMPLETED"]').click();
 
     assert.strictEqual(await todayCard.getAttribute('data-is-closed'), 'true');
-    assert.strictEqual(await todayCard.isVisible(), false, 'A completed card leaves the actionable list');
+    assert.strictEqual(await todayCard.isVisible(), true, 'A completed card remains visible in the daily table');
+
+    await overnightCard.evaluate(card => {
+      card.dataset.autoStatus = 'APPROVED';
+      card.dataset.overnightCandidate = 'false';
+    });
+    await page.evaluate(() => {
+      initializeOvernightCohort();
+      updateDeliveryTracking();
+    });
+    assert.strictEqual(await overnightCard.isVisible(), true, 'An overnight record remains in its persisted cohort after completion');
+    assert.strictEqual(await page.locator('#master [data-overnight-cohort-count]').innerText(), '1');
 
     await page.getByRole('button', { name: /Registro del día/ }).click();
     await page.waitForSelector('#master-history.active');

@@ -112,12 +112,16 @@ const generateIntegratedHtmlReportByPublisher = ({
   const todayMasterDeliveries = todayDeliveries
     .map(row => ({ ...row, workScope: 'today' }))
     .sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
-  const overnightMasterDeliveries = overnightDeliveries
-    .map(row => ({ ...row, workScope: 'overnight' }))
+  const overnightMasterDeliveries = yesterdayDeliveries
+    .map(row => ({
+      ...row,
+      workScope: 'overnight',
+      overnightInitialPending: !automaticClosedStatuses.has(row.status)
+    }))
     .sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
   const masterDeliveries = [
     ...todayMasterDeliveries,
-    ...overnightMasterDeliveries
+    ...overnightDeliveries
   ];
   const todayDeliveryClientCount = new Set(todayDeliveries.map(row => row.website)).size;
 
@@ -771,6 +775,7 @@ const generateIntegratedHtmlReportByPublisher = ({
         data-auto-status="${escapeHtml(row.status || 'UNKNOWN')}"
         data-scheduled="${escapeHtml(row.scheduled)}"
         data-work-scope="${escapeHtml(workScope)}"
+        data-overnight-candidate="${row.overnightInitialPending ? 'true' : 'false'}"
       >
         <div class="delivery-card-top">
           <div>
@@ -1090,7 +1095,7 @@ const generateIntegratedHtmlReportByPublisher = ({
       : `<div class="empty">${escapeHtml(emptyText)}</div>`;
     const overnightCards = overnightRows.length
       ? overnightRows.map(renderMasterDeliveryCard).join('')
-      : '<div class="empty">No quedaron anuncios amanecidos.</div>';
+      : '';
 
     return `
       <section class="report-section work-queue-section" id="${escapeHtml(sectionId)}">
@@ -1130,9 +1135,9 @@ const generateIntegratedHtmlReportByPublisher = ({
             <label>
               Mostrar
               <select onchange="filterWorkQueue('${escapeHtml(sectionId)}', null, this.value)">
+                <option value="all">Todos</option>
                 <option value="actionable">Solo pendientes</option>
                 <option value="overnight">Solo amanecidos</option>
-                <option value="all">Todos</option>
                 <option value="closed">Solo cerrados</option>
               </select>
             </label>
@@ -1147,9 +1152,10 @@ const generateIntegratedHtmlReportByPublisher = ({
             </div>
           </div>
           <div class="master-day-group master-overnight-group" data-master-group="overnight">
-            <h3>Amanecidos del día (${overnightRows.length})</h3>
+            <h3>Amanecidos del día (<span data-overnight-cohort-count>${overnightDeliveries.length}</span>)</h3>
             <div class="work-queue-list" data-work-queue="${escapeHtml(sectionId)}-overnight">
               ${overnightCards}
+              <div class="empty overnight-cohort-empty" style="display:none;">No quedaron anuncios amanecidos.</div>
             </div>
           </div>
         </div>

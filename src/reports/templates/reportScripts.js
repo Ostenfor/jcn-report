@@ -33,6 +33,7 @@ const buildReportScripts = ({
     const DELIVERY_OVERRIDE_PREFIX = 'jcn:v5:delivery-override:';
     const DELIVERY_ALERT_PREFIX = 'jcn:v5:delivery-alert-hour:';
     const DELIVERY_EVENT_PREFIX = 'jcn:v6:delivery-events:' + REPORT_DATE + ':';
+    const OVERNIGHT_COHORT_KEY = 'jcn:v6:overnight-cohort:' + REPORT_DATE;
 
     function getDateKeyForTimeZone(date, timeZone) {
       const parts = new Intl.DateTimeFormat('en-US', {
@@ -548,9 +549,49 @@ const buildReportScripts = ({
       });
     }
 
+    function initializeOvernightCohort() {
+      const section = document.getElementById('master');
+      if (!section) return;
+
+      const cards = Array.from(section.querySelectorAll('[data-master-group="overnight"] .delivery-card[data-delivery-key]'));
+      let storedKeys = [];
+
+      try {
+        const raw = localStorage.getItem(OVERNIGHT_COHORT_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        storedKeys = Array.isArray(parsed) ? parsed : [];
+      } catch (error) {
+        storedKeys = [];
+      }
+
+      const cohort = new Set(storedKeys);
+      cards.forEach(card => {
+        if (card.dataset.overnightCandidate === 'true') {
+          cohort.add(card.dataset.deliveryKey);
+        }
+      });
+
+      localStorage.setItem(OVERNIGHT_COHORT_KEY, JSON.stringify(Array.from(cohort)));
+
+      let availableCount = 0;
+      cards.forEach(card => {
+        const belongs = cohort.has(card.dataset.deliveryKey);
+        card.dataset.overnightCohort = belongs ? 'true' : 'false';
+        if (belongs) availableCount += 1;
+      });
+
+      section.querySelectorAll('[data-overnight-cohort-count]').forEach(counter => {
+        counter.innerText = availableCount;
+      });
+
+      const empty = section.querySelector('.overnight-cohort-empty');
+      if (empty) empty.style.display = availableCount ? 'none' : '';
+    }
+
     function updateMasterMetrics() {
       document.querySelectorAll('.work-queue-section').forEach(section => {
-        const cards = Array.from(section.querySelectorAll('.delivery-card[data-delivery-key]'));
+        const cards = Array.from(section.querySelectorAll('.delivery-card[data-delivery-key]'))
+          .filter(card => card.dataset.workScope !== 'overnight' || card.dataset.overnightCohort === 'true');
         const actionable = cards.filter(card => card.dataset.isClosed !== 'true').length;
         const overdue = cards.filter(card => card.dataset.isOverdue === 'true').length;
         const overnight = cards.filter(card => card.dataset.workScope === 'overnight' && card.dataset.isClosed !== 'true').length;
@@ -755,13 +796,17 @@ const buildReportScripts = ({
       if (mode) section.dataset.queueMode = mode;
 
       const search = section.dataset.queueSearch || '';
-      const selectedMode = section.dataset.queueMode || 'actionable';
+      const selectedMode = section.dataset.queueMode || 'all';
 
       section.querySelectorAll('.work-queue-list .delivery-card').forEach(card => {
         const closed = card.dataset.isClosed === 'true';
-        const matchesMode = selectedMode === 'all' ||
+        const isOvernight = card.dataset.workScope === 'overnight';
+        const belongsToOvernightCohort = !isOvernight || card.dataset.overnightCohort === 'true';
+        const matchesMode = belongsToOvernightCohort && (
+          selectedMode === 'all' ||
           (selectedMode === 'closed' ? closed :
-            (selectedMode === 'overnight' ? card.dataset.workScope === 'overnight' : !closed));
+            (selectedMode === 'overnight' ? isOvernight : !closed))
+        );
         const matchesSearch = !search || card.innerText.toLowerCase().includes(search);
         card.style.display = matchesMode && matchesSearch ? '' : 'none';
       });
@@ -1378,6 +1423,7 @@ const buildReportScripts = ({
     updateSectionMessages('after5pm');
     updateSectionMessages('saturday');
     restoreSavedStates();
+    initializeOvernightCohort();
     updateAllSectionStatuses();
     updateSectionStatus('todos');
     updateDeliveryTracking();

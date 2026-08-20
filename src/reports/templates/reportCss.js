@@ -1664,6 +1664,10 @@ const buildReportCss = () => {
       color: #fbbf24;
     }
 
+    .master-overnight-group .delivery-card[data-overnight-candidate="false"]:not([data-overnight-cohort="true"]) {
+      display: none;
+    }
+
     .master-history-legend {
       display: flex;
       flex-wrap: wrap;
