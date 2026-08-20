@@ -815,6 +815,7 @@ const generateIntegratedHtmlReportByPublisher = ({
         data-scheduled="${escapeHtml(row.scheduled)}"
         data-work-scope="${escapeHtml(workScope)}"
         data-overnight-candidate="${row.overnightInitialPending ? 'true' : 'false'}"
+        data-whatsapp-group="${escapeHtml(getWhatsappGroupName(row.website))}"
       >
         <div class="delivery-card-top">
           <div>

@@ -179,7 +179,7 @@ const buildReportCss = () => {
       background: rgba(67, 20, 7, 0.32);
     }
 
-    .overdue-alert-item > div {
+    .overdue-alert-content {
       display: grid;
       gap: 3px;
     }
@@ -194,6 +194,35 @@ const buildReportCss = () => {
       height: 32px;
       font-size: 20px;
       line-height: 1;
+    }
+
+    .overdue-alert-group-name {
+      margin-top: 4px;
+      color: #fff7ed !important;
+    }
+
+    .overdue-alert-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .overdue-alert-item .overdue-copy-group-btn {
+      width: auto;
+      min-width: 105px;
+      padding: 0 12px;
+      border-color: rgba(125, 211, 252, 0.8);
+      color: #e0f2fe;
+      background: rgba(3, 105, 161, 0.55);
+      font-size: 12px;
+      line-height: normal;
+      cursor: pointer;
+    }
+
+    .overdue-alert-item .overdue-copy-group-btn:disabled {
+      opacity: 0.48;
+      cursor: not-allowed;
     }
 
     .freshness-warning-yellow {

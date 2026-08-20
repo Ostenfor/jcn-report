@@ -223,7 +223,14 @@ assert.strictEqual(shouldStopAfterPage({
     await page.getByRole('heading', { name: /Pendientes de hoy/ }).waitFor();
     await page.getByRole('heading', { name: /Pendientes de ayer \/ amanecidos/ }).waitFor();
     assert.strictEqual(await page.locator('#overdue-alert-list').getByText(/Client Night/).count(), 0);
-    await page.locator('#overdue-alert-list .overdue-alert-item button').first().click();
+    const firstOverdueAlert = page.locator('#overdue-alert-list .overdue-alert-item').first();
+    const alertGroup = await firstOverdueAlert.getAttribute('data-whatsapp-group');
+    assert.ok(alertGroup && alertGroup !== 'N/A');
+    await firstOverdueAlert.getByText(/Grupo:/).waitFor();
+    const copyGroupButton = firstOverdueAlert.getByRole('button', { name: 'Copy Group' });
+    assert.strictEqual(await copyGroupButton.isEnabled(), true);
+    assert.match(await copyGroupButton.getAttribute('onclick'), /copyOverdueAlertGroup/);
+    await firstOverdueAlert.getByRole('button', { name: 'Cerrar alerta' }).click();
     assert.ok(await page.locator('#overdue-alert-list .overdue-alert-item').count() >= 1);
     await page.getByRole('button', { name: 'Cerrar todos' }).click();
     await page.locator('#overdue-alert-stack').waitFor({ state: 'hidden' });

@@ -684,7 +684,17 @@ const buildReportScripts = ({
         const subtitle = element.querySelector('.delivery-subtitle')?.innerText || '';
         const durationText = formatTrackingDuration(nowMs - targetMs);
         const scope = element.dataset.workScope === 'overnight' ? 'yesterday' : 'today';
-        alerts.push({ deliveryKey, element, title: title + (subtitle ? ' — ' + subtitle : ''), overdueHours, durationText, targetMs, scope });
+        const whatsappGroup = element.dataset.whatsappGroup || 'N/A';
+        alerts.push({
+          deliveryKey,
+          element,
+          title: title + (subtitle ? ' — ' + subtitle : ''),
+          overdueHours,
+          durationText,
+          targetMs,
+          scope,
+          whatsappGroup
+        });
       });
 
       return alerts.sort((a, b) => {
@@ -709,12 +719,21 @@ const buildReportScripts = ({
         return;
       }
 
-      const renderAlert = alert =>
-        '<div class="overdue-alert-item" data-overdue-key="' + escapeForHtml(alert.deliveryKey) + '" data-overdue-hour="' + alert.overdueHours + '">' +
-          '<div><strong>' + escapeForHtml(alert.title) + ' debe ser notificado</strong>' +
-          '<span>Tiene ' + escapeForHtml(alert.durationText) + ' sin completarse.</span></div>' +
-          '<button type="button" aria-label="Cerrar alerta" onclick="dismissOverdueAlert(this)">×</button>' +
+      const renderAlert = alert => {
+        const hasWhatsappGroup = alert.whatsappGroup && alert.whatsappGroup !== 'N/A';
+        return '<div class="overdue-alert-item" data-overdue-key="' + escapeForHtml(alert.deliveryKey) +
+          '" data-overdue-hour="' + alert.overdueHours +
+          '" data-whatsapp-group="' + escapeForHtml(alert.whatsappGroup || 'N/A') + '">' +
+          '<div class="overdue-alert-content"><strong>' + escapeForHtml(alert.title) + ' debe ser notificado</strong>' +
+          '<span>Tiene ' + escapeForHtml(alert.durationText) + ' sin completarse.</span>' +
+          '<span class="overdue-alert-group-name">Grupo: <strong>' + escapeForHtml(alert.whatsappGroup || 'N/A') + '</strong></span></div>' +
+          '<div class="overdue-alert-actions">' +
+            '<button type="button" class="overdue-copy-group-btn" onclick="copyOverdueAlertGroup(event, this)"' +
+              (hasWhatsappGroup ? '' : ' disabled') + '>Copy Group</button>' +
+            '<button type="button" class="overdue-dismiss-btn" aria-label="Cerrar alerta" onclick="dismissOverdueAlert(this)">×</button>' +
+          '</div>' +
         '</div>';
+      };
 
       const groups = [
         { scope: 'today', title: 'Pendientes de hoy' },
@@ -730,6 +749,24 @@ const buildReportScripts = ({
         '</section>';
       }).join('');
       stack.classList.remove('overdue-alert-stack-hidden');
+    }
+
+    async function copyOverdueAlertGroup(event, button) {
+      if (event) event.stopPropagation();
+      const item = button.closest('.overdue-alert-item');
+      const groupName = item?.dataset.whatsappGroup || 'N/A';
+
+      if (groupName === 'N/A') {
+        showToast('Este publisher no tiene grupo WhatsApp mapeado.');
+        return;
+      }
+
+      try {
+        await copyTextToClipboard(groupName);
+        showToast('Grupo copiado:<br><strong>' + escapeForHtml(groupName) + '</strong>');
+      } catch (error) {
+        alert('No se pudo copiar el grupo automaticamente.');
+      }
     }
 
     function dismissOverdueAlert(button) {
