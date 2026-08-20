@@ -133,6 +133,41 @@ const buildReportCss = () => {
 
     .overdue-alert-list {
       display: grid;
+      gap: 12px;
+    }
+
+    .overdue-alert-group {
+      padding: 10px;
+      border: 2px solid transparent;
+      border-radius: 12px;
+    }
+
+    .overdue-alert-group-today {
+      border-color: rgba(253, 186, 116, 0.75);
+      background: rgba(154, 52, 18, 0.48);
+    }
+
+    .overdue-alert-group-yesterday {
+      border-color: rgba(216, 180, 254, 0.7);
+      background: rgba(88, 28, 135, 0.48);
+    }
+
+    .overdue-alert-group h3 {
+      margin: 0 0 8px;
+      color: #fff7ed;
+      font-size: 14px;
+    }
+
+    .overdue-alert-group-yesterday h3 {
+      color: #f3e8ff;
+    }
+
+    .overdue-alert-group h3 span {
+      opacity: 0.82;
+    }
+
+    .overdue-alert-group-list {
+      display: grid;
       gap: 8px;
     }
 

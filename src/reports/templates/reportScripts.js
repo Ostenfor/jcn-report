@@ -681,10 +681,14 @@ const buildReportScripts = ({
         const title = element.querySelector('.delivery-title')?.innerText || 'Anuncio pendiente';
         const subtitle = element.querySelector('.delivery-subtitle')?.innerText || '';
         const durationText = formatTrackingDuration(nowMs - targetMs);
-        alerts.push({ deliveryKey, element, title: title + (subtitle ? ' — ' + subtitle : ''), overdueHours, durationText, targetMs });
+        const scope = element.dataset.workScope === 'overnight' ? 'yesterday' : 'today';
+        alerts.push({ deliveryKey, element, title: title + (subtitle ? ' — ' + subtitle : ''), overdueHours, durationText, targetMs, scope });
       });
 
-      return alerts.sort((a, b) => b.overdueHours - a.overdueHours || a.targetMs - b.targetMs);
+      return alerts.sort((a, b) => {
+        if (a.scope !== b.scope) return a.scope === 'today' ? -1 : 1;
+        return b.overdueHours - a.overdueHours || a.targetMs - b.targetMs;
+      });
     }
 
     function updateOverdueAlertStack(nowMs) {
@@ -703,13 +707,26 @@ const buildReportScripts = ({
         return;
       }
 
-      list.innerHTML = visibleAlerts.map(alert =>
+      const renderAlert = alert =>
         '<div class="overdue-alert-item" data-overdue-key="' + escapeForHtml(alert.deliveryKey) + '" data-overdue-hour="' + alert.overdueHours + '">' +
           '<div><strong>' + escapeForHtml(alert.title) + ' debe ser notificado</strong>' +
           '<span>Tiene ' + escapeForHtml(alert.durationText) + ' sin completarse.</span></div>' +
           '<button type="button" aria-label="Cerrar alerta" onclick="dismissOverdueAlert(this)">×</button>' +
-        '</div>'
-      ).join('');
+        '</div>';
+
+      const groups = [
+        { scope: 'today', title: 'Pendientes de hoy' },
+        { scope: 'yesterday', title: 'Pendientes de ayer / amanecidos' }
+      ];
+
+      list.innerHTML = groups.map(group => {
+        const groupAlerts = visibleAlerts.filter(alert => alert.scope === group.scope);
+        if (!groupAlerts.length) return '';
+        return '<section class="overdue-alert-group overdue-alert-group-' + group.scope + '" data-alert-scope="' + group.scope + '">' +
+          '<h3>' + group.title + ' <span>(' + groupAlerts.length + ')</span></h3>' +
+          '<div class="overdue-alert-group-list">' + groupAlerts.map(renderAlert).join('') + '</div>' +
+        '</section>';
+      }).join('');
       stack.classList.remove('overdue-alert-stack-hidden');
     }
 

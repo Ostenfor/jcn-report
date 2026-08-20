@@ -195,6 +195,11 @@ assert.strictEqual(shouldStopAfterPage({
 
     await page.waitForSelector('#overdue-alert-stack:not(.overdue-alert-stack-hidden)');
     assert.ok(await page.locator('#overdue-alert-list .overdue-alert-item').count() >= 2);
+    assert.strictEqual(await page.locator('#overdue-alert-list .overdue-alert-group').count(), 2);
+    assert.strictEqual(await page.locator('#overdue-alert-list .overdue-alert-group').first().getAttribute('data-alert-scope'), 'today');
+    assert.strictEqual(await page.locator('#overdue-alert-list .overdue-alert-group').nth(1).getAttribute('data-alert-scope'), 'yesterday');
+    await page.getByRole('heading', { name: /Pendientes de hoy/ }).waitFor();
+    await page.getByRole('heading', { name: /Pendientes de ayer \/ amanecidos/ }).waitFor();
     await page.locator('#overdue-alert-list .overdue-alert-item button').first().click();
     assert.ok(await page.locator('#overdue-alert-list .overdue-alert-item').count() >= 1);
     await page.getByRole('button', { name: 'Cerrar todos' }).click();
