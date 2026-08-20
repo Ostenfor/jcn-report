@@ -209,6 +209,12 @@ assert.strictEqual(shouldStopAfterPage({
     await nocturnalCard.getByText('Para amanecida', { exact: true }).waitFor();
     await nocturnalCard.getByText(/No requiere acción durante tu turno/).waitFor();
     assert.strictEqual(await page.locator('#master .master-delivery-assets').count(), 6);
+    assert.strictEqual(await page.locator('#master .master-whatsapp-row').count(), 6);
+    assert.strictEqual(await page.locator('#master .master-whatsapp-row .copy-group-btn').count(), 6);
+    const masterCopyGroupButton = overnightCard.getByRole('button', { name: 'Copy Group' });
+    assert.strictEqual(await masterCopyGroupButton.isEnabled(), true);
+    assert.match(await masterCopyGroupButton.getAttribute('onclick'), /copyTrackedWhatsappGroup/);
+    await overnightCard.getByText(/Grupo para notificar/).waitFor();
     assert.strictEqual(await page.locator('#master .delivery-manual-control').count(), 0);
     assert.strictEqual(await page.locator('#master button[data-stage]').count(), 0);
     assert.strictEqual(await page.locator('#master .journey-exceptions').count(), 0);
@@ -229,7 +235,7 @@ assert.strictEqual(shouldStopAfterPage({
     await firstOverdueAlert.getByText(/Grupo:/).waitFor();
     const copyGroupButton = firstOverdueAlert.getByRole('button', { name: 'Copy Group' });
     assert.strictEqual(await copyGroupButton.isEnabled(), true);
-    assert.match(await copyGroupButton.getAttribute('onclick'), /copyOverdueAlertGroup/);
+    assert.match(await copyGroupButton.getAttribute('onclick'), /copyTrackedWhatsappGroup/);
     await firstOverdueAlert.getByRole('button', { name: 'Cerrar alerta' }).click();
     assert.ok(await page.locator('#overdue-alert-list .overdue-alert-item').count() >= 1);
     await page.getByRole('button', { name: 'Cerrar todos' }).click();

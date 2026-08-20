@@ -787,6 +787,8 @@ const generateIntegratedHtmlReportByPublisher = ({
     const statusLabel = getDeliveryStatusLabel(row.status);
     const statusClass = getDeliveryStatusClass(row.status);
     const workScope = row.workScope || '';
+    const whatsappGroupName = getWhatsappGroupName(row.website);
+    const hasWhatsappGroup = whatsappGroupName && whatsappGroupName !== 'N/A';
     const exitLabels = {
       COMPLETED_APPROVED: 'Salió de la cola: completado y aprobado',
       SCREENSHOT_UPLOADED: 'Salió de la cola: captura subida, falta confirmar aprobación',
@@ -815,7 +817,7 @@ const generateIntegratedHtmlReportByPublisher = ({
         data-scheduled="${escapeHtml(row.scheduled)}"
         data-work-scope="${escapeHtml(workScope)}"
         data-overnight-candidate="${row.overnightInitialPending ? 'true' : 'false'}"
-        data-whatsapp-group="${escapeHtml(getWhatsappGroupName(row.website))}"
+        data-whatsapp-group="${escapeHtml(whatsappGroupName)}"
       >
         <div class="delivery-card-top">
           <div>
@@ -834,6 +836,21 @@ const generateIntegratedHtmlReportByPublisher = ({
 
         ${nocturnalNotice}
         ${renderStatusJourney({ nocturnal: workScope === 'nocturnal' })}
+
+        <div class="master-whatsapp-row">
+          <div>
+            <span>Grupo para notificar</span>
+            <strong>${escapeHtml(whatsappGroupName)}</strong>
+          </div>
+          <button
+            type="button"
+            class="action-btn copy-group-btn ${hasWhatsappGroup ? '' : 'disabled-btn'}"
+            onclick="copyTrackedWhatsappGroup(event, this)"
+            ${hasWhatsappGroup ? '' : 'disabled'}
+          >
+            Copy Group
+          </button>
+        </div>
 
         ${exitBanner}
 

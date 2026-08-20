@@ -2371,6 +2371,42 @@ const buildReportCss = () => {
       margin: 9px 0 4px;
     }
 
+    .master-whatsapp-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 12px 0 8px;
+      padding: 10px 12px;
+      border: 1px solid rgba(245, 158, 11, 0.32);
+      border-radius: 11px;
+      background: rgba(245, 158, 11, 0.08);
+    }
+
+    .master-whatsapp-row > div {
+      display: grid;
+      gap: 3px;
+      min-width: 0;
+    }
+
+    .master-whatsapp-row span {
+      color: #fbbf24;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .master-whatsapp-row strong {
+      color: #fef3c7;
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
+
+    .master-whatsapp-row .copy-group-btn {
+      flex-shrink: 0;
+    }
+
     .master-delivery-assets .asset-box {
       padding: 6px;
       border-radius: 10px;

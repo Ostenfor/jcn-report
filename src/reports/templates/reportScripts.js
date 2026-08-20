@@ -728,7 +728,7 @@ const buildReportScripts = ({
           '<span>Tiene ' + escapeForHtml(alert.durationText) + ' sin completarse.</span>' +
           '<span class="overdue-alert-group-name">Grupo: <strong>' + escapeForHtml(alert.whatsappGroup || 'N/A') + '</strong></span></div>' +
           '<div class="overdue-alert-actions">' +
-            '<button type="button" class="overdue-copy-group-btn" onclick="copyOverdueAlertGroup(event, this)"' +
+            '<button type="button" class="overdue-copy-group-btn" onclick="copyTrackedWhatsappGroup(event, this)"' +
               (hasWhatsappGroup ? '' : ' disabled') + '>Copy Group</button>' +
             '<button type="button" class="overdue-dismiss-btn" aria-label="Cerrar alerta" onclick="dismissOverdueAlert(this)">×</button>' +
           '</div>' +
@@ -751,10 +751,10 @@ const buildReportScripts = ({
       stack.classList.remove('overdue-alert-stack-hidden');
     }
 
-    async function copyOverdueAlertGroup(event, button) {
+    async function copyTrackedWhatsappGroup(event, button) {
       if (event) event.stopPropagation();
-      const item = button.closest('.overdue-alert-item');
-      const groupName = item?.dataset.whatsappGroup || 'N/A';
+      const source = button.closest('[data-whatsapp-group]');
+      const groupName = source?.dataset.whatsappGroup || 'N/A';
 
       if (groupName === 'N/A') {
         showToast('Este publisher no tiene grupo WhatsApp mapeado.');
