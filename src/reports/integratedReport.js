@@ -281,6 +281,16 @@ const generateIntegratedHtmlReportByPublisher = ({
     </div>
   `;
 
+  const renderManualStatusOptions = () => `
+    <option value="">Automático</option>
+    <option value="MANUAL_COMPLETED">Completado manualmente</option>
+    <option value="PENDING_SCREENSHOT">Captura pendiente</option>
+    <option value="NO_RESPONSE">Cliente no respondió</option>
+    <option value="NEEDS_REVIEW">Requiere revisión</option>
+    <option value="RESCHEDULED">Reprogramado</option>
+    <option value="REMOVED_CANCELLED">Eliminado / cancelado</option>
+  `;
+
   const renderCompactTracking = (row) => {
     const key = buildDeliveryKey(row);
     const delivery = deliveryByKey.get(key);
@@ -295,9 +305,15 @@ const generateIntegratedHtmlReportByPublisher = ({
       >
         <span class="tracking-inline-status">${escapeHtml(getAutomaticStatusLabel(automaticStatus))}</span>
         <span class="tracking-inline-timer">Calculando...</span>
-        ${renderStatusJourney({ compact: true })}
+        <select
+          class="delivery-status-select compact-status-select"
+          aria-label="Cambiar estado del anuncio"
+          onchange="setDeliveryManualStatus(this)"
+        >
+          ${renderManualStatusOptions()}
+        </select>
         <button type="button" class="tracking-manage-btn" onclick="openMasterForDelivery(event, this)">
-          Ver detalle
+          Gestionar
         </button>
       </div>
     `;
@@ -327,7 +343,6 @@ const generateIntegratedHtmlReportByPublisher = ({
               ${escapeHtml(formatRowLine(item))}
               ${badge}
               ${removedBadge}
-              ${options.removedSection ? '' : renderCompactTracking(item)}
             </div>
           `;
         }).join('');
@@ -727,7 +742,7 @@ const generateIntegratedHtmlReportByPublisher = ({
     `;
   };
 
-  const renderDeliveryCard = (row) => {
+  const renderMasterDeliveryCard = (row) => {
     const statusLabel = getDeliveryStatusLabel(row.status);
     const statusClass = getDeliveryStatusClass(row.status);
     const workScope = row.workScope || '';
@@ -769,8 +784,14 @@ const generateIntegratedHtmlReportByPublisher = ({
 
         ${exitBanner}
 
-        <details class="delivery-evidence">
-          <summary>Ver evidencia y origen de datos</summary>
+        <div class="delivery-assets master-delivery-assets">
+          ${renderAssetBox('Media', row.media)}
+          ${renderAssetBox('Screenshot', row.screenshot)}
+          ${renderAssetBox('Screenshot Two', row.screenshotTwo)}
+        </div>
+
+        <details class="delivery-evidence delivery-origin-details">
+          <summary>Ver origen de datos</summary>
           <div class="delivery-source-row">
             <span>Past Due: ${row.existsInPosts ? 'SÍ' : 'NO'}</span>
             <span>Screenshots: ${row.existsInScreenshots ? 'SÍ' : 'NO'}</span>
@@ -778,13 +799,96 @@ const generateIntegratedHtmlReportByPublisher = ({
             <span>Approved: ${row.existsInApproved ? 'SÍ' : 'NO'}</span>
           </div>
           ${renderDeliveryHistoryInfo(row)}
-          <div class="delivery-assets">
-            ${renderAssetBox('Media', row.media)}
-            ${renderAssetBox('Screenshot', row.screenshot)}
-            ${renderAssetBox('Screenshot Two', row.screenshotTwo)}
-          </div>
           ${renderDeliveryAction(row)}
         </details>
+      </div>
+    `;
+  };
+
+  const renderDeliveryCard = (row) => {
+    const statusLabel = getDeliveryStatusLabel(row.status);
+    const statusClass = getDeliveryStatusClass(row.status);
+    const workScope = row.workScope || '';
+    const exitLabels = {
+      COMPLETED_APPROVED: 'Salió de la cola: completado y aprobado',
+      SCREENSHOT_UPLOADED: 'Salió de la cola: captura subida, falta confirmar aprobación',
+      LEFT_POSTS_SCREENSHOT_PENDING: 'Salió de Past Due, pero la captura sigue pendiente',
+      DISAPPEARED_REVIEW: 'Salió de la cola sin explicación: requiere revisión'
+    };
+    const exitBanner = row.exitReason
+      ? `<div class="queue-exit-reason exit-${escapeHtml(row.exitReason.toLowerCase())}">${escapeHtml(exitLabels[row.exitReason] || row.exitReason)}</div>`
+      : '';
+
+    return `
+      <div
+        class="delivery-card delivery-trackable ${statusClass}"
+        data-delivery-publisher="${escapeHtml(row.website)}"
+        data-delivery-key="${escapeHtml(row.key || buildDeliveryKey(row))}"
+        data-auto-status="${escapeHtml(row.status || 'UNKNOWN')}"
+        data-scheduled="${escapeHtml(row.scheduled)}"
+        data-work-scope="${escapeHtml(workScope)}"
+      >
+        <div class="delivery-card-top">
+          <div>
+            <div class="delivery-title">
+              ${escapeHtml(row.website)} <span>(${escapeHtml(row.type)})</span>
+            </div>
+            <div class="delivery-subtitle">
+              ${escapeHtml(row.scheduled)} - ${escapeHtml(row.user)}
+            </div>
+          </div>
+          <div>
+            <div class="delivery-status ${statusClass}">${escapeHtml(statusLabel)}</div>
+            <div class="delivery-delay-clock">Calculando seguimiento...</div>
+          </div>
+        </div>
+
+        <div class="delivery-source-row">
+          <span>Posts: ${row.existsInPosts ? 'YES' : 'NO'}</span>
+          <span>Screenshots: ${row.existsInScreenshots ? 'YES' : 'NO'}</span>
+          <span>Screenshots Two: ${row.existsInScreenshotsTwos ? 'YES' : 'NO'}</span>
+          <span>Approved: ${row.existsInApproved ? 'YES' : 'NO'}</span>
+          <span>History: ${row.existsInHistory ? 'YES' : 'NO'}</span>
+        </div>
+
+        ${renderDeliveryHistoryInfo(row)}
+
+        <div class="delivery-manual-control">
+          <div class="manual-control-heading">
+            <strong>Control manual</strong>
+            <span class="manual-override-badge">Usando estado automático</span>
+          </div>
+          <div class="manual-control-grid">
+            <label>
+              Estado operativo
+              <select class="delivery-status-select" onchange="setDeliveryManualStatus(this)">
+                ${renderManualStatusOptions()}
+              </select>
+            </label>
+            <label class="reschedule-field">
+              Nueva fecha y hora
+              <input class="delivery-reschedule-input" type="datetime-local" onchange="saveDeliveryControl(this)">
+            </label>
+            <label class="delivery-note-field">
+              Nota
+              <input class="delivery-note-input" type="text" maxlength="240" placeholder="Ej. cliente no respondió" onchange="saveDeliveryControl(this)">
+            </label>
+            <button type="button" class="return-auto-btn" onclick="returnDeliveryToAutomatic(this)">
+              Volver a automático
+            </button>
+          </div>
+          <div class="delivery-updated-at"></div>
+        </div>
+
+        ${exitBanner}
+
+        <div class="delivery-assets">
+          ${renderAssetBox('Media', row.media)}
+          ${renderAssetBox('Screenshot', row.screenshot)}
+          ${renderAssetBox('Screenshot Two', row.screenshotTwo)}
+        </div>
+
+        ${renderDeliveryAction(row)}
       </div>
     `;
   };
@@ -974,7 +1078,7 @@ const generateIntegratedHtmlReportByPublisher = ({
     emptyText
   }) => {
     const cards = rows.length
-      ? rows.map(renderDeliveryCard).join('')
+      ? rows.map(renderMasterDeliveryCard).join('')
       : `<div class="empty">${escapeHtml(emptyText)}</div>`;
 
     return `
@@ -1016,10 +1120,14 @@ const generateIntegratedHtmlReportByPublisher = ({
               Mostrar
               <select onchange="filterWorkQueue('${escapeHtml(sectionId)}', null, this.value)">
                 <option value="actionable">Solo pendientes</option>
+                <option value="overnight">Solo amanecidos</option>
                 <option value="all">Todos</option>
                 <option value="closed">Solo cerrados</option>
               </select>
             </label>
+            <button type="button" class="notification-btn" onclick="requestTrackingNotifications()">
+              Activar alertas por hora
+            </button>
           </div>
           <div class="work-queue-list" data-work-queue="${escapeHtml(sectionId)}">
             ${cards}
@@ -1077,7 +1185,7 @@ const generateIntegratedHtmlReportByPublisher = ({
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>JCN Master Dashboard</title>
+  <title>Reporte Integrado de Publishers</title>
   <style>
     ${reportCss}
   </style>
@@ -1096,23 +1204,22 @@ const generateIntegratedHtmlReportByPublisher = ({
     </div>
   </div>
 
-  <h1>JCN Master Dashboard</h1>
+  <h1>Reporte Integrado de Publishers</h1>
 
   <div class="generated-time">
     <span>Generado a las:</span>
     <strong id="generated-at-value">${escapeHtml(generatedAtRD)}</strong>
   </div>
 
-  <div class="summary-context-title">Recordatorios y mensajes del día</div>
   <div class="top-summary">
     <div class="summary-card">
       <div class="summary-number">${allRows.length}</div>
-      <div class="summary-label">Anuncios en Reporte completo</div>
+      <div class="summary-label">Publicaciones</div>
     </div>
 
     <div class="summary-card">
       <div class="summary-number">${totalPublishersCount}</div>
-      <div class="summary-label">Clientes en recordatorios</div>
+      <div class="summary-label">Clientes total día</div>
     </div>
 
     <div class="summary-card">
@@ -1131,27 +1238,25 @@ const generateIntegratedHtmlReportByPublisher = ({
     </div>
 
     <div class="summary-card summary-removed">
-      <div class="summary-number">${queueExitRows.length}</div>
-      <div class="summary-label">Salieron de la cola</div>
+      <div class="summary-number">${removedRows.length}</div>
+      <div class="summary-label">Removidos</div>
     </div>
   </div>
 
   <div class="global-reset-row">
-    <button class="notification-btn" onclick="requestTrackingNotifications()">
-      Activar alertas por hora
-    </button>
     <button class="reset-all-btn" onclick="resetAllTodayProgress()">
-      Reset recordatorios
+      Reset todo el día
     </button>
   </div>
 
   <div class="tabs">
     <button class="tab-button active" onclick="showTab('master', this)">Master Dashboard (${masterDeliveries.length})</button>
-    <button class="tab-button" onclick="showTab('overnight', this)">Amanecidos (${overnightDeliveries.length})</button>
-    <button class="tab-button" onclick="showTab('todos', this)">Reporte completo · Recordatorios (${allRows.length})</button>
-    <button class="tab-button" onclick="showTab('after5pm', this)">5PM · Recordatorios (${reminderRows.length})</button>
+    <button class="tab-button" onclick="showTab('todos', this)">Reporte completo (${allRows.length})</button>
+    <button class="tab-button" onclick="showTab('after5pm', this)">5PM en adelante (${reminderRows.length})</button>
     <button class="tab-button" onclick="showTab('saturday', this)">Saturday advance (${saturdayRows.length})</button>
-    <button class="tab-button" onclick="showTab('queue-exits', this)">Salieron de la cola (${queueExitRows.length})</button>
+    <button class="tab-button" onclick="showTab('removed', this)">Removidos (${removedRows.length})</button>
+    <button class="tab-button" onclick="showTab('delivery', this)">Screenshot Status Today (${filteredDeliveryMatcher ? filteredDeliveryMatcher.summary.pendingTotal : 0} pending)</button>
+    <button class="tab-button" onclick="showTab('delivery-yesterday', this)">Screenshot Status Yesterday (${filteredYesterdayDeliveryMatcher ? filteredYesterdayDeliveryMatcher.summary.pendingTotal : 0} pending)</button>
     <button class="tab-button" onclick="showTab('important-clients', this)">Clientes importantes (${publisherConfigRows.length})</button>
   </div>
 
@@ -1161,14 +1266,6 @@ const generateIntegratedHtmlReportByPublisher = ({
     rows: masterDeliveries,
     description: 'Estados de captura de hoy y pendientes amanecidos. Pulsa un estado solamente cuando necesites corregirlo.',
     emptyText: 'No hay anuncios que requieran seguimiento.'
-  })}
-
-  ${renderWorkQueueSection({
-    sectionId: 'overnight',
-    title: 'Amanecidos - Pendientes del día anterior',
-    rows: overnightDeliveries.map(row => ({ ...row, workScope: 'overnight' })),
-    description: 'El reloj conserva la hora original hasta completar o marcar que se movió.',
-    emptyText: 'No quedaron anuncios amanecidos.'
   })}
 
   ${renderSection(
@@ -1192,7 +1289,33 @@ const generateIntegratedHtmlReportByPublisher = ({
     'saturday'
   )}
 
-  ${renderQueueExitSection()}
+  ${renderSection(
+    'removed',
+    '4. Removidos en esta versión',
+    removedRows,
+    '',
+    { removedSection: true }
+  )}
+
+  ${renderDeliverySection({
+    sectionId: 'delivery',
+    sectionNumber: '5',
+    title: 'Screenshot Status Today',
+    matcher: filteredDeliveryMatcher,
+    reportDateValue: reportDate,
+    displayDate: todayString,
+    label: 'Today'
+  })}
+
+  ${renderDeliverySection({
+    sectionId: 'delivery-yesterday',
+    sectionNumber: '6',
+    title: 'Screenshot Status Yesterday',
+    matcher: filteredYesterdayDeliveryMatcher,
+    reportDateValue: yesterdayReportDate,
+    displayDate: yesterdayString,
+    label: 'Yesterday'
+  })}
 
   ${renderImportantClientsSection()}
 
@@ -1231,7 +1354,7 @@ const generateIntegratedHtmlReportByPublisher = ({
           <span class="fixed-progress-number">
             <span id="footer-delivery-completed-count">0</span>/<span id="footer-delivery-completed-total">0</span>
           </span>
-          <span class="fixed-progress-label">Completados</span>
+          <span class="fixed-progress-label">Completed</span>
         </div>
         <div class="fixed-progress-track">
           <div class="fixed-progress-fill" id="footer-delivery-completed-fill"></div>
@@ -1243,7 +1366,7 @@ const generateIntegratedHtmlReportByPublisher = ({
           <span class="fixed-progress-number">
             <span id="footer-delivery-pending-count">0</span>/<span id="footer-delivery-pending-total">0</span>
           </span>
-          <span class="fixed-progress-label">Pendientes</span>
+          <span class="fixed-progress-label">Pending</span>
         </div>
         <div class="fixed-progress-track">
           <div class="fixed-progress-fill" id="footer-delivery-pending-fill"></div>

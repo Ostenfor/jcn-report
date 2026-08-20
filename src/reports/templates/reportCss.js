@@ -1893,6 +1893,27 @@ const buildReportCss = () => {
       margin-bottom: 10px;
     }
 
+    .master-delivery-assets {
+      grid-template-columns: repeat(3, minmax(90px, 150px));
+      justify-content: start;
+      margin: 9px 0 4px;
+    }
+
+    .master-delivery-assets .asset-box {
+      padding: 6px;
+      border-radius: 10px;
+    }
+
+    .master-delivery-assets .asset-preview,
+    .master-delivery-assets .asset-video-preview {
+      height: 64px;
+      max-height: 64px;
+    }
+
+    .master-delivery-assets .asset-missing {
+      min-height: 48px;
+    }
+
     .delivery-updated-at {
       margin-top: 8px;
       color: #64748b;
@@ -1901,7 +1922,7 @@ const buildReportCss = () => {
 
     .compact-tracking {
       display: grid;
-      grid-template-columns: minmax(150px, 1fr) auto auto;
+      grid-template-columns: minmax(150px, 1fr) auto minmax(175px, auto) auto;
       gap: 8px;
       align-items: center;
       margin-top: 9px;

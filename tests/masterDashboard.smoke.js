@@ -173,12 +173,12 @@ assert.strictEqual(shouldStopAfterPage({
 
     await page.waitForSelector('#master.active');
     assert.strictEqual(await page.locator('#master .delivery-card').count(), 3);
-    assert.strictEqual(await page.locator('#overnight .delivery-card').count(), 1);
-    await page.getByRole('button', { name: /Salieron de la cola/ }).click();
-    await page.waitForSelector('#queue-exits.active');
-    await assert.doesNotReject(async () => {
-      await page.getByText('Salió de la cola: completado y aprobado').waitFor();
-    });
+    assert.strictEqual(await page.locator('#master .master-delivery-assets').count(), 3);
+    assert.strictEqual(await page.locator('#master .delivery-manual-control').count(), 0);
+    await page.getByRole('button', { name: /Removidos/ }).click();
+    await page.waitForSelector('#removed.active');
+    assert.strictEqual(await page.locator('#removed .status-journey').count(), 0);
+    assert.strictEqual(await page.locator('#removed .delivery-manual-control').count(), 0);
 
     await page.getByRole('button', { name: /Master Dashboard/ }).click();
     const todayCard = page.locator('#master .delivery-card').filter({ hasText: 'Client Today' });
@@ -188,16 +188,22 @@ assert.strictEqual(shouldStopAfterPage({
     assert.strictEqual(await todayCard.getAttribute('data-is-closed'), 'true');
     await page.getByRole('button', { name: /5PM/ }).click();
     await page.waitForSelector('#after5pm.active');
-    await page.locator('#after5pm [data-stage="COMPLETED"].journey-active').waitFor();
+    assert.strictEqual(await page.locator('#after5pm .status-journey').count(), 0);
+    assert.strictEqual(await page.locator('#after5pm .compact-status-select').count(), 0);
 
-    await page.locator('#after5pm [data-stage="MOVED"]').click();
     await page.getByRole('button', { name: /Master Dashboard/ }).click();
     await page.locator('#master .work-queue-toolbar select').selectOption('all');
+    await todayCard.locator('[data-stage="MOVED"]').click();
     await todayCard.locator('[data-stage="MOVED"].journey-active').waitFor();
     assert.strictEqual(await todayCard.getAttribute('data-is-closed'), 'true');
 
     await todayCard.locator('[data-delivery-flag="noResponse"]').click();
     await todayCard.locator('[data-delivery-flag="noResponse"].journey-active').waitFor();
+
+    await page.getByRole('button', { name: /Screenshot Status Today/ }).click();
+    await page.waitForSelector('#delivery.active');
+    assert.ok(await page.locator('#delivery .delivery-manual-control').count() > 0);
+    assert.ok(await page.locator('#delivery input[type="datetime-local"]').count() > 0);
 
     assert.ok(deliveryKey, 'The delivery key should be shared across views');
     if (process.env.JCN_KEEP_TEST_REPORT === 'true') {
