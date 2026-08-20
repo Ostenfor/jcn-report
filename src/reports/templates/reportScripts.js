@@ -32,6 +32,7 @@ const buildReportScripts = ({
     const CONFIRMED_PREFIX = 'jcn:' + STORAGE_VERSION + ':publisher-confirmed:' + REPORT_DATE + ':';
     const DELIVERY_OVERRIDE_PREFIX = 'jcn:v5:delivery-override:';
     const DELIVERY_ALERT_PREFIX = 'jcn:v5:delivery-alert-hour:';
+    const DELIVERY_EVENT_PREFIX = 'jcn:v6:delivery-events:' + REPORT_DATE + ':';
 
     function getDateKeyForTimeZone(date, timeZone) {
       const parts = new Intl.DateTimeFormat('en-US', {
@@ -220,14 +221,56 @@ const buildReportScripts = ({
       }
     }
 
+    function getDeliveryEvents(deliveryKey) {
+      if (!deliveryKey) return [];
+
+      try {
+        const raw = localStorage.getItem(DELIVERY_EVENT_PREFIX + deliveryKey);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (error) {
+        return [];
+      }
+    }
+
+    function appendDeliveryEvent(deliveryKey, event) {
+      const events = getDeliveryEvents(deliveryKey);
+      events.push({
+        ...event,
+        at: new Date().toISOString()
+      });
+      localStorage.setItem(
+        DELIVERY_EVENT_PREFIX + deliveryKey,
+        JSON.stringify(events.slice(-100))
+      );
+    }
+
     function saveDeliveryOverride(deliveryKey, value) {
       if (!deliveryKey) return;
 
+      const previous = getDeliveryOverride(deliveryKey);
       const hasFlags = Boolean(value?.flags && Object.values(value.flags).some(Boolean));
 
       if (!value || (!value.status && !hasFlags)) {
+        if (previous?.status || previous?.flags && Object.values(previous.flags).some(Boolean)) {
+          appendDeliveryEvent(deliveryKey, {
+            type: 'REVERTED',
+            fromStatus: previous.status || 'MANUAL_FLAG',
+            toStatus: 'AUTOMATIC'
+          });
+        }
         localStorage.removeItem(DELIVERY_OVERRIDE_PREFIX + deliveryKey);
       } else {
+        const previousFlags = JSON.stringify(previous?.flags || {});
+        const nextFlags = JSON.stringify(value.flags || {});
+        if ((previous?.status || '') !== (value.status || '') || previousFlags !== nextFlags) {
+          appendDeliveryEvent(deliveryKey, {
+            type: 'MANUAL_CHANGE',
+            fromStatus: previous?.status || 'AUTOMATIC',
+            toStatus: value.status || 'MANUAL_FLAG',
+            flags: value.flags || {}
+          });
+        }
         localStorage.setItem(
           DELIVERY_OVERRIDE_PREFIX + deliveryKey,
           JSON.stringify({
@@ -325,6 +368,27 @@ const buildReportScripts = ({
         return Number.isFinite(targetMs) && nowMs < targetMs ? 'SCHEDULED' : 'PENDING_CAPTURE';
       }
       return 'PENDING_CAPTURE';
+    }
+
+    function getHistoryResultLabel(status) {
+      if (status === 'APPROVED' || status === 'MANUAL_COMPLETED') return 'Completado';
+      if (status === 'RESCHEDULED') return 'Reprogramado';
+      if (status === 'REMOVED_CANCELLED' || status === 'PREVIOUSLY_SEEN_REMOVED_FROM_DASHBOARD') return 'Removido';
+      if (status === 'COMPLETED_PENDING_APPROVAL') return 'Captura subida';
+      return DELIVERY_STATUS_LABELS[status] || status || 'Pendiente';
+    }
+
+    function renderDeliveryEvent(event) {
+      const at = event.at ? new Date(event.at).toLocaleString() : 'Hora desconocida';
+      const fromLabel = event.fromStatus === 'AUTOMATIC'
+        ? 'Automático'
+        : getHistoryResultLabel(event.fromStatus);
+      const toLabel = event.toStatus === 'AUTOMATIC'
+        ? 'Automático restaurado'
+        : getHistoryResultLabel(event.toStatus);
+      return '<div class="history-event-item"><strong>' + escapeForHtml(toLabel) + '</strong>' +
+        '<span>' + escapeForHtml(fromLabel) + ' → ' + escapeForHtml(toLabel) + '</span>' +
+        '<time>' + escapeForHtml(at) + '</time></div>';
     }
 
     function updateOneDeliveryElement(element, nowMs) {
@@ -450,6 +514,38 @@ const buildReportScripts = ({
           : 'Detectado por el sistema';
         origin.classList.toggle('manual-active', Boolean(override?.status));
       });
+
+      element.querySelectorAll('.history-status-label').forEach(statusEl => {
+        statusEl.innerText = getHistoryResultLabel(state.status);
+        statusEl.className = 'history-status-label ' + getStatusCssClass(state.status);
+      });
+
+      element.querySelectorAll('.history-status-source').forEach(sourceEl => {
+        sourceEl.innerText = override?.status
+          ? 'Marcado manualmente'
+          : 'Detectado automáticamente';
+      });
+
+      element.querySelectorAll('.history-revert-btn').forEach(button => {
+        const canRevert = Boolean(override?.status || override?.flags && Object.values(override.flags).some(Boolean));
+        button.disabled = !canRevert;
+        button.innerText = canRevert ? 'Revertir a automático' : 'Estado automático';
+      });
+
+      const events = getDeliveryEvents(state.deliveryKey);
+      element.querySelectorAll('.history-event-count').forEach(counter => {
+        counter.innerText = events.length;
+      });
+      element.querySelectorAll('.history-events-list').forEach(list => {
+        const automaticHistory = element.dataset.previousStatus
+          ? '<div class="history-event-item automatic-event"><strong>Cambio detectado por el sistema</strong>' +
+            '<span>' + escapeForHtml(element.dataset.previousStatus) + ' → ' + escapeForHtml(state.automaticStatus) + '</span>' +
+            '<time>' + escapeForHtml(element.dataset.lastSeen || '') + '</time></div>'
+          : '';
+        list.innerHTML = events.length || automaticHistory
+          ? automaticHistory + events.slice().reverse().map(renderDeliveryEvent).join('')
+          : '<div class="history-event-empty">Sin cambios manuales. Se conserva el estado automático.</div>';
+      });
     }
 
     function updateMasterMetrics() {
@@ -572,7 +668,11 @@ const buildReportScripts = ({
         ...current,
         status
       });
-      showToast('Estado actualizado por ti en todas las vistas.');
+      if (CLOSED_DELIVERY_STATUSES.has(status)) {
+        showToast('Cambio guardado. El anuncio sigue en Registro del día y puedes revertirlo allí.');
+      } else {
+        showToast('Estado actualizado por ti en todas las vistas.');
+      }
     }
 
     function toggleDeliveryFlag(event, button) {
@@ -713,6 +813,7 @@ const buildReportScripts = ({
 
     function isDeliverySection(sectionId) {
       return sectionId === 'master' ||
+        sectionId === 'master-history' ||
         sectionId === 'overnight' ||
         sectionId === 'queue-exits' ||
         sectionId === 'delivery' ||

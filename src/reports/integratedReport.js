@@ -109,10 +109,17 @@ const generateIntegratedHtmlReportByPublisher = ({
   const overnightDeliveries = yesterdayDeliveries.filter(row =>
     !automaticClosedStatuses.has(row.status)
   );
+  const todayMasterDeliveries = todayDeliveries
+    .map(row => ({ ...row, workScope: 'today' }))
+    .sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
+  const overnightMasterDeliveries = overnightDeliveries
+    .map(row => ({ ...row, workScope: 'overnight' }))
+    .sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
   const masterDeliveries = [
-    ...overnightDeliveries.map(row => ({ ...row, workScope: 'overnight' })),
-    ...todayDeliveries.map(row => ({ ...row, workScope: 'today' }))
-  ].sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
+    ...todayMasterDeliveries,
+    ...overnightMasterDeliveries
+  ];
+  const todayDeliveryClientCount = new Set(todayDeliveries.map(row => row.website)).size;
 
   const deliveryByKey = new Map(
     [...todayDeliveries, ...yesterdayDeliveries].map(row => [row.key, row])
@@ -1073,13 +1080,17 @@ const generateIntegratedHtmlReportByPublisher = ({
   const renderWorkQueueSection = ({
     sectionId,
     title,
-    rows,
+    todayRows,
+    overnightRows,
     description,
     emptyText
   }) => {
-    const cards = rows.length
-      ? rows.map(renderMasterDeliveryCard).join('')
+    const todayCards = todayRows.length
+      ? todayRows.map(renderMasterDeliveryCard).join('')
       : `<div class="empty">${escapeHtml(emptyText)}</div>`;
+    const overnightCards = overnightRows.length
+      ? overnightRows.map(renderMasterDeliveryCard).join('')
+      : '<div class="empty">No quedaron anuncios amanecidos.</div>';
 
     return `
       <section class="report-section work-queue-section" id="${escapeHtml(sectionId)}">
@@ -1129,13 +1140,85 @@ const generateIntegratedHtmlReportByPublisher = ({
               Activar alertas por hora
             </button>
           </div>
-          <div class="work-queue-list" data-work-queue="${escapeHtml(sectionId)}">
-            ${cards}
+          <div class="master-day-group" data-master-group="today">
+            <h3>Hoy (${todayRows.length})</h3>
+            <div class="work-queue-list" data-work-queue="${escapeHtml(sectionId)}-today">
+              ${todayCards}
+            </div>
+          </div>
+          <div class="master-day-group master-overnight-group" data-master-group="overnight">
+            <h3>Amanecidos del día (${overnightRows.length})</h3>
+            <div class="work-queue-list" data-work-queue="${escapeHtml(sectionId)}-overnight">
+              ${overnightCards}
+            </div>
           </div>
         </div>
       </section>
     `;
   };
+
+  const renderDailyHistoryRow = (row) => `
+    <div
+      class="master-history-row delivery-trackable"
+      data-delivery-key="${escapeHtml(row.key || buildDeliveryKey(row))}"
+      data-auto-status="${escapeHtml(row.status || 'UNKNOWN')}"
+      data-scheduled="${escapeHtml(row.scheduled)}"
+      data-work-scope="history"
+      data-previous-status="${escapeHtml(row.previousStatus || '')}"
+      data-first-seen="${escapeHtml(row.firstSeenAt || '')}"
+      data-last-seen="${escapeHtml(row.lastSeenAt || '')}"
+    >
+      <div class="history-client">
+        <strong>${escapeHtml(row.website)}</strong>
+        <span>${escapeHtml(row.type)} · ${escapeHtml(row.user)}</span>
+      </div>
+      <div class="history-scheduled">${escapeHtml(row.scheduled)}</div>
+      <div class="history-result">
+        <strong class="history-status-label">Calculando...</strong>
+        <span class="history-status-source">Detectado por el sistema</span>
+      </div>
+      <div class="history-actions">
+        <button type="button" class="history-revert-btn" onclick="returnDeliveryToAutomatic(this)" disabled>
+          Automático
+        </button>
+        <details class="history-events-details">
+          <summary>Ver cambios (<span class="history-event-count">0</span>)</summary>
+          <div class="history-events-list"></div>
+        </details>
+      </div>
+    </div>
+  `;
+
+  const renderDailyHistorySection = () => `
+    <section class="report-section master-history-section" id="master-history">
+      <div class="section-title-row">
+        <div>
+          <h2>Registro completo del día (${todayDeliveries.length})</h2>
+          <p class="section-description">
+            ${todayDeliveryClientCount} clientes. Ningún anuncio se elimina de este registro aunque sea completado, removido o reprogramado.
+          </p>
+        </div>
+        <button class="collapse-btn" onclick="toggleSectionBody('master-history')">Colapsar / Expandir</button>
+      </div>
+      <div class="section-body" id="section-body-master-history">
+        <div class="master-history-legend">
+          <span><strong>${todayDeliveries.length}</strong> anuncios del día</span>
+          <span><strong>${todayDeliveryClientCount}</strong> clientes</span>
+          <span>Los cambios manuales se pueden revertir aquí.</span>
+        </div>
+        <div class="master-history-table">
+          <div class="master-history-header">
+            <span>Cliente</span><span>Hora original</span><span>Resultado actual</span><span>Historial / acción</span>
+          </div>
+          <div class="master-history-body">
+            ${todayDeliveries.length
+              ? todayDeliveries.map(renderDailyHistoryRow).join('')
+              : '<div class="empty">No hay anuncios registrados para hoy.</div>'}
+          </div>
+        </div>
+      </div>
+    </section>
+  `;
 
   const renderQueueExitSection = () => {
     const cards = queueExitRows.map(exit => {
@@ -1251,6 +1334,7 @@ const generateIntegratedHtmlReportByPublisher = ({
 
   <div class="tabs">
     <button class="tab-button active" onclick="showTab('master', this)">Master Dashboard (${masterDeliveries.length})</button>
+    <button class="tab-button" onclick="showTab('master-history', this)">Registro del día (${todayDeliveries.length})</button>
     <button class="tab-button" onclick="showTab('todos', this)">Reporte completo (${allRows.length})</button>
     <button class="tab-button" onclick="showTab('after5pm', this)">5PM en adelante (${reminderRows.length})</button>
     <button class="tab-button" onclick="showTab('saturday', this)">Saturday advance (${saturdayRows.length})</button>
@@ -1263,10 +1347,13 @@ const generateIntegratedHtmlReportByPublisher = ({
   ${renderWorkQueueSection({
     sectionId: 'master',
     title: 'Seguimiento de capturas - Mi trabajo ahora',
-    rows: masterDeliveries,
+    todayRows: todayMasterDeliveries,
+    overnightRows: overnightMasterDeliveries,
     description: 'Estados de captura de hoy y pendientes amanecidos. Pulsa un estado solamente cuando necesites corregirlo.',
     emptyText: 'No hay anuncios que requieran seguimiento.'
   })}
+
+  ${renderDailyHistorySection()}
 
   ${renderSection(
     'todos',

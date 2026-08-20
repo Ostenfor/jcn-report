@@ -173,6 +173,10 @@ assert.strictEqual(shouldStopAfterPage({
 
     await page.waitForSelector('#master.active');
     assert.strictEqual(await page.locator('#master .delivery-card').count(), 3);
+    assert.strictEqual(await page.locator('#master [data-master-group="today"] .delivery-card').count(), 2);
+    assert.strictEqual(await page.locator('#master [data-master-group="overnight"] .delivery-card').count(), 1);
+    await page.getByRole('heading', { name: 'Hoy (2)' }).waitFor();
+    await page.getByRole('heading', { name: 'Amanecidos del día (1)' }).waitFor();
     assert.strictEqual(await page.locator('#master .master-delivery-assets').count(), 3);
     assert.strictEqual(await page.locator('#master .delivery-manual-control').count(), 0);
     await page.getByRole('button', { name: /Removidos/ }).click();
@@ -186,12 +190,28 @@ assert.strictEqual(shouldStopAfterPage({
     await todayCard.locator('[data-stage="COMPLETED"]').click();
 
     assert.strictEqual(await todayCard.getAttribute('data-is-closed'), 'true');
+    assert.strictEqual(await todayCard.isVisible(), false, 'A completed card leaves the actionable list');
+
+    await page.getByRole('button', { name: /Registro del día/ }).click();
+    await page.waitForSelector('#master-history.active');
+    assert.strictEqual(await page.locator('#master-history .master-history-row').count(), 2);
+    const historyRow = page.locator('#master-history .master-history-row').filter({ hasText: 'Client Today' });
+    await historyRow.locator('.history-status-label').filter({ hasText: 'Completado' }).waitFor();
+    assert.strictEqual(await historyRow.locator('.history-revert-btn').isEnabled(), true);
+    assert.strictEqual(await historyRow.locator('.history-event-count').innerText(), '1');
+
+    await historyRow.locator('.history-revert-btn').click();
+    await historyRow.locator('.history-status-label').filter({ hasText: 'Captura pendiente' }).waitFor();
+    assert.strictEqual(await historyRow.locator('.history-revert-btn').isDisabled(), true);
+    assert.strictEqual(await historyRow.locator('.history-event-count').innerText(), '2');
+
     await page.getByRole('button', { name: /5PM/ }).click();
     await page.waitForSelector('#after5pm.active');
     assert.strictEqual(await page.locator('#after5pm .status-journey').count(), 0);
     assert.strictEqual(await page.locator('#after5pm .compact-status-select').count(), 0);
 
     await page.getByRole('button', { name: /Master Dashboard/ }).click();
+    await todayCard.waitFor({ state: 'visible' });
     await page.locator('#master .work-queue-toolbar select').selectOption('all');
     await todayCard.locator('[data-stage="MOVED"]').click();
     await todayCard.locator('[data-stage="MOVED"].journey-active').waitFor();
@@ -199,6 +219,10 @@ assert.strictEqual(shouldStopAfterPage({
 
     await todayCard.locator('[data-delivery-flag="noResponse"]').click();
     await todayCard.locator('[data-delivery-flag="noResponse"].journey-active').waitFor();
+
+    await page.getByRole('button', { name: /Registro del día/ }).click();
+    await historyRow.locator('.history-status-label').filter({ hasText: 'Reprogramado' }).waitFor();
+    assert.ok(Number(await historyRow.locator('.history-event-count').innerText()) >= 3);
 
     await page.getByRole('button', { name: /Screenshot Status Today/ }).click();
     await page.waitForSelector('#delivery.active');

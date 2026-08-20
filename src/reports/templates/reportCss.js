@@ -1643,6 +1643,159 @@ const buildReportCss = () => {
       width: min(360px, 72vw);
     }
 
+    .master-day-group {
+      margin-top: 18px;
+      padding-top: 4px;
+    }
+
+    .master-day-group + .master-day-group {
+      margin-top: 30px;
+      padding-top: 22px;
+      border-top: 2px solid #334155;
+    }
+
+    .master-day-group h3 {
+      margin: 0 0 12px;
+      color: #e2e8f0;
+      font-size: 20px;
+    }
+
+    .master-overnight-group h3 {
+      color: #fbbf24;
+    }
+
+    .master-history-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .master-history-legend span {
+      padding: 8px 11px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      background: rgba(15, 23, 42, 0.72);
+      font-size: 12px;
+    }
+
+    .master-history-table {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }
+
+    .master-history-header,
+    .master-history-row {
+      display: grid;
+      grid-template-columns: minmax(190px, 1.2fr) minmax(180px, 1fr) minmax(150px, 0.8fr) minmax(210px, 1fr);
+      gap: 12px;
+      align-items: center;
+    }
+
+    .master-history-header {
+      padding: 10px 14px;
+      color: #94a3b8;
+      background: #0b1220;
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .master-history-row {
+      padding: 13px 14px;
+      border-top: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.52);
+    }
+
+    .history-client,
+    .history-result,
+    .history-actions {
+      display: grid;
+      gap: 4px;
+    }
+
+    .history-client span,
+    .history-status-source,
+    .history-scheduled {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .history-status-label {
+      width: fit-content;
+      padding: 5px 8px;
+      border-radius: 999px;
+      color: #e2e8f0;
+      background: #334155;
+      font-size: 11px;
+    }
+
+    .history-status-label.status-approved,
+    .history-status-label.status-completed {
+      color: #86efac;
+      background: rgba(34, 197, 94, 0.16);
+    }
+
+    .history-status-label.status-cancelled {
+      color: #fda4af;
+      background: rgba(244, 63, 94, 0.16);
+    }
+
+    .history-status-label.status-rescheduled {
+      color: #fde68a;
+      background: rgba(245, 158, 11, 0.16);
+    }
+
+    .history-revert-btn {
+      width: fit-content;
+      min-height: 32px;
+      padding: 6px 10px;
+      border: 1px solid #38bdf8;
+      border-radius: 8px;
+      color: #e0f2fe;
+      background: rgba(14, 165, 233, 0.12);
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .history-revert-btn:disabled {
+      border-color: #334155;
+      color: #64748b;
+      background: transparent;
+      cursor: default;
+    }
+
+    .history-events-details summary {
+      color: #7dd3fc;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    .history-events-list {
+      display: grid;
+      gap: 6px;
+      margin-top: 7px;
+    }
+
+    .history-event-item {
+      display: grid;
+      gap: 2px;
+      padding: 7px;
+      border-left: 2px solid #38bdf8;
+      color: #cbd5e1;
+      background: rgba(2, 6, 23, 0.55);
+      font-size: 10px;
+    }
+
+    .history-event-item time,
+    .history-event-empty {
+      color: #64748b;
+      font-size: 9px;
+    }
+
     .delivery-delay-clock {
       margin-top: 7px;
       color: #fbbf24;
@@ -2009,6 +2162,14 @@ const buildReportCss = () => {
       .compact-tracking .status-journey {
         grid-column: 1 / -1;
       }
+
+      .master-history-header {
+        display: none;
+      }
+
+      .master-history-row {
+        grid-template-columns: 1fr 1fr;
+      }
     }
 
     @media (max-width: 560px) {
@@ -2027,6 +2188,10 @@ const buildReportCss = () => {
 
       .delivery-delay-clock {
         text-align: left;
+      }
+
+      .master-history-row {
+        grid-template-columns: 1fr;
       }
     }
   `;
