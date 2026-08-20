@@ -111,7 +111,7 @@ assert.strictEqual(shouldStopAfterPage({
     process.env.REPORT_OVERWRITE = 'true';
 
     const todayPending = createDelivery({
-      scheduled: '08/20/2026, 06:00 PM EDT',
+      scheduled: '08/20/2026, 08:00 AM EDT',
       user: 'Client Today',
       status: 'PENDING_SCREENSHOT'
     });
@@ -121,6 +121,13 @@ assert.strictEqual(shouldStopAfterPage({
       status: 'APPROVED',
       approved: true
     });
+    const todayRemoved = createDelivery({
+      scheduled: '08/20/2026, 11:00 AM EDT',
+      user: 'Client Interrupted',
+      status: 'PREVIOUSLY_SEEN_REMOVED_FROM_DASHBOARD'
+    });
+    todayRemoved.existsInPosts = false;
+    todayRemoved.existsInHistory = true;
     const yesterdayPending = createDelivery({
       scheduled: '08/19/2026, 10:00 PM EDT',
       user: 'Client Overnight',
@@ -154,7 +161,7 @@ assert.strictEqual(shouldStopAfterPage({
       todayString: '08/20/2026',
       yesterdayString: '08/19/2026',
       tomorrowString: '08/21/2026',
-      deliveryMatcher: createMatcher([todayPending, todayApproved]),
+      deliveryMatcher: createMatcher([todayPending, todayApproved, todayRemoved]),
       yesterdayDeliveryMatcher: createMatcher([yesterdayPending]),
       deliveryHistoryBundle: []
     });
@@ -172,16 +179,26 @@ assert.strictEqual(shouldStopAfterPage({
     await page.goto(pathToFileURL(reportPath).href);
 
     await page.waitForSelector('#master.active');
-    assert.strictEqual(await page.locator('#master .delivery-card').count(), 3);
-    assert.strictEqual(await page.locator('#master [data-master-group="today"] .delivery-card').count(), 2);
+    assert.strictEqual(await page.locator('#master .delivery-card').count(), 4);
+    assert.strictEqual(await page.locator('#master [data-master-group="today"] .delivery-card').count(), 3);
     assert.strictEqual(await page.locator('#master [data-master-group="overnight"] .delivery-card').count(), 1);
-    await page.getByRole('heading', { name: 'Hoy (2)' }).waitFor();
+    await page.getByRole('heading', { name: 'Hoy (3)' }).waitFor();
     await page.getByRole('heading', { name: 'Amanecidos del día (1)' }).waitFor();
-    assert.strictEqual(await page.locator('#master .work-queue-toolbar select').inputValue(), 'all');
     const overnightCard = page.locator('#master [data-master-group="overnight"] .delivery-card').filter({ hasText: 'Client Overnight' });
     assert.strictEqual(await overnightCard.getAttribute('data-overnight-cohort'), 'true');
-    assert.strictEqual(await page.locator('#master .master-delivery-assets').count(), 3);
+    assert.strictEqual(await page.locator('#master .master-delivery-assets').count(), 4);
     assert.strictEqual(await page.locator('#master .delivery-manual-control').count(), 0);
+    assert.strictEqual(await page.locator('#master button[data-stage]').count(), 0);
+    assert.strictEqual(await page.locator('#master .journey-exceptions').count(), 0);
+    const interruptedMasterCard = page.locator('#master .delivery-card').filter({ hasText: 'Client Interrupted' });
+    assert.strictEqual(await interruptedMasterCard.isVisible(), false, 'Interrupted flows belong only in the daily register');
+
+    await page.waitForSelector('#overdue-alert-stack:not(.overdue-alert-stack-hidden)');
+    assert.ok(await page.locator('#overdue-alert-list .overdue-alert-item').count() >= 2);
+    await page.locator('#overdue-alert-list .overdue-alert-item button').first().click();
+    assert.ok(await page.locator('#overdue-alert-list .overdue-alert-item').count() >= 1);
+    await page.getByRole('button', { name: 'Cerrar todos' }).click();
+    await page.locator('#overdue-alert-stack').waitFor({ state: 'hidden' });
     await page.getByRole('button', { name: /Removidos/ }).click();
     await page.waitForSelector('#removed.active');
     assert.strictEqual(await page.locator('#removed .status-journey').count(), 0);
@@ -190,10 +207,7 @@ assert.strictEqual(shouldStopAfterPage({
     await page.getByRole('button', { name: /Master Dashboard/ }).click();
     const todayCard = page.locator('#master .delivery-card').filter({ hasText: 'Client Today' });
     const deliveryKey = await todayCard.getAttribute('data-delivery-key');
-    await todayCard.locator('[data-stage="COMPLETED"]').click();
-
-    assert.strictEqual(await todayCard.getAttribute('data-is-closed'), 'true');
-    assert.strictEqual(await todayCard.isVisible(), true, 'A completed card remains visible in the daily table');
+    assert.strictEqual(await todayCard.isVisible(), true);
 
     await overnightCard.evaluate(card => {
       card.dataset.autoStatus = 'APPROVED';
@@ -203,40 +217,30 @@ assert.strictEqual(shouldStopAfterPage({
       initializeOvernightCohort();
       updateDeliveryTracking();
     });
-    assert.strictEqual(await overnightCard.isVisible(), true, 'An overnight record remains in its persisted cohort after completion');
+    assert.strictEqual(await overnightCard.isVisible(), false, 'Resolved overnight work leaves Master and remains in the register');
     assert.strictEqual(await page.locator('#master [data-overnight-cohort-count]').innerText(), '1');
 
     await page.getByRole('button', { name: /Registro del día/ }).click();
     await page.waitForSelector('#master-history.active');
-    assert.strictEqual(await page.locator('#master-history .master-history-row').count(), 2);
-    const historyRow = page.locator('#master-history .master-history-row').filter({ hasText: 'Client Today' });
-    await historyRow.locator('.history-status-label').filter({ hasText: 'Completado' }).waitFor();
-    assert.strictEqual(await historyRow.locator('.history-revert-btn').isEnabled(), true);
-    assert.strictEqual(await historyRow.locator('.history-event-count').innerText(), '1');
-
-    await historyRow.locator('.history-revert-btn').click();
-    await historyRow.locator('.history-status-label').filter({ hasText: 'Captura pendiente' }).waitFor();
-    assert.strictEqual(await historyRow.locator('.history-revert-btn').isDisabled(), true);
-    assert.strictEqual(await historyRow.locator('.history-event-count').innerText(), '2');
+    assert.strictEqual(await page.locator('#master-history .master-history-row').count(), 4);
+    assert.strictEqual(await page.locator('#master-history .master-history-today .master-history-row').count(), 3);
+    assert.strictEqual(await page.locator('#master-history .master-history-yesterday .master-history-row').count(), 1);
+    const pendingHistoryRow = page.locator('#master-history .master-history-row').filter({ hasText: 'Client Today' });
+    assert.strictEqual(await pendingHistoryRow.locator('.history-reschedule-btn').isVisible(), false);
+    const interruptedHistoryRow = page.locator('#master-history .master-history-row').filter({ hasText: 'Client Interrupted' });
+    await interruptedHistoryRow.locator('.history-status-label').filter({ hasText: 'Removido' }).waitFor();
+    assert.strictEqual(await interruptedHistoryRow.locator('.history-reschedule-btn').isVisible(), true);
+    await interruptedHistoryRow.locator('.history-reschedule-btn').click();
+    await interruptedHistoryRow.locator('.history-status-label').filter({ hasText: 'Reprogramado' }).waitFor();
+    assert.strictEqual(await interruptedHistoryRow.locator('.history-event-count').innerText(), '1');
+    await interruptedHistoryRow.locator('.history-reschedule-btn').click();
+    await interruptedHistoryRow.locator('.history-status-label').filter({ hasText: 'Removido' }).waitFor();
+    assert.strictEqual(await interruptedHistoryRow.locator('.history-event-count').innerText(), '2');
 
     await page.getByRole('button', { name: /5PM/ }).click();
     await page.waitForSelector('#after5pm.active');
     assert.strictEqual(await page.locator('#after5pm .status-journey').count(), 0);
     assert.strictEqual(await page.locator('#after5pm .compact-status-select').count(), 0);
-
-    await page.getByRole('button', { name: /Master Dashboard/ }).click();
-    await todayCard.waitFor({ state: 'visible' });
-    await page.locator('#master .work-queue-toolbar select').selectOption('all');
-    await todayCard.locator('[data-stage="MOVED"]').click();
-    await todayCard.locator('[data-stage="MOVED"].journey-active').waitFor();
-    assert.strictEqual(await todayCard.getAttribute('data-is-closed'), 'true');
-
-    await todayCard.locator('[data-delivery-flag="noResponse"]').click();
-    await todayCard.locator('[data-delivery-flag="noResponse"].journey-active').waitFor();
-
-    await page.getByRole('button', { name: /Registro del día/ }).click();
-    await historyRow.locator('.history-status-label').filter({ hasText: 'Reprogramado' }).waitFor();
-    assert.ok(Number(await historyRow.locator('.history-event-count').innerText()) >= 3);
 
     await page.getByRole('button', { name: /Screenshot Status Today/ }).click();
     await page.waitForSelector('#delivery.active');

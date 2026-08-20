@@ -91,6 +91,76 @@ const buildReportCss = () => {
       display: none;
     }
 
+    .overdue-alert-stack {
+      width: 100%;
+      margin: 0 0 22px;
+      padding: 14px;
+      border: 2px solid #fb923c;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(124, 45, 18, 0.97), rgba(154, 52, 18, 0.95));
+      box-shadow: 0 14px 36px rgba(124, 45, 18, 0.35);
+    }
+
+    .overdue-alert-stack-hidden {
+      display: none;
+    }
+
+    .overdue-alert-stack-header,
+    .overdue-alert-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .overdue-alert-stack-header {
+      margin-bottom: 10px;
+      color: #ffedd5;
+    }
+
+    .overdue-alert-stack-header button,
+    .overdue-alert-item button {
+      border: 1px solid rgba(255, 237, 213, 0.45);
+      border-radius: 8px;
+      color: #fff7ed;
+      background: rgba(67, 20, 7, 0.45);
+      font-weight: 900;
+    }
+
+    .overdue-alert-stack-header button {
+      padding: 7px 10px;
+    }
+
+    .overdue-alert-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .overdue-alert-item {
+      padding: 10px 12px;
+      border: 1px solid rgba(254, 215, 170, 0.35);
+      border-radius: 10px;
+      color: #fff7ed;
+      background: rgba(67, 20, 7, 0.32);
+    }
+
+    .overdue-alert-item > div {
+      display: grid;
+      gap: 3px;
+    }
+
+    .overdue-alert-item span {
+      color: #fed7aa;
+      font-size: 12px;
+    }
+
+    .overdue-alert-item button {
+      width: 32px;
+      height: 32px;
+      font-size: 20px;
+      line-height: 1;
+    }
+
     .freshness-warning-yellow {
       background: linear-gradient(135deg, #854d0e, #ca8a04);
       border-color: #fde047;
@@ -1645,13 +1715,17 @@ const buildReportCss = () => {
 
     .master-day-group {
       margin-top: 18px;
-      padding-top: 4px;
+      padding: 14px;
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      border-radius: 14px;
+      background: rgba(14, 165, 233, 0.055);
     }
 
     .master-day-group + .master-day-group {
       margin-top: 30px;
-      padding-top: 22px;
-      border-top: 2px solid #334155;
+      padding-top: 14px;
+      border: 1px solid rgba(245, 158, 11, 0.5);
+      background: rgba(245, 158, 11, 0.065);
     }
 
     .master-day-group h3 {
@@ -1688,6 +1762,50 @@ const buildReportCss = () => {
       overflow: hidden;
       border: 1px solid var(--line);
       border-radius: 12px;
+    }
+
+    .master-history-day + .master-history-day {
+      margin-top: 28px;
+    }
+
+    .master-history-day {
+      padding: 14px;
+      border-radius: 14px;
+    }
+
+    .master-history-today {
+      border: 2px solid rgba(56, 189, 248, 0.5);
+      background: rgba(14, 165, 233, 0.065);
+    }
+
+    .master-history-yesterday {
+      border: 2px solid rgba(168, 85, 247, 0.5);
+      background: rgba(126, 34, 206, 0.075);
+    }
+
+    .master-history-day-title {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 11px;
+    }
+
+    .master-history-day-title h3 {
+      margin: 0;
+    }
+
+    .master-history-today .master-history-day-title h3 {
+      color: #7dd3fc;
+    }
+
+    .master-history-yesterday .master-history-day-title h3 {
+      color: #d8b4fe;
+    }
+
+    .master-history-day-title span {
+      color: var(--muted);
+      font-size: 11px;
     }
 
     .master-history-header,
@@ -1752,7 +1870,7 @@ const buildReportCss = () => {
       background: rgba(245, 158, 11, 0.16);
     }
 
-    .history-revert-btn {
+    .history-reschedule-btn {
       width: fit-content;
       min-height: 32px;
       padding: 6px 10px;
@@ -1765,11 +1883,16 @@ const buildReportCss = () => {
       font-weight: 800;
     }
 
-    .history-revert-btn:disabled {
-      border-color: #334155;
-      color: #64748b;
-      background: transparent;
-      cursor: default;
+    .history-reschedule-btn.reschedule-active {
+      border-color: #f59e0b;
+      color: #fde68a;
+      background: rgba(245, 158, 11, 0.16);
+    }
+
+    .history-delay-clock {
+      color: #fbbf24;
+      font-size: 10px;
+      font-weight: 800;
     }
 
     .history-events-details summary {
@@ -1941,7 +2064,7 @@ const buildReportCss = () => {
       background: transparent;
       font-size: 10px;
       font-weight: 800;
-      cursor: pointer;
+      cursor: default;
     }
 
     .journey-dot {

@@ -104,6 +104,14 @@ const generateIntegratedHtmlReportByPublisher = ({
   const filteredYesterdayDeliveryMatcher = filterDeliveryMatcherByPublisherList(yesterdayDeliveryMatcher);
 
   const automaticClosedStatuses = new Set(['APPROVED']);
+  const automaticInterruptedStatuses = new Set([
+    'PREVIOUSLY_SEEN_REMOVED_FROM_DASHBOARD',
+    'UNKNOWN',
+    'NEEDS_REVIEW',
+    'NO_RESPONSE',
+    'REMOVED_CANCELLED',
+    'RESCHEDULED'
+  ]);
   const todayDeliveries = filteredDeliveryMatcher?.deliveries || [];
   const yesterdayDeliveries = filteredYesterdayDeliveryMatcher?.deliveries || [];
   const overnightDeliveries = yesterdayDeliveries.filter(row =>
@@ -123,7 +131,11 @@ const generateIntegratedHtmlReportByPublisher = ({
     ...todayMasterDeliveries,
     ...overnightDeliveries
   ];
+  const masterActiveDeliveryCount = masterDeliveries.filter(row =>
+    !automaticClosedStatuses.has(row.status) && !automaticInterruptedStatuses.has(row.status)
+  ).length;
   const todayDeliveryClientCount = new Set(todayDeliveries.map(row => row.website)).size;
+  const yesterdayDeliveryClientCount = new Set(yesterdayDeliveries.map(row => row.website)).size;
 
   const deliveryByKey = new Map(
     [...todayDeliveries, ...yesterdayDeliveries].map(row => [row.key, row])
@@ -261,32 +273,18 @@ const generateIntegratedHtmlReportByPublisher = ({
   const renderStatusJourney = ({ compact = false } = {}) => `
     <div class="status-journey ${compact ? 'status-journey-compact' : ''}" aria-label="Progreso del anuncio">
       <div class="journey-main-track">
-        <button type="button" class="journey-step" data-stage="SCHEDULED" onclick="setDeliveryStage(event, this)">
+        <div class="journey-step" data-stage="SCHEDULED">
           <span class="journey-dot">✓</span><span>Programado</span>
-        </button>
-        <button type="button" class="journey-step" data-stage="PENDING_CAPTURE" onclick="setDeliveryStage(event, this)">
+        </div>
+        <div class="journey-step" data-stage="PENDING_CAPTURE">
           <span class="journey-dot">✓</span><span>Esperando captura</span>
-        </button>
-        <button type="button" class="journey-step" data-stage="SCREENSHOT_UPLOADED" onclick="setDeliveryStage(event, this)">
+        </div>
+        <div class="journey-step" data-stage="SCREENSHOT_UPLOADED">
           <span class="journey-dot">✓</span><span>Captura subida</span>
-        </button>
-        <button type="button" class="journey-step" data-stage="COMPLETED" onclick="setDeliveryStage(event, this)">
+        </div>
+        <div class="journey-step" data-stage="COMPLETED">
           <span class="journey-dot">✓</span><span>Completado</span>
-        </button>
-      </div>
-      <div class="journey-exceptions">
-        <button type="button" class="journey-exception" data-stage="MOVED" onclick="setDeliveryStage(event, this)">
-          <span>✓</span> Se movió
-        </button>
-        <button type="button" class="journey-exception" data-stage="REMOVED" onclick="setDeliveryStage(event, this)">
-          <span>✓</span> Eliminado
-        </button>
-        <button type="button" class="journey-exception" data-stage="REVIEW" onclick="setDeliveryStage(event, this)">
-          <span>!</span> Revisar
-        </button>
-        <button type="button" class="journey-exception delivery-flag-button" data-delivery-flag="noResponse" onclick="toggleDeliveryFlag(event, this)">
-          <span>✓</span> No respondió
-        </button>
+        </div>
       </div>
       <div class="tracking-origin">Detectado por el sistema</div>
     </div>
@@ -1132,15 +1130,6 @@ const generateIntegratedHtmlReportByPublisher = ({
               Buscar
               <input type="search" placeholder="Cliente, publisher o estado..." oninput="filterWorkQueue('${escapeHtml(sectionId)}', this.value)">
             </label>
-            <label>
-              Mostrar
-              <select onchange="filterWorkQueue('${escapeHtml(sectionId)}', null, this.value)">
-                <option value="all">Todos</option>
-                <option value="actionable">Solo pendientes</option>
-                <option value="overnight">Solo amanecidos</option>
-                <option value="closed">Solo cerrados</option>
-              </select>
-            </label>
             <button type="button" class="notification-btn" onclick="requestTrackingNotifications()">
               Activar alertas por hora
             </button>
@@ -1163,13 +1152,22 @@ const generateIntegratedHtmlReportByPublisher = ({
     `;
   };
 
-  const renderDailyHistoryRow = (row) => `
+  const renderDailyHistoryRow = (row, historyScope) => {
+    const canReschedule = [
+      'PREVIOUSLY_SEEN_REMOVED_FROM_DASHBOARD',
+      'UNKNOWN',
+      'NEEDS_REVIEW',
+      'REMOVED_CANCELLED'
+    ].includes(row.status);
+
+    return `
     <div
       class="master-history-row delivery-trackable"
       data-delivery-key="${escapeHtml(row.key || buildDeliveryKey(row))}"
       data-auto-status="${escapeHtml(row.status || 'UNKNOWN')}"
       data-scheduled="${escapeHtml(row.scheduled)}"
-      data-work-scope="history"
+      data-work-scope="history-${escapeHtml(historyScope)}"
+      data-can-reschedule="${canReschedule ? 'true' : 'false'}"
       data-previous-status="${escapeHtml(row.previousStatus || '')}"
       data-first-seen="${escapeHtml(row.firstSeenAt || '')}"
       data-last-seen="${escapeHtml(row.lastSeenAt || '')}"
@@ -1182,10 +1180,11 @@ const generateIntegratedHtmlReportByPublisher = ({
       <div class="history-result">
         <strong class="history-status-label">Calculando...</strong>
         <span class="history-status-source">Detectado por el sistema</span>
+        <span class="history-delay-clock">Calculando tiempo...</span>
       </div>
       <div class="history-actions">
-        <button type="button" class="history-revert-btn" onclick="returnDeliveryToAutomatic(this)" disabled>
-          Automático
+        <button type="button" class="history-reschedule-btn" onclick="toggleHistoryRescheduled(this)" ${canReschedule ? '' : 'hidden'}>
+          Marcar: se reprogramó
         </button>
         <details class="history-events-details">
           <summary>Ver cambios (<span class="history-event-count">0</span>)</summary>
@@ -1194,14 +1193,34 @@ const generateIntegratedHtmlReportByPublisher = ({
       </div>
     </div>
   `;
+  };
+
+  const renderDailyHistoryTable = ({ rows, scope, title, subtitle }) => `
+    <div class="master-history-day master-history-${escapeHtml(scope)}">
+      <div class="master-history-day-title">
+        <h3>${escapeHtml(title)} (${rows.length})</h3>
+        <span>${escapeHtml(subtitle)}</span>
+      </div>
+      <div class="master-history-table">
+        <div class="master-history-header">
+          <span>Cliente</span><span>Hora original</span><span>Resultado actual</span><span>Historial / acción</span>
+        </div>
+        <div class="master-history-body">
+          ${rows.length
+            ? rows.map(row => renderDailyHistoryRow(row, scope)).join('')
+            : '<div class="empty">No hay anuncios registrados para este día.</div>'}
+        </div>
+      </div>
+    </div>
+  `;
 
   const renderDailyHistorySection = () => `
     <section class="report-section master-history-section" id="master-history">
       <div class="section-title-row">
         <div>
-          <h2>Registro completo del día (${todayDeliveries.length})</h2>
+          <h2>Registro del día: hoy y ayer (${todayDeliveries.length + yesterdayDeliveries.length})</h2>
           <p class="section-description">
-            ${todayDeliveryClientCount} clientes. Ningún anuncio se elimina de este registro aunque sea completado, removido o reprogramado.
+            Hoy siempre aparece primero. Los flujos interrumpidos y los amanecidos permanecen registrados aquí.
           </p>
         </div>
         <button class="collapse-btn" onclick="toggleSectionBody('master-history')">Colapsar / Expandir</button>
@@ -1210,18 +1229,20 @@ const generateIntegratedHtmlReportByPublisher = ({
         <div class="master-history-legend">
           <span><strong>${todayDeliveries.length}</strong> anuncios del día</span>
           <span><strong>${todayDeliveryClientCount}</strong> clientes</span>
-          <span>Los cambios manuales se pueden revertir aquí.</span>
+          <span><strong>${yesterdayDeliveries.length}</strong> anuncios del día anterior</span>
         </div>
-        <div class="master-history-table">
-          <div class="master-history-header">
-            <span>Cliente</span><span>Hora original</span><span>Resultado actual</span><span>Historial / acción</span>
-          </div>
-          <div class="master-history-body">
-            ${todayDeliveries.length
-              ? todayDeliveries.map(renderDailyHistoryRow).join('')
-              : '<div class="empty">No hay anuncios registrados para hoy.</div>'}
-          </div>
-        </div>
+        ${renderDailyHistoryTable({
+          rows: todayDeliveries,
+          scope: 'today',
+          title: 'Día actual',
+          subtitle: `${todayDeliveryClientCount} clientes · prioridad principal`
+        })}
+        ${renderDailyHistoryTable({
+          rows: yesterdayDeliveries,
+          scope: 'yesterday',
+          title: 'Día anterior / cobertura de amanecidos',
+          subtitle: `${yesterdayDeliveryClientCount} clientes · seguimiento del turno anterior`
+        })}
       </div>
     </section>
   `;
@@ -1293,6 +1314,14 @@ const generateIntegratedHtmlReportByPublisher = ({
     </div>
   </div>
 
+  <section class="overdue-alert-stack overdue-alert-stack-hidden" id="overdue-alert-stack" aria-live="polite">
+    <div class="overdue-alert-stack-header">
+      <strong>Anuncios atrasados que requieren notificación</strong>
+      <button type="button" onclick="dismissAllOverdueAlerts()">Cerrar todos</button>
+    </div>
+    <div class="overdue-alert-list" id="overdue-alert-list"></div>
+  </section>
+
   <h1>Reporte Integrado de Publishers</h1>
 
   <div class="generated-time">
@@ -1339,8 +1368,8 @@ const generateIntegratedHtmlReportByPublisher = ({
   </div>
 
   <div class="tabs">
-    <button class="tab-button active" onclick="showTab('master', this)">Master Dashboard (${masterDeliveries.length})</button>
-    <button class="tab-button" onclick="showTab('master-history', this)">Registro del día (${todayDeliveries.length})</button>
+    <button class="tab-button active" onclick="showTab('master', this)">Master Dashboard (${masterActiveDeliveryCount})</button>
+    <button class="tab-button" onclick="showTab('master-history', this)">Registro del día (${todayDeliveries.length + yesterdayDeliveries.length})</button>
     <button class="tab-button" onclick="showTab('todos', this)">Reporte completo (${allRows.length})</button>
     <button class="tab-button" onclick="showTab('after5pm', this)">5PM en adelante (${reminderRows.length})</button>
     <button class="tab-button" onclick="showTab('saturday', this)">Saturday advance (${saturdayRows.length})</button>
@@ -1355,7 +1384,7 @@ const generateIntegratedHtmlReportByPublisher = ({
     title: 'Seguimiento de capturas - Mi trabajo ahora',
     todayRows: todayMasterDeliveries,
     overnightRows: overnightMasterDeliveries,
-    description: 'Estados de captura de hoy y pendientes amanecidos. Pulsa un estado solamente cuando necesites corregirlo.',
+    description: 'Seguimiento automático de capturas pendientes de hoy y de los amanecidos. Los estados interrumpidos pasan al Registro del día.',
     emptyText: 'No hay anuncios que requieran seguimiento.'
   })}
 

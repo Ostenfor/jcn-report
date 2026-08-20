@@ -34,6 +34,7 @@ const buildReportScripts = ({
     const DELIVERY_ALERT_PREFIX = 'jcn:v5:delivery-alert-hour:';
     const DELIVERY_EVENT_PREFIX = 'jcn:v6:delivery-events:' + REPORT_DATE + ':';
     const OVERNIGHT_COHORT_KEY = 'jcn:v6:overnight-cohort:' + REPORT_DATE;
+    const OVERDUE_DISMISS_PREFIX = 'jcn:v6:overdue-dismiss:' + REPORT_DATE + ':';
 
     function getDateKeyForTimeZone(date, timeZone) {
       const parts = new Intl.DateTimeFormat('en-US', {
@@ -157,6 +158,15 @@ const buildReportScripts = ({
       'MANUAL_COMPLETED',
       'RESCHEDULED',
       'REMOVED_CANCELLED'
+    ]);
+
+    const INTERRUPTED_DELIVERY_STATUSES = new Set([
+      'PREVIOUSLY_SEEN_REMOVED_FROM_DASHBOARD',
+      'UNKNOWN',
+      'NEEDS_REVIEW',
+      'NO_RESPONSE',
+      'REMOVED_CANCELLED',
+      'RESCHEDULED'
     ]);
 
     function getMention(sectionKey) {
@@ -291,9 +301,14 @@ const buildReportScripts = ({
       const deliveryKey = element?.dataset?.deliveryKey || '';
       const automaticStatus = element?.dataset?.autoStatus || 'UNKNOWN';
       const override = getDeliveryOverride(deliveryKey);
+      const isMasterView = Boolean(element?.closest?.('#master, #master-history'));
+      const masterAllowsOverride = override?.status === 'RESCHEDULED' &&
+        INTERRUPTED_DELIVERY_STATUSES.has(automaticStatus);
       const status = automaticStatus === 'APPROVED'
         ? 'APPROVED'
-        : override?.status || automaticStatus;
+        : isMasterView
+          ? (masterAllowsOverride ? 'RESCHEDULED' : automaticStatus)
+          : override?.status || automaticStatus;
 
       return {
         deliveryKey,
@@ -407,6 +422,7 @@ const buildReportScripts = ({
       element.dataset.effectiveStatus = state.status;
       element.dataset.isClosed = state.closed ? 'true' : 'false';
       element.dataset.isOverdue = isOverdue ? 'true' : 'false';
+      element.dataset.isInterrupted = INTERRUPTED_DELIVERY_STATUSES.has(state.status) ? 'true' : 'false';
 
       element.querySelectorAll('.tracking-inline-status').forEach(statusEl => {
         statusEl.innerText = label;
@@ -527,10 +543,24 @@ const buildReportScripts = ({
           : 'Detectado automáticamente';
       });
 
-      element.querySelectorAll('.history-revert-btn').forEach(button => {
-        const canRevert = Boolean(override?.status || override?.flags && Object.values(override.flags).some(Boolean));
-        button.disabled = !canRevert;
-        button.innerText = canRevert ? 'Revertir a automático' : 'Estado automático';
+      element.querySelectorAll('.history-reschedule-btn').forEach(button => {
+        const canReschedule = element.dataset.canReschedule === 'true';
+        const isRescheduled = state.status === 'RESCHEDULED';
+        button.hidden = !canReschedule && !isRescheduled;
+        button.classList.toggle('reschedule-active', isRescheduled);
+        button.innerText = isRescheduled ? 'Deshacer reprogramación' : 'Marcar: se reprogramó';
+      });
+
+      element.querySelectorAll('.history-delay-clock').forEach(clock => {
+        if (state.closed || INTERRUPTED_DELIVERY_STATUSES.has(state.status)) {
+          clock.innerText = state.status === 'RESCHEDULED' ? 'Cerrado como reprogramado' : 'Flujo cerrado o interrumpido';
+        } else if (Number.isFinite(targetMs)) {
+          clock.innerText = delayMs >= 0
+            ? 'Sin resolver: ' + formatTrackingDuration(delayMs)
+            : 'Programado en: ' + formatTrackingDuration(delayMs);
+        } else {
+          clock.innerText = 'Tiempo no disponible';
+        }
       });
 
       const events = getDeliveryEvents(state.deliveryKey);
@@ -591,7 +621,8 @@ const buildReportScripts = ({
     function updateMasterMetrics() {
       document.querySelectorAll('.work-queue-section').forEach(section => {
         const cards = Array.from(section.querySelectorAll('.delivery-card[data-delivery-key]'))
-          .filter(card => card.dataset.workScope !== 'overnight' || card.dataset.overnightCohort === 'true');
+          .filter(card => (card.dataset.workScope !== 'overnight' || card.dataset.overnightCohort === 'true') &&
+            card.dataset.isInterrupted !== 'true' && card.dataset.isClosed !== 'true');
         const actionable = cards.filter(card => card.dataset.isClosed !== 'true').length;
         const overdue = cards.filter(card => card.dataset.isOverdue === 'true').length;
         const overnight = cards.filter(card => card.dataset.workScope === 'overnight' && card.dataset.isClosed !== 'true').length;
@@ -622,10 +653,11 @@ const buildReportScripts = ({
       });
     }
 
-    function processDeliveryHourAlerts(nowMs) {
+    function getMasterOverdueAlerts(nowMs) {
       const unique = new Map();
 
-      document.querySelectorAll('.delivery-trackable[data-delivery-key]').forEach(element => {
+      document.querySelectorAll('#master .delivery-card[data-delivery-key]').forEach(element => {
+        if (element.dataset.workScope === 'overnight' && element.dataset.overnightCohort !== 'true') return;
         if (!unique.has(element.dataset.deliveryKey)) {
           unique.set(element.dataset.deliveryKey, element);
         }
@@ -635,7 +667,7 @@ const buildReportScripts = ({
 
       unique.forEach((element, deliveryKey) => {
         const state = getEffectiveDeliveryState(element);
-        if (state.closed) return;
+        if (state.closed || INTERRUPTED_DELIVERY_STATUSES.has(state.status)) return;
 
         const targetValue = state.status === 'RESCHEDULED' && state.override?.rescheduledAt
           ? state.override.rescheduledAt
@@ -646,29 +678,85 @@ const buildReportScripts = ({
         const overdueHours = Math.floor((nowMs - targetMs) / 3600000);
         if (overdueHours < 1) return;
 
+        const title = element.querySelector('.delivery-title')?.innerText || 'Anuncio pendiente';
+        const subtitle = element.querySelector('.delivery-subtitle')?.innerText || '';
+        const durationText = formatTrackingDuration(nowMs - targetMs);
+        alerts.push({ deliveryKey, element, title: title + (subtitle ? ' — ' + subtitle : ''), overdueHours, durationText, targetMs });
+      });
+
+      return alerts.sort((a, b) => b.overdueHours - a.overdueHours || a.targetMs - b.targetMs);
+    }
+
+    function updateOverdueAlertStack(nowMs) {
+      const stack = document.getElementById('overdue-alert-stack');
+      const list = document.getElementById('overdue-alert-list');
+      if (!stack || !list) return;
+
+      const visibleAlerts = getMasterOverdueAlerts(nowMs).filter(alert => {
+        const dismissedHour = Number(localStorage.getItem(OVERDUE_DISMISS_PREFIX + alert.deliveryKey) || -1);
+        return dismissedHour < alert.overdueHours;
+      });
+
+      if (!visibleAlerts.length) {
+        stack.classList.add('overdue-alert-stack-hidden');
+        list.innerHTML = '';
+        return;
+      }
+
+      list.innerHTML = visibleAlerts.map(alert =>
+        '<div class="overdue-alert-item" data-overdue-key="' + escapeForHtml(alert.deliveryKey) + '" data-overdue-hour="' + alert.overdueHours + '">' +
+          '<div><strong>' + escapeForHtml(alert.title) + ' debe ser notificado</strong>' +
+          '<span>Tiene ' + escapeForHtml(alert.durationText) + ' sin completarse.</span></div>' +
+          '<button type="button" aria-label="Cerrar alerta" onclick="dismissOverdueAlert(this)">×</button>' +
+        '</div>'
+      ).join('');
+      stack.classList.remove('overdue-alert-stack-hidden');
+    }
+
+    function dismissOverdueAlert(button) {
+      const item = button.closest('.overdue-alert-item');
+      if (!item) return;
+      localStorage.setItem(
+        OVERDUE_DISMISS_PREFIX + item.dataset.overdueKey,
+        String(item.dataset.overdueHour || 0)
+      );
+      updateOverdueAlertStack(Date.now());
+    }
+
+    function dismissAllOverdueAlerts() {
+      getMasterOverdueAlerts(Date.now()).forEach(alert => {
+        localStorage.setItem(OVERDUE_DISMISS_PREFIX + alert.deliveryKey, String(alert.overdueHours));
+      });
+      updateOverdueAlertStack(Date.now());
+    }
+
+    function processDeliveryHourAlerts(nowMs) {
+      const alerts = getMasterOverdueAlerts(nowMs);
+      const newAlerts = [];
+
+      alerts.forEach(alert => {
+        const { deliveryKey, title, overdueHours } = alert;
+
         const storageKey = DELIVERY_ALERT_PREFIX + deliveryKey;
         const lastAlertedHour = Number(localStorage.getItem(storageKey) || 0);
         if (overdueHours <= lastAlertedHour) return;
 
         localStorage.setItem(storageKey, String(overdueHours));
-        const card = Array.from(document.querySelectorAll('.delivery-card[data-delivery-key]'))
-          .find(item => item.dataset.deliveryKey === deliveryKey);
-        const title = card?.querySelector('.delivery-title')?.innerText || 'Anuncio pendiente';
-        alerts.push({ title, overdueHours });
+        newAlerts.push({ title, overdueHours });
       });
 
-      if (!alerts.length) return;
+      if (!newAlerts.length) return;
 
-      const newest = alerts[alerts.length - 1];
+      const newest = newAlerts[newAlerts.length - 1];
       showToast(
         '<strong>Seguimiento vencido:</strong><br>' +
         escapeForHtml(newest.title) + ' lleva ' + newest.overdueHours + 'h de retraso.' +
-        (alerts.length > 1 ? '<br>Hay ' + alerts.length + ' alertas nuevas.' : '')
+        (newAlerts.length > 1 ? '<br>Hay ' + newAlerts.length + ' alertas nuevas.' : '')
       );
 
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('JCN: seguimiento de ' + newest.overdueHours + 'h', {
-          body: newest.title + (alerts.length > 1 ? ' y ' + (alerts.length - 1) + ' más.' : '')
+          body: newest.title + (newAlerts.length > 1 ? ' y ' + (newAlerts.length - 1) + ' más.' : '')
         });
       }
     }
@@ -682,6 +770,7 @@ const buildReportScripts = ({
       document.querySelectorAll('.work-queue-section').forEach(section => {
         filterWorkQueue(section.id);
       });
+      updateOverdueAlertStack(nowMs);
       processDeliveryHourAlerts(nowMs);
       updateDeliveryFooterProgress();
     }
@@ -734,6 +823,25 @@ const buildReportScripts = ({
         flags
       });
       showToast(flags[flagName] ? 'Marcado: no respondió.' : 'Marca removida.');
+    }
+
+    function toggleHistoryRescheduled(button) {
+      const trackable = button.closest('.delivery-trackable');
+      if (!trackable || trackable.dataset.canReschedule !== 'true') return;
+
+      const state = getEffectiveDeliveryState(trackable);
+      if (state.status === 'RESCHEDULED') {
+        saveDeliveryOverride(trackable.dataset.deliveryKey, null);
+        showToast('Se deshizo la marca de reprogramación. El registro automático permanece.');
+        return;
+      }
+
+      saveDeliveryOverride(trackable.dataset.deliveryKey, {
+        status: 'RESCHEDULED',
+        flags: {},
+        note: 'Reprogramado desde Registro del día'
+      });
+      showToast('Registro marcado como reprogramado.');
     }
 
     function setDeliveryManualStatus(select) {
@@ -796,17 +904,14 @@ const buildReportScripts = ({
       if (mode) section.dataset.queueMode = mode;
 
       const search = section.dataset.queueSearch || '';
-      const selectedMode = section.dataset.queueMode || 'all';
+      const selectedMode = section.dataset.queueMode || 'actionable';
 
       section.querySelectorAll('.work-queue-list .delivery-card').forEach(card => {
         const closed = card.dataset.isClosed === 'true';
         const isOvernight = card.dataset.workScope === 'overnight';
         const belongsToOvernightCohort = !isOvernight || card.dataset.overnightCohort === 'true';
-        const matchesMode = belongsToOvernightCohort && (
-          selectedMode === 'all' ||
-          (selectedMode === 'closed' ? closed :
-            (selectedMode === 'overnight' ? isOvernight : !closed))
-        );
+        const interrupted = card.dataset.isInterrupted === 'true';
+        const matchesMode = belongsToOvernightCohort && !closed && !interrupted;
         const matchesSearch = !search || card.innerText.toLowerCase().includes(search);
         card.style.display = matchesMode && matchesSearch ? '' : 'none';
       });
