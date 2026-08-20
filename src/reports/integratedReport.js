@@ -609,7 +609,7 @@ const generateIntegratedHtmlReportByPublisher = ({
     return `
       <section class="report-section" id="important-clients">
         <div class="section-title-row">
-          <h2>7. Clientes importantes para filtro</h2>
+          <h2>7. Client List</h2>
           <button class="collapse-btn" onclick="toggleSectionBody('important-clients')">
             Colapsar / Expandir
           </button>
@@ -1383,11 +1383,11 @@ const generateIntegratedHtmlReportByPublisher = ({
       <button class="tab-button" onclick="showTab('removed', this)">Removidos (${removedRows.length})</button>
     </div>
     <div class="tab-group tab-group-screenshots" aria-label="Estados de screenshots">
-      <button class="tab-button" onclick="showTab('delivery', this)">Screenshot Status Today (${filteredDeliveryMatcher ? filteredDeliveryMatcher.summary.pendingTotal : 0} pending)</button>
-      <button class="tab-button" onclick="showTab('delivery-yesterday', this)">Screenshot Status Yesterday (${filteredYesterdayDeliveryMatcher ? filteredYesterdayDeliveryMatcher.summary.pendingTotal : 0} pending)</button>
+      <button class="tab-button" onclick="showTab('delivery', this)">Screenshot Today (${filteredDeliveryMatcher ? filteredDeliveryMatcher.summary.pendingTotal : 0} pending)</button>
+      <button class="tab-button" onclick="showTab('delivery-yesterday', this)">Screenshot Yesterday (${filteredYesterdayDeliveryMatcher ? filteredYesterdayDeliveryMatcher.summary.pendingTotal : 0} pending)</button>
     </div>
     <div class="tab-group tab-group-clients" aria-label="Referencias de clientes">
-      <button class="tab-button" onclick="showTab('important-clients', this)">Clientes importantes (${publisherConfigRows.length})</button>
+      <button class="tab-button" onclick="showTab('important-clients', this)">Client List (${publisherConfigRows.length})</button>
     </div>
   </div>
 
@@ -1434,7 +1434,7 @@ const generateIntegratedHtmlReportByPublisher = ({
   ${renderDeliverySection({
     sectionId: 'delivery',
     sectionNumber: '5',
-    title: 'Screenshot Status Today',
+    title: 'Screenshot Today',
     matcher: filteredDeliveryMatcher,
     reportDateValue: reportDate,
     displayDate: todayString,
@@ -1444,7 +1444,7 @@ const generateIntegratedHtmlReportByPublisher = ({
   ${renderDeliverySection({
     sectionId: 'delivery-yesterday',
     sectionNumber: '6',
-    title: 'Screenshot Status Yesterday',
+    title: 'Screenshot Yesterday',
     matcher: filteredYesterdayDeliveryMatcher,
     reportDateValue: yesterdayReportDate,
     displayDate: yesterdayString,

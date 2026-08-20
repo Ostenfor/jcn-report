@@ -251,7 +251,7 @@ assert.strictEqual(shouldStopAfterPage({
     assert.strictEqual(await page.locator('#after5pm .status-journey').count(), 0);
     assert.strictEqual(await page.locator('#after5pm .compact-status-select').count(), 0);
 
-    await page.getByRole('button', { name: /Screenshot Status Today/ }).click();
+    await page.getByRole('button', { name: /Screenshot Today/ }).click();
     await page.waitForSelector('#delivery.active');
     assert.ok(await page.locator('#delivery .delivery-manual-control').count() > 0);
     assert.ok(await page.locator('#delivery input[type="datetime-local"]').count() > 0);
