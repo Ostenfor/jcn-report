@@ -863,33 +863,6 @@ const generateIntegratedHtmlReportByPublisher = ({
 
         ${renderDeliveryHistoryInfo(row)}
 
-        <div class="delivery-manual-control">
-          <div class="manual-control-heading">
-            <strong>Control manual</strong>
-            <span class="manual-override-badge">Usando estado automático</span>
-          </div>
-          <div class="manual-control-grid">
-            <label>
-              Estado operativo
-              <select class="delivery-status-select" onchange="setDeliveryManualStatus(this)">
-                ${renderManualStatusOptions()}
-              </select>
-            </label>
-            <label class="reschedule-field">
-              Nueva fecha y hora
-              <input class="delivery-reschedule-input" type="datetime-local" onchange="saveDeliveryControl(this)">
-            </label>
-            <label class="delivery-note-field">
-              Nota
-              <input class="delivery-note-input" type="text" maxlength="240" placeholder="Ej. cliente no respondió" onchange="saveDeliveryControl(this)">
-            </label>
-            <button type="button" class="return-auto-btn" onclick="returnDeliveryToAutomatic(this)">
-              Volver a automático
-            </button>
-          </div>
-          <div class="delivery-updated-at"></div>
-        </div>
-
         ${exitBanner}
 
         <div class="delivery-assets">

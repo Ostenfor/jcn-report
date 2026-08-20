@@ -253,8 +253,12 @@ assert.strictEqual(shouldStopAfterPage({
 
     await page.getByRole('button', { name: /Screenshot Today/ }).click();
     await page.waitForSelector('#delivery.active');
-    assert.ok(await page.locator('#delivery .delivery-manual-control').count() > 0);
-    assert.ok(await page.locator('#delivery input[type="datetime-local"]').count() > 0);
+    assert.strictEqual(await page.locator('#delivery .delivery-manual-control').count(), 0);
+    assert.strictEqual(await page.locator('#delivery input[type="datetime-local"]').count(), 0);
+    assert.strictEqual(await page.locator('#delivery .delivery-note-input').count(), 0);
+    await page.getByRole('button', { name: /Screenshot Yesterday/ }).click();
+    await page.waitForSelector('#delivery-yesterday.active');
+    assert.strictEqual(await page.locator('#delivery-yesterday .delivery-manual-control').count(), 0);
 
     assert.ok(deliveryKey, 'The delivery key should be shared across views');
     if (process.env.JCN_KEEP_TEST_REPORT === 'true') {
