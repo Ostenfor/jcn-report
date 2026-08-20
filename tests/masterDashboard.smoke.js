@@ -179,6 +179,10 @@ assert.strictEqual(shouldStopAfterPage({
     await page.goto(pathToFileURL(reportPath).href);
 
     await page.waitForSelector('#master.active');
+    assert.strictEqual(await page.locator('.tabs .tab-group').count(), 6);
+    assert.strictEqual(await page.locator('.tab-group-tracking .tab-button').count(), 2);
+    assert.strictEqual(await page.locator('.tab-group-reminders .tab-button').count(), 2);
+    assert.strictEqual(await page.locator('.tab-group-screenshots .tab-button').count(), 2);
     assert.strictEqual(await page.locator('#master .delivery-card').count(), 4);
     assert.strictEqual(await page.locator('#master [data-master-group="today"] .delivery-card').count(), 3);
     assert.strictEqual(await page.locator('#master [data-master-group="overnight"] .delivery-card').count(), 1);

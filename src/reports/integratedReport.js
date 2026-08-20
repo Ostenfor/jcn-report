@@ -1368,15 +1368,27 @@ const generateIntegratedHtmlReportByPublisher = ({
   </div>
 
   <div class="tabs">
-    <button class="tab-button active" onclick="showTab('master', this)">Master Dashboard (${masterActiveDeliveryCount})</button>
-    <button class="tab-button" onclick="showTab('master-history', this)">Registro del día (${todayDeliveries.length + yesterdayDeliveries.length})</button>
-    <button class="tab-button" onclick="showTab('todos', this)">Reporte completo (${allRows.length})</button>
-    <button class="tab-button" onclick="showTab('after5pm', this)">5PM en adelante (${reminderRows.length})</button>
-    <button class="tab-button" onclick="showTab('saturday', this)">Saturday advance (${saturdayRows.length})</button>
-    <button class="tab-button" onclick="showTab('removed', this)">Removidos (${removedRows.length})</button>
-    <button class="tab-button" onclick="showTab('delivery', this)">Screenshot Status Today (${filteredDeliveryMatcher ? filteredDeliveryMatcher.summary.pendingTotal : 0} pending)</button>
-    <button class="tab-button" onclick="showTab('delivery-yesterday', this)">Screenshot Status Yesterday (${filteredYesterdayDeliveryMatcher ? filteredYesterdayDeliveryMatcher.summary.pendingTotal : 0} pending)</button>
-    <button class="tab-button" onclick="showTab('important-clients', this)">Clientes importantes (${publisherConfigRows.length})</button>
+    <div class="tab-group tab-group-tracking" aria-label="Seguimiento principal">
+      <button class="tab-button active" onclick="showTab('master', this)">Master Dashboard (${masterActiveDeliveryCount})</button>
+      <button class="tab-button" onclick="showTab('master-history', this)">Registro del día (${todayDeliveries.length + yesterdayDeliveries.length})</button>
+    </div>
+    <div class="tab-group tab-group-reminders" aria-label="Reportes y recordatorios">
+      <button class="tab-button" onclick="showTab('todos', this)">Reporte completo (${allRows.length})</button>
+      <button class="tab-button" onclick="showTab('after5pm', this)">5PM en adelante (${reminderRows.length})</button>
+    </div>
+    <div class="tab-group tab-group-saturday" aria-label="Saturday advance">
+      <button class="tab-button" onclick="showTab('saturday', this)">Saturday advance (${saturdayRows.length})</button>
+    </div>
+    <div class="tab-group tab-group-removed" aria-label="Registros removidos">
+      <button class="tab-button" onclick="showTab('removed', this)">Removidos (${removedRows.length})</button>
+    </div>
+    <div class="tab-group tab-group-screenshots" aria-label="Estados de screenshots">
+      <button class="tab-button" onclick="showTab('delivery', this)">Screenshot Status Today (${filteredDeliveryMatcher ? filteredDeliveryMatcher.summary.pendingTotal : 0} pending)</button>
+      <button class="tab-button" onclick="showTab('delivery-yesterday', this)">Screenshot Status Yesterday (${filteredYesterdayDeliveryMatcher ? filteredYesterdayDeliveryMatcher.summary.pendingTotal : 0} pending)</button>
+    </div>
+    <div class="tab-group tab-group-clients" aria-label="Referencias de clientes">
+      <button class="tab-button" onclick="showTab('important-clients', this)">Clientes importantes (${publisherConfigRows.length})</button>
+    </div>
   </div>
 
   ${renderWorkQueueSection({

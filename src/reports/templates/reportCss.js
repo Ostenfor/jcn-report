@@ -328,8 +328,66 @@ const buildReportCss = () => {
     .tabs {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 9px;
       margin: 16px 0 22px 0;
+      align-items: stretch;
+    }
+
+    .tab-group {
+      --tab-group-accent: #64748b;
+      --tab-group-bg: rgba(100, 116, 139, 0.07);
+      --tab-active-start: #475569;
+      --tab-active-end: #334155;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 7px;
+      padding: 5px;
+      border: 2px solid var(--tab-group-accent);
+      border-radius: 14px;
+      background: var(--tab-group-bg);
+    }
+
+    .tab-group-tracking {
+      --tab-group-accent: #eab308;
+      --tab-group-bg: rgba(234, 179, 8, 0.08);
+      --tab-active-start: #ca8a04;
+      --tab-active-end: #a16207;
+    }
+
+    .tab-group-reminders {
+      --tab-group-accent: #06b6d4;
+      --tab-group-bg: rgba(6, 182, 212, 0.08);
+      --tab-active-start: #0ea5e9;
+      --tab-active-end: #2563eb;
+    }
+
+    .tab-group-saturday {
+      --tab-group-accent: #22c55e;
+      --tab-group-bg: rgba(34, 197, 94, 0.08);
+      --tab-active-start: #16a34a;
+      --tab-active-end: #15803d;
+    }
+
+    .tab-group-removed {
+      --tab-group-accent: #ef4444;
+      --tab-group-bg: rgba(239, 68, 68, 0.08);
+      --tab-active-start: #dc2626;
+      --tab-active-end: #b91c1c;
+    }
+
+    .tab-group-screenshots {
+      --tab-group-accent: #818cf8;
+      --tab-group-bg: rgba(99, 102, 241, 0.08);
+      --tab-active-start: #6366f1;
+      --tab-active-end: #4f46e5;
+    }
+
+    .tab-group-clients {
+      --tab-group-accent: #94a3b8;
+      --tab-group-bg: rgba(148, 163, 184, 0.07);
+      --tab-active-start: #64748b;
+      --tab-active-end: #475569;
     }
 
     .tab-button {
@@ -348,6 +406,22 @@ const buildReportCss = () => {
       background: linear-gradient(135deg, #0ea5e9, #2563eb);
       color: #fff;
       border-color: #38bdf8;
+    }
+
+    .tab-group .tab-button.active {
+      background: linear-gradient(135deg, var(--tab-active-start), var(--tab-active-end));
+      border-color: var(--tab-group-accent);
+      box-shadow: 0 7px 18px color-mix(in srgb, var(--tab-group-accent) 28%, transparent);
+    }
+
+    @media (max-width: 720px) {
+      .tab-group {
+        width: 100%;
+      }
+
+      .tab-group .tab-button {
+        flex: 1 1 auto;
+      }
     }
 
     .report-section {
