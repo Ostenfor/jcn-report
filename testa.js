@@ -411,7 +411,6 @@ const printDeliverySummaryBlock = (title, matcher) => {
     console.error(error.message);
     console.log('');
     console.log('URL donde falló:', page.url());
-    await page.waitForTimeout(10000);
   } finally {
     await browser.close();
   }

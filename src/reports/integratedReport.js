@@ -1543,18 +1543,6 @@ const generateIntegratedHtmlReportByPublisher = ({
           <div class="fixed-progress-fill" id="footer-delivery-completed-fill"></div>
         </div>
       </div>
-
-      <div class="fixed-progress-card pending">
-        <div class="fixed-progress-top">
-          <span class="fixed-progress-number">
-            <span id="footer-delivery-pending-count">0</span>/<span id="footer-delivery-pending-total">0</span>
-          </span>
-          <span class="fixed-progress-label">Pending</span>
-        </div>
-        <div class="fixed-progress-track">
-          <div class="fixed-progress-fill" id="footer-delivery-pending-fill"></div>
-        </div>
-      </div>
     </div>
   </div>
 

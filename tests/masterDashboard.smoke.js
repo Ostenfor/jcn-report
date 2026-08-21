@@ -193,6 +193,10 @@ assert.strictEqual(shouldStopAfterPage({
     await page.goto(pathToFileURL(reportPath).href);
 
     await page.waitForSelector('#master.active');
+    assert.strictEqual(await page.locator('#delivery-progress-footer .fixed-progress-card').count(), 1);
+    assert.strictEqual(await page.locator('#delivery-progress-footer .fixed-progress-card.completed').count(), 1);
+    assert.strictEqual(await page.locator('#delivery-progress-footer .fixed-progress-card.pending').count(), 0);
+    assert.strictEqual(await page.locator('#footer-delivery-pending-count').count(), 0);
     assert.strictEqual(await page.locator('.tabs .tab-group').count(), 6);
     assert.strictEqual(await page.locator('.tab-group-tracking .tab-button').count(), 2);
     assert.strictEqual(await page.locator('.tab-group-reminders .tab-button').count(), 2);

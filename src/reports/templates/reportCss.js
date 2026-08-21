@@ -1081,6 +1081,10 @@ const buildReportCss = () => {
       gap: 12px;
     }
 
+    #delivery-progress-footer .fixed-progress-inner {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
     .fixed-progress-card {
       background: rgba(15,23,42,0.82);
       border: 1px solid rgba(148,163,184,0.22);
@@ -1118,10 +1122,6 @@ const buildReportCss = () => {
 
     .fixed-progress-card.sended .fixed-progress-number {
       color: var(--accent);
-    }
-
-    .fixed-progress-card.pending .fixed-progress-number {
-      color: var(--yellow);
     }
 
     .fixed-progress-track {
