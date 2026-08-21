@@ -4,6 +4,9 @@ const {
 const {
   shouldStopAfterPage
 } = require('../utils/paginationUtils');
+const {
+  assertRequiredIndexes
+} = require('../utils/validationUtils');
 
 const POSTS_URL = 'https://dashboard.jewishcontentnetwork.com/admin/resources/posts';
 
@@ -311,6 +314,17 @@ const crawlPosts = async (page, { oldestDateString = '' } = {}) => {
     'Campaign',
     'Advertiser'
   ]);
+
+  assertRequiredIndexes({
+    source: 'Past Due Posts',
+    headers: result.headers,
+    indexes: {
+      scheduled: scheduledIndex,
+      publisher: publisherIndex,
+      type: typeIndex,
+      client: clientIndex
+    }
+  });
 
   const rows = result.rows.map(row => {
     return {

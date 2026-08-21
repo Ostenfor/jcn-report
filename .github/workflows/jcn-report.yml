@@ -66,10 +66,13 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
+
+      - name: Validate application before scraping
+        run: npm test
 
       - name: Run JCN report
         env:
@@ -139,6 +142,11 @@ jobs:
 
           echo "Cached report history:"
           ls -la .report-history/reporte
+
+      - name: Exclude internal delivery history from public Pages artifact
+        run: |
+          rm -f reporte/delivery-history-*.json
+          echo "Internal delivery history remains in the private workflow cache only."
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

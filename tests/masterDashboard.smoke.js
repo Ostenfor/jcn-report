@@ -184,6 +184,10 @@ assert.strictEqual(shouldStopAfterPage({
 
     assert.ok(fs.existsSync(reportPath), 'The integrated report should be generated');
 
+    const generatedHtml = fs.readFileSync(reportPath, 'utf8');
+    assert.match(generatedHtml, /const STALE_WARNING_MS = 2 \* 60 \* 60 \* 1000;/);
+    assert.match(generatedHtml, /MÁS DE 2 HORAS SIN ACTUALIZARSE/);
+
     browser = await chromium.launch({ headless: true });
     const page = await browser.newPage();
     await page.goto(pathToFileURL(reportPath).href);

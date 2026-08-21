@@ -16,7 +16,7 @@ const buildReportScripts = ({
     const REPORT_DATE = ${JSON.stringify(reportDate)};
     const GENERATED_AT_EPOCH_MS = ${JSON.stringify(generatedAtEpochMs)};
     const REPORT_TIME_ZONE = 'America/Santo_Domingo';
-    const STALE_WARNING_MS = 5 * 60 * 60 * 1000;
+    const STALE_WARNING_MS = 2 * 60 * 60 * 1000;
     const UNRELIABLE_WARNING_MS = 24 * 60 * 60 * 1000;
     const STORAGE_VERSION = 'v4';
 
@@ -108,7 +108,7 @@ const buildReportScripts = ({
 
       if (ageMs >= STALE_WARNING_MS) {
         warning.classList.add('freshness-warning-yellow');
-        title.innerText = 'ATENCIÓN — EL REPORTE LLEVA MÁS DE 5 HORAS SIN ACTUALIZARSE';
+        title.innerText = 'ATENCIÓN — EL REPORTE LLEVA MÁS DE 2 HORAS SIN ACTUALIZARSE';
         detail.innerText =
           'Verifica la automatización antes de confiar en cambios recientes. ' +
           'Última actualización: ' +
