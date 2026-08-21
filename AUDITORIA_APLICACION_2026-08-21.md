@@ -165,6 +165,7 @@ Después de retirar `googleapis` y el paquete npm `fs`:
 6. Instalación reproducible con `npm ci`.
 7. Eliminación de dependencias no utilizadas.
 8. Exclusión del historial JSON interno del artefacto público, conservándolo en caché.
+9. Advertencia amarilla después de 2 horas sin actualización, equivalente a dos ejecuciones horarias fallidas.
 
 ## Criterios antes de promover a `main`
 
