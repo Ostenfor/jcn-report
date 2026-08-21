@@ -193,6 +193,8 @@ assert.strictEqual(shouldStopAfterPage({
     await page.goto(pathToFileURL(reportPath).href);
 
     await page.waitForSelector('#master.active');
+    assert.strictEqual(await page.locator('.top-summary').count(), 0);
+    assert.strictEqual(await page.getByRole('button', { name: 'Reset todo el día' }).count(), 0);
     assert.strictEqual(await page.locator('#delivery-progress-footer .fixed-progress-card').count(), 1);
     assert.strictEqual(await page.locator('#delivery-progress-footer .fixed-progress-card.completed').count(), 1);
     assert.strictEqual(await page.locator('#delivery-progress-footer .fixed-progress-card.pending').count(), 0);

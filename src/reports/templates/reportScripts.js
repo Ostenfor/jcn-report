@@ -1081,39 +1081,6 @@ const buildReportScripts = ({
       body.classList.toggle('collapsed');
     }
 
-    function resetAllTodayProgress() {
-      const ok = confirm('¿Seguro que quieres borrar todos los checkmarks de hoy?');
-      if (!ok) return;
-
-      Object.keys(localStorage)
-        .filter(key =>
-          key.startsWith(SENDED_PREFIX) ||
-          key.startsWith(CONFIRMED_PREFIX) ||
-          key.startsWith('jcn:sended:' + REPORT_DATE + ':') ||
-          key.startsWith('jcn:publisher-confirmed:' + REPORT_DATE + ':') ||
-          key.startsWith('jcn:v1:sended:' + REPORT_DATE + ':') ||
-          key.startsWith('jcn:v1:publisher-confirmed:' + REPORT_DATE + ':') ||
-          key.startsWith('jcn:v2:sended:' + REPORT_DATE + ':') ||
-          key.startsWith('jcn:v2:publisher-confirmed:' + REPORT_DATE + ':') ||
-          key.startsWith('jcn:v3:sended:' + REPORT_DATE + ':') ||
-          key.startsWith('jcn:v3:publisher-confirmed:' + REPORT_DATE + ':')
-        )
-        .forEach(key => localStorage.removeItem(key));
-
-      document.querySelectorAll('.publisher-card').forEach(card => {
-        card.classList.remove('sended');
-        card.classList.remove('confirmed');
-      });
-
-      document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-        checkbox.checked = false;
-      });
-
-      updateAllSectionStatuses();
-      updateSectionStatus(getActiveSectionKey());
-      showToast('Progreso de hoy reseteado.');
-    }
-
     function getCard(sectionKey, index) {
       return document.getElementById('card-' + sectionKey + '-' + index);
     }
