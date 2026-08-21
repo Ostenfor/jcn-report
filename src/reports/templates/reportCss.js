@@ -293,13 +293,6 @@ const buildReportCss = () => {
       font-weight: 900;
     }
 
-    .top-summary {
-      display: grid;
-      grid-template-columns: repeat(6, minmax(130px, 1fr));
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-
     .summary-card {
       background: linear-gradient(180deg, rgba(18,26,36,0.96), rgba(15,23,42,0.96));
       border: 1px solid var(--line);
@@ -334,24 +327,6 @@ const buildReportCss = () => {
 
     .summary-no-notification .summary-number {
       color: var(--yellow);
-    }
-
-    .global-reset-row {
-      display: flex;
-      justify-content: flex-end;
-      margin: 8px 0 14px 0;
-    }
-
-    .reset-all-btn {
-      border: 1px solid rgba(239,68,68,0.45);
-      background: linear-gradient(135deg, #b91c1c, #dc2626);
-      color: #fff;
-      border-radius: 999px;
-      padding: 10px 16px;
-      font-size: 13px;
-      min-height: 40px;
-      font-weight: 900;
-      box-shadow: 0 10px 20px rgba(185,28,28,0.22);
     }
 
     .tabs {
@@ -1081,6 +1056,10 @@ const buildReportCss = () => {
       gap: 12px;
     }
 
+    #delivery-progress-footer .fixed-progress-inner {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
     .fixed-progress-card {
       background: rgba(15,23,42,0.82);
       border: 1px solid rgba(148,163,184,0.22);
@@ -1118,10 +1097,6 @@ const buildReportCss = () => {
 
     .fixed-progress-card.sended .fixed-progress-number {
       color: var(--accent);
-    }
-
-    .fixed-progress-card.pending .fixed-progress-number {
-      color: var(--yellow);
     }
 
     .fixed-progress-track {
@@ -1483,7 +1458,6 @@ const buildReportCss = () => {
         font-size: 18px;
       }
 
-      .top-summary,
       .delivery-summary-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 8px;

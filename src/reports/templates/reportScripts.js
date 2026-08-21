@@ -6,11 +6,9 @@ const buildReportScripts = ({
 }) => {
   const deliveryTotal = deliveryMatcher?.summary?.totalExpected || 0;
   const deliveryCompleted = deliveryMatcher?.summary?.completedTotal || 0;
-  const deliveryPending = deliveryMatcher?.summary?.pendingTotal || 0;
 
   const deliveryYesterdayTotal = yesterdayDeliveryMatcher?.summary?.totalExpected || 0;
   const deliveryYesterdayCompleted = yesterdayDeliveryMatcher?.summary?.completedTotal || 0;
-  const deliveryYesterdayPending = yesterdayDeliveryMatcher?.summary?.pendingTotal || 0;
 
   return `
     const REPORT_DATE = ${JSON.stringify(reportDate)};
@@ -22,11 +20,9 @@ const buildReportScripts = ({
 
     const DELIVERY_TOTAL = ${JSON.stringify(deliveryTotal)};
     const DELIVERY_COMPLETED = ${JSON.stringify(deliveryCompleted)};
-    const DELIVERY_PENDING = ${JSON.stringify(deliveryPending)};
 
     const DELIVERY_YESTERDAY_TOTAL = ${JSON.stringify(deliveryYesterdayTotal)};
     const DELIVERY_YESTERDAY_COMPLETED = ${JSON.stringify(deliveryYesterdayCompleted)};
-    const DELIVERY_YESTERDAY_PENDING = ${JSON.stringify(deliveryYesterdayPending)};
 
     const SENDED_PREFIX = 'jcn:' + STORAGE_VERSION + ':sended:' + REPORT_DATE + ':';
     const CONFIRMED_PREFIX = 'jcn:' + STORAGE_VERSION + ':publisher-confirmed:' + REPORT_DATE + ':';
@@ -1085,39 +1081,6 @@ const buildReportScripts = ({
       body.classList.toggle('collapsed');
     }
 
-    function resetAllTodayProgress() {
-      const ok = confirm('¿Seguro que quieres borrar todos los checkmarks de hoy?');
-      if (!ok) return;
-
-      Object.keys(localStorage)
-        .filter(key =>
-          key.startsWith(SENDED_PREFIX) ||
-          key.startsWith(CONFIRMED_PREFIX) ||
-          key.startsWith('jcn:sended:' + REPORT_DATE + ':') ||
-          key.startsWith('jcn:publisher-confirmed:' + REPORT_DATE + ':') ||
-          key.startsWith('jcn:v1:sended:' + REPORT_DATE + ':') ||
-          key.startsWith('jcn:v1:publisher-confirmed:' + REPORT_DATE + ':') ||
-          key.startsWith('jcn:v2:sended:' + REPORT_DATE + ':') ||
-          key.startsWith('jcn:v2:publisher-confirmed:' + REPORT_DATE + ':') ||
-          key.startsWith('jcn:v3:sended:' + REPORT_DATE + ':') ||
-          key.startsWith('jcn:v3:publisher-confirmed:' + REPORT_DATE + ':')
-        )
-        .forEach(key => localStorage.removeItem(key));
-
-      document.querySelectorAll('.publisher-card').forEach(card => {
-        card.classList.remove('sended');
-        card.classList.remove('confirmed');
-      });
-
-      document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-        checkbox.checked = false;
-      });
-
-      updateAllSectionStatuses();
-      updateSectionStatus(getActiveSectionKey());
-      showToast('Progreso de hoy reseteado.');
-    }
-
     function getCard(sectionKey, index) {
       return document.getElementById('card-' + sectionKey + '-' + index);
     }
@@ -1319,24 +1282,11 @@ const buildReportScripts = ({
           ? DELIVERY_YESTERDAY_COMPLETED
           : DELIVERY_COMPLETED;
 
-      const deliveryPending = useLiveTrackingCounts
-        ? activeTrackingCards.filter(card => card.dataset.isClosed !== 'true').length
-        : activePanel
-        ? Number(activePanel.dataset.pending || 0)
-        : activeSectionId === 'delivery-yesterday'
-          ? DELIVERY_YESTERDAY_PENDING
-          : DELIVERY_PENDING;
-
       const completedPercent = deliveryTotal === 0 ? 0 : Math.round((deliveryCompleted / deliveryTotal) * 100);
-      const pendingPercent = deliveryTotal === 0 ? 0 : Math.round((deliveryPending / deliveryTotal) * 100);
 
       const completedCount = document.getElementById('footer-delivery-completed-count');
       const completedTotal = document.getElementById('footer-delivery-completed-total');
       const completedFill = document.getElementById('footer-delivery-completed-fill');
-
-      const pendingCount = document.getElementById('footer-delivery-pending-count');
-      const pendingTotal = document.getElementById('footer-delivery-pending-total');
-      const pendingFill = document.getElementById('footer-delivery-pending-fill');
 
       if (completedCount) completedCount.innerText = deliveryCompleted;
       if (completedTotal) completedTotal.innerText = deliveryTotal;
@@ -1344,14 +1294,6 @@ const buildReportScripts = ({
       if (completedFill) {
         completedFill.style.width = completedPercent + '%';
         completedFill.style.background = getProgressColor(completedPercent);
-      }
-
-      if (pendingCount) pendingCount.innerText = deliveryPending;
-      if (pendingTotal) pendingTotal.innerText = deliveryTotal;
-
-      if (pendingFill) {
-        pendingFill.style.width = pendingPercent + '%';
-        pendingFill.style.background = getProgressColorSended(pendingPercent);
       }
     }
 

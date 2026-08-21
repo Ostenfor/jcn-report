@@ -16,11 +16,12 @@ const login = async (page) => {
   await page.fill('#password', process.env.JCN_PASS);
 
   await Promise.all([
-    page.waitForTimeout(3000),
+    page.waitForURL(url => !url.pathname.includes('/admin/login'), {
+      timeout: 60000,
+      waitUntil: 'domcontentloaded'
+    }),
     page.click('button[type="submit"]')
   ]);
-
-  await page.waitForTimeout(5000);
 
   if (page.url().includes('/admin/login')) {
     throw new Error('El dashboard mantuvo la sesion en login; verifica las credenciales JCN.');

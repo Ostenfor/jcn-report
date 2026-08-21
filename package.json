@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node tests/coreLogic.test.js && node tests/loginValidation.test.js && node tests/masterDashboard.smoke.js"
+    "test": "node tests/coreLogic.test.js && node tests/loginValidation.test.js && node tests/navigationUtils.test.js && node tests/masterDashboard.smoke.js"
   },
   "keywords": [],
   "author": "",

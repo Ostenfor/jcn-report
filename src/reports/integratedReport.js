@@ -9,8 +9,6 @@ const {
   getWhatsappGroupName,
   getPublisherMention,
   publisherRequiresNotification,
-  getNoNotificationPublisherCount,
-  getNotificationRequiredPublisherCount
 } = require('../config/publishers');
 const {
   getReportsFolderPath,
@@ -227,14 +225,6 @@ const generateIntegratedHtmlReportByPublisher = ({
     deliveryMatcher: filteredDeliveryMatcher,
     yesterdayDeliveryMatcher: filteredYesterdayDeliveryMatcher
   });
-
-  const getPublisherCount = (rows) => {
-    return new Set(rows.map(row => row.website)).size;
-  };
-
-  const totalPublishersCount = getPublisherCount(allRows);
-  const notificationRequiredCount = getNotificationRequiredPublisherCount(allRows);
-  const noNotificationRequiredCount = getNoNotificationPublisherCount(allRows);
 
   const groupRowsByPublisher = (rows) => {
     const notificationRequired = {};
@@ -1377,44 +1367,6 @@ const generateIntegratedHtmlReportByPublisher = ({
     <strong id="generated-at-value">${escapeHtml(generatedAtRD)}</strong>
   </div>
 
-  <div class="top-summary">
-    <div class="summary-card">
-      <div class="summary-number">${allRows.length}</div>
-      <div class="summary-label">Publicaciones</div>
-    </div>
-
-    <div class="summary-card">
-      <div class="summary-number">${totalPublishersCount}</div>
-      <div class="summary-label">Clientes total día</div>
-    </div>
-
-    <div class="summary-card">
-      <div class="summary-number">${notificationRequiredCount}</div>
-      <div class="summary-label">Clientes que requieren notificación</div>
-    </div>
-
-    <div class="summary-card summary-no-notification">
-      <div class="summary-number">${noNotificationRequiredCount}</div>
-      <div class="summary-label">Clientes sin notificación requerida</div>
-    </div>
-
-    <div class="summary-card summary-new">
-      <div class="summary-number">${newRows.length}</div>
-      <div class="summary-label">Agregados nuevos</div>
-    </div>
-
-    <div class="summary-card summary-removed">
-      <div class="summary-number">${removedRows.length}</div>
-      <div class="summary-label">Removidos</div>
-    </div>
-  </div>
-
-  <div class="global-reset-row">
-    <button class="reset-all-btn" onclick="resetAllTodayProgress()">
-      Reset todo el día
-    </button>
-  </div>
-
   <div class="tabs">
     <div class="tab-group tab-group-tracking" aria-label="Seguimiento principal">
       <button class="tab-button active" onclick="showTab('master', this)">Master Dashboard (${masterActiveDeliveryCount})</button>
@@ -1541,18 +1493,6 @@ const generateIntegratedHtmlReportByPublisher = ({
         </div>
         <div class="fixed-progress-track">
           <div class="fixed-progress-fill" id="footer-delivery-completed-fill"></div>
-        </div>
-      </div>
-
-      <div class="fixed-progress-card pending">
-        <div class="fixed-progress-top">
-          <span class="fixed-progress-number">
-            <span id="footer-delivery-pending-count">0</span>/<span id="footer-delivery-pending-total">0</span>
-          </span>
-          <span class="fixed-progress-label">Pending</span>
-        </div>
-        <div class="fixed-progress-track">
-          <div class="fixed-progress-fill" id="footer-delivery-pending-fill"></div>
         </div>
       </div>
     </div>

@@ -6,7 +6,7 @@
 |---|---|
 | Aplicación | JCN Report / seguimiento de publicaciones y capturas |
 | Rama estable | `main` |
-| Versión funcional tomada como base | `7cabdda` (`Add Copy Group to Master Dashboard cards`) |
+| Versión estable tomada como base para esta rama | `45c34a2` (`Merge reliability audit improvements`) |
 | Última revisión documental | 2026-08-21 |
 | Zona horaria operativa | `America/Santo_Domingo` |
 | Publicación | GitHub Pages mediante GitHub Actions |
@@ -105,6 +105,7 @@ Publicaciones programadas desde las 5:00 PM en adelante. Durante el turno se ide
 - `Cerrar todos` descarta temporalmente todas las alertas visibles.
 - Los nocturnos no generan alerta durante el turno.
 - Las alertas del sistema operativo requieren permiso del navegador; las alertas visuales funcionan sin ese permiso.
+- El footer de seguimiento de capturas muestra una sola barra `Completed`; no duplica el mismo total con una barra inversa `Pending`.
 
 ## 9. Acciones manuales
 
