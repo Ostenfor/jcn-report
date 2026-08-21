@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node tests/masterDashboard.smoke.js"
+    "test": "node tests/coreLogic.test.js && node tests/loginValidation.test.js && node tests/masterDashboard.smoke.js"
   },
   "keywords": [],
   "author": "",
@@ -15,8 +15,6 @@
   },
   "dependencies": {
     "dotenv": "^17.2.3",
-    "fs": "^0.0.1-security",
-    "googleapis": "^167.0.0",
     "luxon": "^3.7.2"
   }
 }

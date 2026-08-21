@@ -1,5 +1,6 @@
 const { safeGoto } = require('../utils/navigationUtils');
 const { shouldStopAfterPage } = require('../utils/paginationUtils');
+const { assertRequiredIndexes } = require('../utils/validationUtils');
 
 const SCREENSHOTS_URL = 'https://dashboard.jewishcontentnetwork.com/admin/resources/screenshots';
 const SCREENSHOTS_TWOS_URL = 'https://dashboard.jewishcontentnetwork.com/admin/resources/screenshots-twos';
@@ -368,6 +369,18 @@ const crawlScreenshots = async ({
     'Screenshot 2',
     'Second Screenshot'
   ]);
+
+  assertRequiredIndexes({
+    source: title,
+    headers: result.headers,
+    indexes: {
+      scheduled: scheduledIndex,
+      publisher: publisherIndex,
+      type: typeIndex,
+      client: clientIndex,
+      screenshot: screenshotIndex
+    }
+  });
 
   const rows = result.rows.map(row => {
     return {

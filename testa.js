@@ -403,6 +403,7 @@ const printDeliverySummaryBlock = (title, matcher) => {
     // MODULE 04 - CLEANUP / ERROR HANDLING
     // ==================================================
   } catch (error) {
+    process.exitCode = 1;
     console.error('');
     console.error('==================================================');
     console.error('ERROR');
