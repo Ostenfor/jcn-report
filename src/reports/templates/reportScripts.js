@@ -16,6 +16,7 @@ const buildReportScripts = ({
     const REPORT_TIME_ZONE = 'America/Santo_Domingo';
     const STALE_WARNING_MS = 2 * 60 * 60 * 1000;
     const UNRELIABLE_WARNING_MS = 24 * 60 * 60 * 1000;
+    const DELIVERY_ALERT_MAX_AGE_MS = 24 * 60 * 60 * 1000;
     const STORAGE_VERSION = 'v4';
 
     const DELIVERY_TOTAL = ${JSON.stringify(deliveryTotal)};
@@ -676,12 +677,15 @@ const buildReportScripts = ({
         const targetMs = parseScheduledEpoch(targetValue);
         if (!Number.isFinite(targetMs) || nowMs < targetMs) return;
 
-        const overdueHours = Math.floor((nowMs - targetMs) / 3600000);
+        const overdueMs = nowMs - targetMs;
+        if (overdueMs >= DELIVERY_ALERT_MAX_AGE_MS) return;
+
+        const overdueHours = Math.floor(overdueMs / 3600000);
         if (overdueHours < 1) return;
 
         const title = element.querySelector('.delivery-title')?.innerText || 'Anuncio pendiente';
         const subtitle = element.querySelector('.delivery-subtitle')?.innerText || '';
-        const durationText = formatTrackingDuration(nowMs - targetMs);
+        const durationText = formatTrackingDuration(overdueMs);
         const scope = element.dataset.workScope === 'overnight' ? 'yesterday' : 'today';
         const whatsappGroup = element.dataset.whatsappGroup || 'N/A';
         alerts.push({

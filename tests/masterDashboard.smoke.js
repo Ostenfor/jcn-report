@@ -186,10 +186,24 @@ assert.strictEqual(shouldStopAfterPage({
 
     const generatedHtml = fs.readFileSync(reportPath, 'utf8');
     assert.match(generatedHtml, /const STALE_WARNING_MS = 2 \* 60 \* 60 \* 1000;/);
+    assert.match(generatedHtml, /const DELIVERY_ALERT_MAX_AGE_MS = 24 \* 60 \* 60 \* 1000;/);
     assert.match(generatedHtml, /MÁS DE 2 HORAS SIN ACTUALIZARSE/);
 
     browser = await chromium.launch({ headless: true });
     const page = await browser.newPage();
+    await page.addInitScript(fixedNow => {
+      const OriginalDate = Date;
+      class FixedDate extends OriginalDate {
+        constructor(...args) {
+          super(...(args.length ? args : [fixedNow]));
+        }
+
+        static now() {
+          return fixedNow;
+        }
+      }
+      window.Date = FixedDate;
+    }, Date.parse('2026-08-20T18:00:00Z'));
     await page.goto(pathToFileURL(reportPath).href);
 
     await page.waitForSelector('#master.active');
@@ -259,6 +273,20 @@ assert.strictEqual(shouldStopAfterPage({
     const todayCard = page.locator('#master .delivery-card').filter({ hasText: 'Client Today' });
     const deliveryKey = await todayCard.getAttribute('data-delivery-key');
     assert.strictEqual(await todayCard.isVisible(), true);
+    const alertCutoff = await page.evaluate(key => {
+      const card = Array.from(document.querySelectorAll('#master .delivery-card'))
+        .find(element => element.dataset.deliveryKey === key);
+      const targetMs = parseScheduledEpoch(card.dataset.scheduled);
+
+      return {
+        before24Hours: getMasterOverdueAlerts(targetMs + (24 * 60 * 60 * 1000) - 1)
+          .some(alert => alert.deliveryKey === key),
+        at24Hours: getMasterOverdueAlerts(targetMs + (24 * 60 * 60 * 1000))
+          .some(alert => alert.deliveryKey === key)
+      };
+    }, deliveryKey);
+    assert.strictEqual(alertCutoff.before24Hours, true, 'An alert remains visible just before 24 hours');
+    assert.strictEqual(alertCutoff.at24Hours, false, 'An alert expires exactly at 24 hours');
 
     await overnightCard.evaluate(card => {
       card.dataset.autoStatus = 'APPROVED';
