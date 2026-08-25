@@ -1,3 +1,7 @@
+const {
+  isScreenshotExempt
+} = require('./deliveryRules');
+
 const normalizeValue = (value) => {
   return String(value || '')
     .replace(/\s+/g, ' ')
@@ -114,6 +118,12 @@ const resolveDeliveryStatus = (item) => {
     approved,
     history
   } = item.sources;
+
+  // Sponsored articles are completed by notifying the publisher. The
+  // dashboard never provides screenshot evidence for this delivery type.
+  if (isScreenshotExempt(item)) {
+    return 'NO_SCREENSHOT_REQUIRED';
+  }
 
   if (approved) {
     return 'APPROVED';
@@ -264,9 +274,14 @@ const buildDeliveryMatcher = ({
     row.status === 'UNKNOWN'
   );
 
+  const noScreenshotRequired = deliveries.filter(row =>
+    row.status === 'NO_SCREENSHOT_REQUIRED'
+  );
+
   const completed = [
     ...approved,
-    ...completedPendingApproval
+    ...completedPendingApproval,
+    ...noScreenshotRequired
   ];
 
   const pending = [
@@ -284,18 +299,20 @@ const buildDeliveryMatcher = ({
     activeNoScreenshotRecord,
     previouslySeenRemovedFromDashboard,
     unknown,
+    noScreenshotRequired,
     completed,
     pending,
 
     summary: {
-      totalExpected: deliveries.length,
+      totalExpected: deliveries.length - noScreenshotRequired.length,
       approved: approved.length,
       completedPendingApproval: completedPendingApproval.length,
-      completedTotal: completed.length,
+      completedTotal: completed.length - noScreenshotRequired.length,
       pendingScreenshot: pendingScreenshot.length,
       activeNoScreenshotRecord: activeNoScreenshotRecord.length,
       previouslySeenRemovedFromDashboard: previouslySeenRemovedFromDashboard.length,
       unknown: unknown.length,
+      noScreenshotRequired: noScreenshotRequired.length,
       pendingTotal: pending.length
     }
   };
@@ -310,6 +327,7 @@ const printDeliveryMatcherSummary = (matcher) => {
   console.log(`Aprobados: ${matcher.summary.approved}`);
   console.log(`Completados pendiente aprobación: ${matcher.summary.completedPendingApproval}`);
   console.log(`Total completados: ${matcher.summary.completedTotal}`);
+  console.log(`Sin foto requerida (no contabilizados): ${matcher.summary.noScreenshotRequired || 0}`);
   console.log(`Pendientes screenshot: ${matcher.summary.pendingScreenshot}`);
   console.log(`Activos sin registro screenshot: ${matcher.summary.activeNoScreenshotRecord}`);
   console.log(`Vistos antes pero removidos del dashboard: ${matcher.summary.previouslySeenRemovedFromDashboard}`);

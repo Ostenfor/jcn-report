@@ -117,6 +117,10 @@ const getHistoryFiles = (reportsFolder) => {
 };
 
 const buildHistorySummary = (rows) => {
+  const noScreenshotRequired = rows.filter(row =>
+    row.status === 'NO_SCREENSHOT_REQUIRED'
+  );
+
   const approved = rows.filter(row => row.status === 'APPROVED');
 
   const completedPendingApproval = rows.filter(row =>
@@ -152,10 +156,11 @@ const buildHistorySummary = (rows) => {
   ];
 
   return {
-    totalExpected: rows.length,
+    totalExpected: rows.length - noScreenshotRequired.length,
     approved: approved.length,
     completedPendingApproval: completedPendingApproval.length,
     completedTotal: completed.length,
+    noScreenshotRequired: noScreenshotRequired.length,
     pendingScreenshot: pendingScreenshot.length,
     activeNoScreenshotRecord: activeNoScreenshotRecord.length,
     previouslySeenRemovedFromDashboard: previouslySeenRemovedFromDashboard.length,
@@ -174,12 +179,14 @@ const buildHistoryBundleItem = ({
 
   const completed = rows.filter(row =>
     row.status === 'APPROVED' ||
-    row.status === 'COMPLETED_PENDING_APPROVAL'
+    row.status === 'COMPLETED_PENDING_APPROVAL' ||
+    row.status === 'NO_SCREENSHOT_REQUIRED'
   );
 
   const pending = rows.filter(row =>
     row.status !== 'APPROVED' &&
-    row.status !== 'COMPLETED_PENDING_APPROVAL'
+    row.status !== 'COMPLETED_PENDING_APPROVAL' &&
+    row.status !== 'NO_SCREENSHOT_REQUIRED'
   );
 
   return {

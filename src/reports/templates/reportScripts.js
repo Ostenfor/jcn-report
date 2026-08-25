@@ -136,6 +136,7 @@ const buildReportScripts = ({
 
     const DELIVERY_STATUS_LABELS = {
       APPROVED: 'Completado y aprobado',
+      NO_SCREENSHOT_REQUIRED: 'Completo por defecto - no requiere foto',
       COMPLETED_PENDING_APPROVAL: 'Captura subida - falta aprobar',
       PENDING_SCREENSHOT: 'Captura pendiente',
       ACTIVE_NO_SCREENSHOT_RECORD: 'Activo - sin registro de captura',
@@ -151,6 +152,7 @@ const buildReportScripts = ({
 
     const CLOSED_DELIVERY_STATUSES = new Set([
       'APPROVED',
+      'NO_SCREENSHOT_REQUIRED',
       'MANUAL_COMPLETED',
       'RESCHEDULED',
       'REMOVED_CANCELLED'
@@ -358,7 +360,7 @@ const buildReportScripts = ({
     }
 
     function getStatusCssClass(status) {
-      if (status === 'APPROVED' || status === 'MANUAL_COMPLETED') return 'status-approved';
+      if (status === 'APPROVED' || status === 'MANUAL_COMPLETED' || status === 'NO_SCREENSHOT_REQUIRED') return 'status-approved';
       if (status === 'COMPLETED_PENDING_APPROVAL') return 'status-completed';
       if (status === 'REMOVED_CANCELLED') return 'status-cancelled';
       if (status === 'RESCHEDULED') return 'status-rescheduled';
@@ -368,7 +370,7 @@ const buildReportScripts = ({
     }
 
     function getJourneyStage(status, targetMs, nowMs) {
-      if (status === 'APPROVED' || status === 'MANUAL_COMPLETED') return 'COMPLETED';
+      if (status === 'APPROVED' || status === 'MANUAL_COMPLETED' || status === 'NO_SCREENSHOT_REQUIRED') return 'COMPLETED';
       if (status === 'COMPLETED_PENDING_APPROVAL') return 'SCREENSHOT_UPLOADED';
       if (status === 'RESCHEDULED') return 'MOVED';
       if (status === 'REMOVED_CANCELLED') return 'REMOVED';
@@ -383,6 +385,7 @@ const buildReportScripts = ({
     }
 
     function getHistoryResultLabel(status) {
+      if (status === 'NO_SCREENSHOT_REQUIRED') return 'Completo - sin foto requerida';
       if (status === 'APPROVED' || status === 'MANUAL_COMPLETED') return 'Completado';
       if (status === 'RESCHEDULED') return 'Reprogramado';
       if (status === 'REMOVED_CANCELLED' || status === 'PREVIOUSLY_SEEN_REMOVED_FROM_DASHBOARD') return 'Removido';

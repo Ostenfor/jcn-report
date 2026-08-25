@@ -9,7 +9,8 @@ const {
 } = require('../src/services/screenshotMatcherService');
 const {
   loadDeliveryHistory,
-  saveDeliveryHistory
+  saveDeliveryHistory,
+  buildHistorySummary
 } = require('../src/services/deliveryHistoryService');
 const {
   assertRequiredIndexes
@@ -73,6 +74,39 @@ assert.strictEqual(
   match({ historyRows: [delivery({ status: 'COMPLETED_PENDING_APPROVAL' })] }).status,
   'COMPLETED_PENDING_APPROVAL',
   'Previously observed screenshot evidence must be preserved'
+);
+
+const sponsoredArticleMatcher = buildDeliveryMatcher({
+  postsRows: [delivery({
+    scheduled: '08/24/2026, 07:00 PM EDT',
+    website: 'Arutz Sheva',
+    type: ' Sponsored   Article ',
+    user: 'David Persiko'
+  })]
+});
+
+assert.strictEqual(sponsoredArticleMatcher.deliveries[0].status, 'NO_SCREENSHOT_REQUIRED');
+assert.strictEqual(sponsoredArticleMatcher.deliveries.length, 1, 'The item remains visible in the register');
+assert.strictEqual(sponsoredArticleMatcher.completed.length, 1, 'The item is complete by default');
+assert.strictEqual(sponsoredArticleMatcher.pending.length, 0, 'The item never enters reminders');
+assert.strictEqual(sponsoredArticleMatcher.summary.totalExpected, 0, 'The item is excluded from screenshot totals');
+assert.strictEqual(sponsoredArticleMatcher.summary.completedTotal, 0, 'The item is excluded from completed totals');
+assert.strictEqual(sponsoredArticleMatcher.summary.noScreenshotRequired, 1);
+
+assert.deepStrictEqual(
+  buildHistorySummary(sponsoredArticleMatcher.deliveries),
+  {
+    totalExpected: 0,
+    approved: 0,
+    completedPendingApproval: 0,
+    completedTotal: 0,
+    noScreenshotRequired: 1,
+    pendingScreenshot: 0,
+    activeNoScreenshotRecord: 0,
+    previouslySeenRemovedFromDashboard: 0,
+    unknown: 0,
+    pendingTotal: 0
+  }
 );
 
 assert.strictEqual(

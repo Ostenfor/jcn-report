@@ -65,7 +65,8 @@ const generateIntegratedHtmlReportByPublisher = ({
 
     const completedStatuses = new Set([
       'APPROVED',
-      'COMPLETED_PENDING_APPROVAL'
+      'COMPLETED_PENDING_APPROVAL',
+      'NO_SCREENSHOT_REQUIRED'
     ]);
 
     const pending = (matcher.pending || allDeliveries.filter(row => !completedStatuses.has(row.status)))
@@ -77,6 +78,7 @@ const generateIntegratedHtmlReportByPublisher = ({
     const countByStatus = (status) => {
       return deliveries.filter(row => row.status === status).length;
     };
+    const noScreenshotRequired = countByStatus('NO_SCREENSHOT_REQUIRED');
 
     return {
       ...matcher,
@@ -85,14 +87,15 @@ const generateIntegratedHtmlReportByPublisher = ({
       completed,
       summary: {
         ...(matcher.summary || {}),
-        totalExpected: deliveries.length,
+        totalExpected: deliveries.length - noScreenshotRequired,
         approved: countByStatus('APPROVED'),
         completedPendingApproval: countByStatus('COMPLETED_PENDING_APPROVAL'),
         pendingScreenshot: countByStatus('PENDING_SCREENSHOT'),
         activeNoScreenshotRecord: countByStatus('ACTIVE_NO_SCREENSHOT_RECORD'),
         previouslySeenRemovedFromDashboard: countByStatus('PREVIOUSLY_SEEN_REMOVED_FROM_DASHBOARD'),
         unknown: countByStatus('UNKNOWN'),
-        completedTotal: completed.length,
+        noScreenshotRequired,
+        completedTotal: completed.filter(row => row.status !== 'NO_SCREENSHOT_REQUIRED').length,
         pendingTotal: pending.length
       }
     };
@@ -101,7 +104,7 @@ const generateIntegratedHtmlReportByPublisher = ({
   const filteredDeliveryMatcher = filterDeliveryMatcherByPublisherList(deliveryMatcher);
   const filteredYesterdayDeliveryMatcher = filterDeliveryMatcherByPublisherList(yesterdayDeliveryMatcher);
 
-  const automaticClosedStatuses = new Set(['APPROVED']);
+  const automaticClosedStatuses = new Set(['APPROVED', 'NO_SCREENSHOT_REQUIRED']);
   const automaticInterruptedStatuses = new Set([
     'PREVIOUSLY_SEEN_REMOVED_FROM_DASHBOARD',
     'UNKNOWN',
@@ -282,6 +285,7 @@ const generateIntegratedHtmlReportByPublisher = ({
   const getAutomaticStatusLabel = (status) => {
     const labels = {
       APPROVED: 'Completado y aprobado',
+      NO_SCREENSHOT_REQUIRED: 'Completo por defecto - no requiere foto',
       COMPLETED_PENDING_APPROVAL: 'Captura subida - falta aprobar',
       PENDING_SCREENSHOT: 'Captura pendiente',
       ACTIVE_NO_SCREENSHOT_RECORD: 'Activo - sin registro de captura',
@@ -658,6 +662,7 @@ const generateIntegratedHtmlReportByPublisher = ({
   const getDeliveryStatusLabel = (status) => {
     const labels = {
       APPROVED: 'Completado y aprobado',
+      NO_SCREENSHOT_REQUIRED: 'Completo por defecto - no requiere foto',
       COMPLETED_PENDING_APPROVAL: 'Captura subida - falta aprobar',
       PENDING_SCREENSHOT: 'Captura pendiente',
       ACTIVE_NO_SCREENSHOT_RECORD: 'Activo - esperando registro de captura',
@@ -671,6 +676,7 @@ const generateIntegratedHtmlReportByPublisher = ({
   const getDeliveryStatusClass = (status) => {
     const classes = {
       APPROVED: 'status-approved',
+      NO_SCREENSHOT_REQUIRED: 'status-approved',
       COMPLETED_PENDING_APPROVAL: 'status-completed',
       PENDING_SCREENSHOT: 'status-pending',
       ACTIVE_NO_SCREENSHOT_RECORD: 'status-missing',
@@ -939,6 +945,11 @@ const generateIntegratedHtmlReportByPublisher = ({
           <div class="summary-label">Total completados</div>
         </div>
 
+        <div class="summary-card">
+          <div class="summary-number">${summary.noScreenshotRequired || 0}</div>
+          <div class="summary-label">Sin foto requerida (no contabilizados)</div>
+        </div>
+
         <div class="summary-card summary-removed">
           <div class="summary-number">${summary.pendingTotal || 0}</div>
           <div class="summary-label">Total pendientes</div>
@@ -1041,13 +1052,18 @@ const generateIntegratedHtmlReportByPublisher = ({
         activeNoScreenshotRecord: 0,
         previouslySeenRemovedFromDashboard: 0,
         unknown: 0,
+        noScreenshotRequired: 0,
         pendingTotal: 0
       },
       pending: matcher?.pending || deliveries.filter(row =>
-        row.status !== 'APPROVED' && row.status !== 'COMPLETED_PENDING_APPROVAL'
+        row.status !== 'APPROVED' &&
+        row.status !== 'COMPLETED_PENDING_APPROVAL' &&
+        row.status !== 'NO_SCREENSHOT_REQUIRED'
       ),
       completed: matcher?.completed || deliveries.filter(row =>
-        row.status === 'APPROVED' || row.status === 'COMPLETED_PENDING_APPROVAL'
+        row.status === 'APPROVED' ||
+        row.status === 'COMPLETED_PENDING_APPROVAL' ||
+        row.status === 'NO_SCREENSHOT_REQUIRED'
       ),
       rows: deliveries
     };
