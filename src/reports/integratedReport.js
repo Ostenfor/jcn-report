@@ -32,6 +32,9 @@ const {
 const {
   buildDeliveryKey
 } = require('../services/screenshotMatcherService');
+const {
+  isPublisherDeliveryAllowed
+} = require('../services/deliveryRules');
 
 const generateIntegratedHtmlReportByPublisher = ({
   allRows,
@@ -49,12 +52,21 @@ const generateIntegratedHtmlReportByPublisher = ({
   tomorrowString = '',
   deliveryMatcher = null,
   yesterdayDeliveryMatcher = null,
-  deliveryHistoryBundle = []
+  deliveryHistoryBundle = [],
+  policyViolationCount = 0
 }) => {
   const reportCss = buildReportCss();
 
+  allRows = allRows.filter(isPublisherDeliveryAllowed);
+  reminderRows = reminderRows.filter(isPublisherDeliveryAllowed);
+  saturdayRows = saturdayRows.filter(isPublisherDeliveryAllowed);
+  removedRows = removedRows.filter(isPublisherDeliveryAllowed);
+  newRows = newRows.filter(isPublisherDeliveryAllowed);
+  sameRows = sameRows.filter(isPublisherDeliveryAllowed);
+
   const isAllowedDeliveryPublisher = (row) => {
-    return allowedPublishersNormalized.has(normalize(row.website));
+    return allowedPublishersNormalized.has(normalize(row.website)) &&
+      isPublisherDeliveryAllowed(row);
   };
 
   const filterDeliveryMatcherByPublisherList = (matcher) => {
@@ -1377,6 +1389,13 @@ const generateIntegratedHtmlReportByPublisher = ({
   </section>
 
   <h1>Reporte Integrado de Publishers</h1>
+
+  ${policyViolationCount > 0 ? `
+    <div class="client-policy-warning" role="alert">
+      <strong>RECORDATORIO: Israel Breaking News no hace Status.</strong>
+      <span>Se ocultaron ${policyViolationCount} Status programados por equivocación. No enviar.</span>
+    </div>
+  ` : ''}
 
   <div class="generated-time">
     <span>Generado a las:</span>

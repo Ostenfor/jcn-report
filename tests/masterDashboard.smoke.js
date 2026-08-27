@@ -151,9 +151,16 @@ assert.strictEqual(shouldStopAfterPage({
       user: todayPending.user,
       isNew: false
     };
+    const blockedIsraelStatus = {
+      scheduled: todayPending.scheduled,
+      website: 'Israel Breaking News',
+      type: 'whatsapp',
+      user: 'Hidden Status Client',
+      isNew: false
+    };
 
     generateIntegratedHtmlReportByPublisher({
-      allRows: [todayRow],
+      allRows: [todayRow, blockedIsraelStatus],
       reminderRows: [todayRow],
       saturdayRows: [],
       removedRows: [{
@@ -173,7 +180,8 @@ assert.strictEqual(shouldStopAfterPage({
       tomorrowString: '08/21/2026',
       deliveryMatcher: createMatcher([todayPending, todayDawn, todayNocturnal, todayApproved, todayRemoved]),
       yesterdayDeliveryMatcher: createMatcher([yesterdayPending]),
-      deliveryHistoryBundle: []
+      deliveryHistoryBundle: [],
+      policyViolationCount: 1
     });
 
     const reportPath = path.join(
@@ -207,6 +215,8 @@ assert.strictEqual(shouldStopAfterPage({
     await page.goto(pathToFileURL(reportPath).href);
 
     await page.waitForSelector('#master.active');
+    await page.getByRole('alert').filter({ hasText: 'Israel Breaking News no hace Status' }).waitFor();
+    assert.strictEqual(await page.getByText('Hidden Status Client').count(), 0);
     assert.strictEqual(await page.locator('.top-summary').count(), 0);
     assert.strictEqual(await page.getByRole('button', { name: 'Reset todo el día' }).count(), 0);
     assert.strictEqual(await page.locator('#delivery-progress-footer .fixed-progress-card').count(), 1);

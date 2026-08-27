@@ -15,6 +15,14 @@ const {
 const {
   assertRequiredIndexes
 } = require('../src/utils/validationUtils');
+const {
+  getPublisherNotes,
+  getWhatsappGroupName
+} = require('../src/config/publishers');
+const {
+  getPublisherDeliveryReminder,
+  isPublisherDeliveryAllowed
+} = require('../src/services/deliveryRules');
 
 const asset = (exists = false) => ({
   exists,
@@ -38,6 +46,21 @@ const delivery = (overrides = {}) => ({
 });
 
 const match = (sources) => buildDeliveryMatcher(sources).deliveries[0];
+
+assert.strictEqual(getWhatsappGroupName('Kosher.com'), 'NEW JCN x Kosher Group');
+assert.ok(getPublisherNotes('Israel Breaking News').some(note => note.includes('NO STATUS')));
+assert.strictEqual(isPublisherDeliveryAllowed(delivery({
+  website: 'Israel Breaking News',
+  type: 'whatsapp'
+})), false);
+assert.strictEqual(isPublisherDeliveryAllowed(delivery({
+  website: 'Israel Breaking News',
+  type: 'whatsapp-group'
+})), true);
+assert.match(getPublisherDeliveryReminder(delivery({
+  website: 'Israel Breaking News',
+  type: 'Status'
+})), /no hace Status/i);
 
 assert.strictEqual(
   match({ approvedRows: [delivery({ screenshot: asset(true) })] }).status,

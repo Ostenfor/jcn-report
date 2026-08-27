@@ -1,5 +1,17 @@
 const buildReportCss = () => {
   return `
+    .client-policy-warning {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin: 16px 0;
+      padding: 16px 18px;
+      border: 2px solid #ef4444;
+      border-radius: 12px;
+      background: rgba(239, 68, 68, 0.12);
+      color: #fecaca;
+    }
+
     * {
       box-sizing: border-box;
     }

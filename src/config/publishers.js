@@ -100,7 +100,7 @@ const publisherConfigRows = [
   {
     publisher: 'Kosher.com',
     aliases: ['Kosher. com', 'Kosher com'],
-    group: 'Kosher.com ad sales',
+    group: 'NEW JCN x Kosher Group',
     notes: 'only Group'
   },
   {
@@ -127,7 +127,9 @@ const publisherConfigRows = [
   {
     publisher: 'Israel Breaking News',
     group: 'Israel Breaking News🇮🇱 & JCN',
-    notes: 'No notes'
+    notes: 'NO STATUS - client does not do Status',
+    blockedDeliveryTypes: ['whatsapp', 'status', 'whatsapp status', 'whatsapp-status'],
+    blockedDeliveryReminder: 'Israel Breaking News no hace Status. No enviar: fue programado por equivocación.'
   },
   {
     publisher: 'Baltimore Jewish Life',
@@ -211,7 +213,9 @@ publisherConfigRows.forEach(row => {
     notes: splitNotes(row.notes),
     mention: row.mention || '',
     addIstTime: Boolean(row.addIstTime),
-    requiresNotification: row.requiresNotification !== false
+    requiresNotification: row.requiresNotification !== false,
+    blockedDeliveryTypes: [...(row.blockedDeliveryTypes || [])],
+    blockedDeliveryReminder: row.blockedDeliveryReminder || ''
   };
 
   publisherConfigMap.set(normalize(row.publisher), cleanConfig);
@@ -228,7 +232,9 @@ const getPublisherConfig = (publisher) => {
     notes: [],
     mention: '',
     addIstTime: false,
-    requiresNotification: true
+    requiresNotification: true,
+    blockedDeliveryTypes: [],
+    blockedDeliveryReminder: ''
   };
 };
 

@@ -55,6 +55,10 @@ const {
   buildDeliveryMatcher,
   printDeliveryMatcherSummary
 } = require('./src/services/screenshotMatcherService');
+const {
+  getPublisherDeliveryReminder,
+  isPublisherDeliveryAllowed
+} = require('./src/services/deliveryRules');
 // ==================================================
 // END MODULE 01 - BOOT / IMPORTS
 // ==================================================
@@ -169,6 +173,22 @@ const printDeliverySummaryBlock = (title, matcher) => {
       oldestDateString: yesterdayString
     });
 
+    const relevantPolicyDates = new Set([yesterdayString, todayString, tomorrowString]);
+    const blockedDeliveryRows = rows.filter(row =>
+      relevantPolicyDates.has(getScheduledDatePart(row)) &&
+      !isPublisherDeliveryAllowed(row)
+    );
+    const visibleRows = rows.filter(isPublisherDeliveryAllowed);
+
+    if (blockedDeliveryRows.length) {
+      console.log('');
+      console.log('==================================================');
+      console.log('RECORDATORIO DE REGLA DEL CLIENTE');
+      console.log('==================================================');
+      console.log(getPublisherDeliveryReminder(blockedDeliveryRows[0]));
+      console.log(`Status ocultos: ${blockedDeliveryRows.length}`);
+    }
+
     // ------------------------------
     // 3.4 CRAWL SCREENSHOTS
     // ------------------------------
@@ -211,15 +231,15 @@ const printDeliverySummaryBlock = (title, matcher) => {
     // ------------------------------
     // 3.7 RAW POSTS OUTPUT
     // ------------------------------
-    printRawList('2. RAW SCRAPING', rows, formatRowLine);
+    printRawList('2. RAW SCRAPING', visibleRows, formatRowLine);
 
     // ------------------------------
     // 3.8 FILTER POSTS BY DATE
     // ------------------------------
-    const rowsToday = filterRowsByDate(rows, todayString);
-    const rowsYesterday = filterRowsByDate(rows, yesterdayString);
-    const rowsTomorrow = filterRowsByDate(rows, tomorrowString);
-    const rowsRemovedByDate = rows.filter(row => getScheduledDatePart(row) !== todayString);
+    const rowsToday = filterRowsByDate(visibleRows, todayString);
+    const rowsYesterday = filterRowsByDate(visibleRows, yesterdayString);
+    const rowsTomorrow = filterRowsByDate(visibleRows, tomorrowString);
+    const rowsRemovedByDate = visibleRows.filter(row => getScheduledDatePart(row) !== todayString);
 
     // ------------------------------
     // 3.9 DELIVERY MATCHER WITH HISTORY
@@ -229,18 +249,18 @@ const printDeliverySummaryBlock = (title, matcher) => {
 
     const deliveryMatcher = buildDeliveryMatcher({
       postsRows: rowsToday,
-      screenshotsRows: screenshotsResult.rowsToday,
-      screenshotsTwosRows: screenshotsTwosResult.rowsToday,
-      approvedRows: approvedScreenshotsResult.rowsToday,
-      historyRows: deliveryHistoryRows
+      screenshotsRows: screenshotsResult.rowsToday.filter(isPublisherDeliveryAllowed),
+      screenshotsTwosRows: screenshotsTwosResult.rowsToday.filter(isPublisherDeliveryAllowed),
+      approvedRows: approvedScreenshotsResult.rowsToday.filter(isPublisherDeliveryAllowed),
+      historyRows: deliveryHistoryRows.filter(isPublisherDeliveryAllowed)
     });
 
     const yesterdayDeliveryMatcher = buildDeliveryMatcher({
       postsRows: rowsYesterday,
-      screenshotsRows: screenshotsResult.rowsYesterday,
-      screenshotsTwosRows: screenshotsTwosResult.rowsYesterday,
-      approvedRows: approvedScreenshotsResult.rowsYesterday,
-      historyRows: yesterdayDeliveryHistoryRows
+      screenshotsRows: screenshotsResult.rowsYesterday.filter(isPublisherDeliveryAllowed),
+      screenshotsTwosRows: screenshotsTwosResult.rowsYesterday.filter(isPublisherDeliveryAllowed),
+      approvedRows: approvedScreenshotsResult.rowsYesterday.filter(isPublisherDeliveryAllowed),
+      historyRows: yesterdayDeliveryHistoryRows.filter(isPublisherDeliveryAllowed)
     });
 
     printDeliveryMatcherSummary(deliveryMatcher);
@@ -387,7 +407,8 @@ const printDeliverySummaryBlock = (title, matcher) => {
       tomorrowString,
       deliveryMatcher,
       yesterdayDeliveryMatcher,
-      deliveryHistoryBundle
+      deliveryHistoryBundle,
+      policyViolationCount: blockedDeliveryRows.length
     });
 
     // ------------------------------
