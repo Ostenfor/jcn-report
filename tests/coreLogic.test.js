@@ -21,6 +21,7 @@ const {
 } = require('../src/config/publishers');
 const {
   getPublisherDeliveryReminder,
+  isFollowUpRequired,
   isPublisherDeliveryAllowed
 } = require('../src/services/deliveryRules');
 
@@ -61,6 +62,28 @@ assert.match(getPublisherDeliveryReminder(delivery({
   website: 'Israel Breaking News',
   type: 'Status'
 })), /no hace Status/i);
+
+[
+  'whatsapp',
+  'WhatsApp Status',
+  'whatsapp-group',
+  'Groups',
+  'instagram-story',
+  'Instagram Status'
+].forEach(type => {
+  assert.strictEqual(isFollowUpRequired(delivery({ type })), true, `${type} must require follow-up`);
+});
+
+[
+  'facebook',
+  'twitter',
+  'x',
+  'telegram',
+  'email',
+  'sponsored article'
+].forEach(type => {
+  assert.strictEqual(isFollowUpRequired(delivery({ type })), false, `${type} must be notification-only`);
+});
 
 assert.strictEqual(
   match({ approvedRows: [delivery({ screenshot: asset(true) })] }).status,
@@ -115,6 +138,18 @@ assert.strictEqual(sponsoredArticleMatcher.pending.length, 0, 'The item never en
 assert.strictEqual(sponsoredArticleMatcher.summary.totalExpected, 0, 'The item is excluded from screenshot totals');
 assert.strictEqual(sponsoredArticleMatcher.summary.completedTotal, 0, 'The item is excluded from completed totals');
 assert.strictEqual(sponsoredArticleMatcher.summary.noScreenshotRequired, 1);
+
+const notificationOnlyMatcher = buildDeliveryMatcher({
+  postsRows: [
+    delivery({ type: 'facebook', website: 'Jewish Breaking News', user: 'Yoav Preiss' }),
+    delivery({ type: 'twitter', website: 'Jewish Breaking News', user: 'Yoav Preiss' })
+  ]
+});
+
+assert.ok(notificationOnlyMatcher.deliveries.every(row => row.status === 'NO_SCREENSHOT_REQUIRED'));
+assert.strictEqual(notificationOnlyMatcher.pending.length, 0, 'Facebook and Twitter never enter follow-up');
+assert.strictEqual(notificationOnlyMatcher.summary.totalExpected, 0, 'Notification-only channels are excluded from responsibility totals');
+assert.strictEqual(notificationOnlyMatcher.summary.noScreenshotRequired, 2);
 
 assert.deepStrictEqual(
   buildHistorySummary(sponsoredArticleMatcher.deliveries),

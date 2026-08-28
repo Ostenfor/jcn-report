@@ -119,8 +119,9 @@ const resolveDeliveryStatus = (item) => {
     history
   } = item.sources;
 
-  // Sponsored articles are completed by notifying the publisher. The
-  // dashboard never provides screenshot evidence for this delivery type.
+  // Only WhatsApp Status, WhatsApp Groups and Instagram Status belong to the
+  // operator's follow-up scope. Every other channel is complete after the
+  // publisher is notified and must not create screenshot or overdue alerts.
   if (isScreenshotExempt(item)) {
     return 'NO_SCREENSHOT_REQUIRED';
   }

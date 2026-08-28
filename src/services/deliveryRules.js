@@ -9,8 +9,30 @@ const normalizeDeliveryType = (value) => {
     .toLowerCase();
 };
 
+const FOLLOW_UP_DELIVERY_TYPES = new Set([
+  'whatsapp',
+  'status',
+  'whatsapp status',
+  'whatsapp-status',
+  'whatsapp story',
+  'whatsapp-story',
+  'whatsapp-group',
+  'whatsapp group',
+  'whatsapp groups',
+  'group',
+  'groups',
+  'instagram-story',
+  'instagram story',
+  'instagram status',
+  'instagram-status'
+]);
+
+const isFollowUpRequired = (row) => {
+  return FOLLOW_UP_DELIVERY_TYPES.has(normalizeDeliveryType(row?.type));
+};
+
 const isScreenshotExempt = (row) => {
-  return normalizeDeliveryType(row?.type) === 'sponsored article';
+  return !isFollowUpRequired(row);
 };
 
 const isPublisherDeliveryAllowed = (row) => {
@@ -30,6 +52,7 @@ const getPublisherDeliveryReminder = (row) => {
 
 module.exports = {
   getPublisherDeliveryReminder,
+  isFollowUpRequired,
   isPublisherDeliveryAllowed,
   isScreenshotExempt,
   normalizeDeliveryType
