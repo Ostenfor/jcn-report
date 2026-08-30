@@ -16,6 +16,7 @@ const {
   assertRequiredIndexes
 } = require('../src/utils/validationUtils');
 const {
+  getPublisherConfig,
   getPublisherNotes,
   getWhatsappGroupName
 } = require('../src/config/publishers');
@@ -62,6 +63,13 @@ assert.match(getPublisherDeliveryReminder(delivery({
   website: 'Israel Breaking News',
   type: 'Status'
 })), /no hace Status/i);
+assert.strictEqual(getPublisherConfig('Matzav').requiresNotification, false);
+assert.strictEqual(getPublisherConfig('Matzav').requiresFollowUp, false);
+assert.match(getPublisherConfig('Matzav').noNotificationLabel, /Sin grupo/i);
+assert.strictEqual(isFollowUpRequired(delivery({
+  website: 'Matzav',
+  type: 'whatsapp-group'
+})), false, 'Matzav never requires follow-up, even for an otherwise tracked channel');
 
 [
   'whatsapp',
@@ -150,6 +158,14 @@ assert.ok(notificationOnlyMatcher.deliveries.every(row => row.status === 'NO_SCR
 assert.strictEqual(notificationOnlyMatcher.pending.length, 0, 'Facebook and Twitter never enter follow-up');
 assert.strictEqual(notificationOnlyMatcher.summary.totalExpected, 0, 'Notification-only channels are excluded from responsibility totals');
 assert.strictEqual(notificationOnlyMatcher.summary.noScreenshotRequired, 2);
+
+const matzavMatcher = buildDeliveryMatcher({
+  postsRows: [delivery({ website: 'Matzav', type: 'whatsapp-group' })]
+});
+
+assert.strictEqual(matzavMatcher.deliveries[0].status, 'NO_SCREENSHOT_REQUIRED');
+assert.strictEqual(matzavMatcher.pending.length, 0, 'Matzav never enters follow-up');
+assert.strictEqual(matzavMatcher.summary.totalExpected, 0, 'Matzav is excluded from responsibility totals');
 
 assert.deepStrictEqual(
   buildHistorySummary(sponsoredArticleMatcher.deliveries),

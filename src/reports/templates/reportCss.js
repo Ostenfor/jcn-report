@@ -897,6 +897,15 @@ const buildReportCss = () => {
       border: 1px solid rgba(245,158,11,0.35);
     }
 
+    .no-notification-badge.manual-review-badge {
+      background: rgba(249,115,22,0.20);
+      color: #fed7aa;
+      border-color: rgba(249,115,22,0.65);
+      box-shadow: 0 0 0 3px rgba(249,115,22,0.08);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
     .client-search-bar {
       position: sticky;
       top: 8px;

@@ -28,7 +28,10 @@ const FOLLOW_UP_DELIVERY_TYPES = new Set([
 ]);
 
 const isFollowUpRequired = (row) => {
-  return FOLLOW_UP_DELIVERY_TYPES.has(normalizeDeliveryType(row?.type));
+  const config = getPublisherConfig(row?.website);
+
+  return config.requiresFollowUp !== false &&
+    FOLLOW_UP_DELIVERY_TYPES.has(normalizeDeliveryType(row?.type));
 };
 
 const isScreenshotExempt = (row) => {

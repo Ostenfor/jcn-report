@@ -158,7 +158,9 @@ const publisherConfigRows = [
     publisher: 'Matzav',
     group: 'N/A',
     notes: 'the client does not want a publisher group',
-    requiresNotification: false
+    requiresNotification: false,
+    requiresFollowUp: false,
+    noNotificationLabel: 'Sin grupo · No enviar · Revisión manual'
   },
   {
     publisher: 'Addictive Ads',
@@ -214,6 +216,8 @@ publisherConfigRows.forEach(row => {
     mention: row.mention || '',
     addIstTime: Boolean(row.addIstTime),
     requiresNotification: row.requiresNotification !== false,
+    requiresFollowUp: row.requiresFollowUp !== false,
+    noNotificationLabel: row.noNotificationLabel || '',
     blockedDeliveryTypes: [...(row.blockedDeliveryTypes || [])],
     blockedDeliveryReminder: row.blockedDeliveryReminder || ''
   };
@@ -233,6 +237,8 @@ const getPublisherConfig = (publisher) => {
     mention: '',
     addIstTime: false,
     requiresNotification: true,
+    requiresFollowUp: true,
+    noNotificationLabel: '',
     blockedDeliveryTypes: [],
     blockedDeliveryReminder: ''
   };

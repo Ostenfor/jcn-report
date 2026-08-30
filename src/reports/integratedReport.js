@@ -6,6 +6,7 @@ const {
   splitNotes,
   publisherConfigRows,
   allowedPublishersNormalized,
+  getPublisherConfig,
   getWhatsappGroupName,
   getPublisherMention,
   publisherRequiresNotification,
@@ -375,6 +376,7 @@ const generateIntegratedHtmlReportByPublisher = ({
         const sentKey = `${sectionKey}|||${publisher}`;
         const confirmKey = `${sectionKey}|||${publisher}`;
         const whatsappGroupName = getWhatsappGroupName(publisher);
+        const publisherConfig = getPublisherConfig(publisher);
         const publisherMention = getPublisherMention(publisher);
         const requiresNotification = !options.noNotificationSection && !options.removedSection;
         const hasWhatsappGroup = Boolean(whatsappGroupName && String(whatsappGroupName).trim());
@@ -471,7 +473,7 @@ const generateIntegratedHtmlReportByPublisher = ({
           : '';
 
         const noNotificationBadge = options.noNotificationSection
-          ? '<div class="no-notification-badge">No requiere notificación</div>'
+          ? `<div class="no-notification-badge ${publisherConfig.noNotificationLabel ? 'manual-review-badge' : ''}">${escapeHtml(publisherConfig.noNotificationLabel || 'No requiere notificación')}</div>`
           : '';
 
         return `
@@ -531,7 +533,7 @@ const generateIntegratedHtmlReportByPublisher = ({
             Ver / Ocultar
           </button>
         </div>
-        <div class="no-notification-body collapsed" id="no-notification-body-${sectionKey}">
+        <div class="no-notification-body ${sectionKey === 'todos' ? '' : 'collapsed'}" id="no-notification-body-${sectionKey}">
           ${renderPublisherCards(groupedNoNotification, sectionKey, { noNotificationSection: true })}
         </div>
       </div>

@@ -158,9 +158,16 @@ assert.strictEqual(shouldStopAfterPage({
       user: 'Hidden Status Client',
       isNew: false
     };
+    const matzavRow = {
+      scheduled: todayPending.scheduled,
+      website: 'Matzav',
+      type: 'whatsapp-group',
+      user: 'Manual Review Client',
+      isNew: false
+    };
 
     generateIntegratedHtmlReportByPublisher({
-      allRows: [todayRow, blockedIsraelStatus],
+      allRows: [todayRow, blockedIsraelStatus, matzavRow],
       reminderRows: [todayRow],
       saturdayRows: [],
       removedRows: [{
@@ -254,6 +261,17 @@ assert.strictEqual(shouldStopAfterPage({
     assert.strictEqual(await page.locator('#master .journey-exceptions').count(), 0);
     const interruptedMasterCard = page.locator('#master .delivery-card').filter({ hasText: 'Client Interrupted' });
     assert.strictEqual(await interruptedMasterCard.isVisible(), false, 'Interrupted flows belong only in the daily register');
+
+    await page.getByRole('button', { name: /Reporte completo/ }).click();
+    await page.waitForSelector('#todos.active');
+    const matzavCard = page.locator('#todos .publisher-card').filter({ hasText: 'Matzav' });
+    assert.strictEqual(await matzavCard.isVisible(), true, 'Matzav remains visible for manual review');
+    assert.strictEqual(await matzavCard.getAttribute('data-requires-notification'), 'false');
+    await matzavCard.getByText('Sin grupo · No enviar · Revisión manual', { exact: true }).waitFor();
+    assert.strictEqual(await matzavCard.locator('.card-actions').count(), 0, 'Matzav has no send controls');
+    assert.strictEqual(await matzavCard.locator('.manual-review-badge').count(), 1);
+
+    await page.getByRole('button', { name: /Master Dashboard/ }).click();
 
     await page.waitForSelector('#overdue-alert-stack:not(.overdue-alert-stack-hidden)');
     assert.ok(await page.locator('#overdue-alert-list .overdue-alert-item').count() >= 2);
