@@ -70,6 +70,12 @@ assert.strictEqual(isFollowUpRequired(delivery({
   website: 'Matzav',
   type: 'whatsapp-group'
 })), false, 'Matzav never requires follow-up, even for an otherwise tracked channel');
+assert.strictEqual(getPublisherConfig('Addictive Ads').requiresNotification, true);
+assert.strictEqual(getPublisherConfig('Addictive Ads').requiresFollowUp, false);
+assert.strictEqual(isFollowUpRequired(delivery({
+  website: 'Addictive Ads',
+  type: 'whatsapp-group'
+})), false, 'Addictive Ads is notified once and never requires follow-up');
 
 [
   'whatsapp',
@@ -166,6 +172,15 @@ const matzavMatcher = buildDeliveryMatcher({
 assert.strictEqual(matzavMatcher.deliveries[0].status, 'NO_SCREENSHOT_REQUIRED');
 assert.strictEqual(matzavMatcher.pending.length, 0, 'Matzav never enters follow-up');
 assert.strictEqual(matzavMatcher.summary.totalExpected, 0, 'Matzav is excluded from responsibility totals');
+
+const addictiveAdsMatcher = buildDeliveryMatcher({
+  postsRows: [delivery({ website: 'Addictive Ads', type: 'whatsapp-group' })]
+});
+
+assert.strictEqual(addictiveAdsMatcher.deliveries[0].status, 'NO_SCREENSHOT_REQUIRED');
+assert.strictEqual(addictiveAdsMatcher.pending.length, 0, 'Addictive Ads never enters reminders');
+assert.strictEqual(addictiveAdsMatcher.summary.totalExpected, 0, 'Addictive Ads is excluded from pending totals');
+assert.strictEqual(addictiveAdsMatcher.summary.noScreenshotRequired, 1);
 
 assert.deepStrictEqual(
   buildHistorySummary(sponsoredArticleMatcher.deliveries),

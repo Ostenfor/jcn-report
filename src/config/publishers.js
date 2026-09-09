@@ -165,7 +165,8 @@ const publisherConfigRows = [
   {
     publisher: 'Addictive Ads',
     group: 'Addictive CWM',
-    notes: 'only publisher group to remind them'
+    notes: 'only publisher group to remind them',
+    requiresFollowUp: false
   },
   {
     publisher: 'W365',
