@@ -25,7 +25,7 @@ const emptyAsset = () => ({
   thumbnailUrl: null
 });
 
-const createDelivery = ({ scheduled, user, status, approved = false }) => {
+const createDelivery = ({ scheduled, user, status, approved = false, followUpEvidenceUrl = '' }) => {
   const base = {
     scheduled,
     website: "N'shei News",
@@ -41,6 +41,7 @@ const createDelivery = ({ scheduled, user, status, approved = false }) => {
     screenshot: emptyAsset(),
     screenshotTwo: emptyAsset(),
     detailUrl: null,
+    followUpEvidenceUrl,
     existsInPosts: !approved,
     existsInScreenshots: true,
     existsInScreenshotsTwos: true,
@@ -113,7 +114,8 @@ assert.strictEqual(shouldStopAfterPage({
     const todayPending = createDelivery({
       scheduled: '08/20/2026, 10:00 AM EDT',
       user: 'Client Today',
-      status: 'PENDING_SCREENSHOT'
+      status: 'PENDING_SCREENSHOT',
+      followUpEvidenceUrl: 'follow-up-evidence/2026-08-20/client-today.png'
     });
     const todayDawn = createDelivery({
       scheduled: '08/20/2026, 02:00 AM EDT',
@@ -230,10 +232,18 @@ assert.strictEqual(shouldStopAfterPage({
     assert.strictEqual(await page.locator('#delivery-progress-footer .fixed-progress-card.completed').count(), 1);
     assert.strictEqual(await page.locator('#delivery-progress-footer .fixed-progress-card.pending').count(), 0);
     assert.strictEqual(await page.locator('#footer-delivery-pending-count').count(), 0);
-    assert.strictEqual(await page.locator('.tabs .tab-group').count(), 6);
+    assert.strictEqual(await page.locator('.tabs .tab-group').count(), 7);
     assert.strictEqual(await page.locator('.tab-group-tracking .tab-button').count(), 2);
     assert.strictEqual(await page.locator('.tab-group-reminders .tab-button').count(), 2);
     assert.strictEqual(await page.locator('.tab-group-screenshots .tab-button').count(), 2);
+    assert.strictEqual(await page.locator('.tab-group-follow-up .tab-button').count(), 1);
+    await page.getByRole('button', { name: 'Did this went? (1)' }).click();
+    await page.locator('#follow-up-evidence.active').waitFor();
+    assert.strictEqual(await page.locator('#follow-up-evidence .follow-up-card').count(), 1);
+    assert.strictEqual(await page.locator('#follow-up-evidence .follow-up-evidence-image').getAttribute('src'), 'follow-up-evidence/2026-08-20/client-today.png');
+    assert.strictEqual(await page.locator('#follow-up-message-0').inputValue(), 'hello @ did this went?');
+    assert.strictEqual(await page.getByRole('button', { name: 'Copy image' }).count(), 1);
+    await page.getByRole('button', { name: /Master Dashboard/ }).click();
     assert.strictEqual(await page.locator('#master .delivery-card').count(), 6);
     assert.strictEqual(await page.locator('#master [data-master-group="today"] .delivery-card').count(), 3);
     assert.strictEqual(await page.locator('#master [data-master-group="overnight"] .delivery-card').count(), 2);

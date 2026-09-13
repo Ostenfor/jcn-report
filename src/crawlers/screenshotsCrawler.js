@@ -1,3 +1,6 @@
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
 const { safeGoto } = require('../utils/navigationUtils');
 const { shouldStopAfterPage } = require('../utils/paginationUtils');
 const { assertRequiredIndexes } = require('../utils/validationUtils');
@@ -116,6 +119,100 @@ const printMissingScreenshots = (title, rowsMissingScreenshot) => {
   });
 };
 
+const buildEvidenceFileName = (row) => {
+  const source = [row.scheduled, row.website, row.type, row.user].join('|');
+  const hash = crypto.createHash('sha1').update(source).digest('hex').slice(0, 10);
+  const slug = String(row.website || row.user || 'publication')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .toLowerCase()
+    .slice(0, 55) || 'publication';
+
+  return `${slug}-${hash}.png`;
+};
+
+const captureCurrentPageEvidence = async ({
+  page,
+  pageResult,
+  todayString,
+  allowedPublishersNormalized,
+  normalize,
+  evidenceFolder,
+  evidenceBaseUrl,
+  title
+}) => {
+  if (!evidenceFolder || !pageResult?.rows?.length) return;
+
+  const headerMap = buildHeaderMap(pageResult.headers);
+  const scheduledIndex = findHeaderIndex(headerMap, ['Scheduled Time', 'Scheduled', 'Scheduled At']);
+  const publisherIndex = findHeaderIndex(headerMap, ['Website', 'Publisher', 'Publisher / Website']);
+  const clientIndex = findHeaderIndex(headerMap, ['User', 'Client', 'Campaign', 'Advertiser']);
+
+  if (scheduledIndex < 0 || publisherIndex < 0 || clientIndex < 0) {
+    console.log(`${title}: no se pudo detectar el rango de columnas para evidencia.`);
+    return;
+  }
+
+  fs.mkdirSync(evidenceFolder, { recursive: true });
+  const tableRows = page.locator('table tbody tr');
+
+  for (let rowIndex = 0; rowIndex < pageResult.rows.length; rowIndex++) {
+    const sourceRow = pageResult.rows[rowIndex];
+    const scheduled = sourceRow.cellsText[scheduledIndex] || '';
+    const website = sourceRow.cellsText[publisherIndex] || '';
+    const shouldCapture = getScheduledDatePart({ scheduled }) === todayString &&
+      allowedPublishersNormalized.has(normalize(website));
+
+    if (!shouldCapture) continue;
+
+    const evidenceRow = {
+      scheduled,
+      website,
+      type: '',
+      user: sourceRow.cellsText[clientIndex] || ''
+    };
+    const fileName = buildEvidenceFileName(evidenceRow);
+    const filePath = path.join(evidenceFolder, fileName);
+    const rowLocator = tableRows.nth(rowIndex);
+
+    try {
+      await rowLocator.scrollIntoViewIfNeeded();
+      await rowLocator.locator('img').evaluateAll(images => Promise.all(images.map(image => {
+        if (image.complete) return Promise.resolve();
+        return new Promise(resolve => {
+          image.addEventListener('load', resolve, { once: true });
+          image.addEventListener('error', resolve, { once: true });
+          setTimeout(resolve, 3000);
+        });
+      })));
+
+      await rowLocator.evaluate((tr, bounds) => {
+        [...tr.querySelectorAll('td')].forEach((cell, index) => {
+          cell.dataset.jcnOriginalDisplay = cell.style.display || '';
+          if (index < bounds.start || index > bounds.end) cell.style.display = 'none';
+        });
+      }, { start: scheduledIndex, end: clientIndex });
+
+      await rowLocator.screenshot({ path: filePath, animations: 'disabled' });
+      sourceRow.followUpEvidenceUrl = `${String(evidenceBaseUrl || '').replace(/\\/g, '/')}/${fileName}`
+        .replace(/^\//, '');
+      console.log(`${title}: evidencia guardada ${fileName}`);
+    } catch (error) {
+      console.log(`${title}: no se pudo capturar evidencia de ${website}: ${error.message}`);
+    } finally {
+      await rowLocator.evaluate(tr => {
+        [...tr.querySelectorAll('td')].forEach(cell => {
+          if (!Object.prototype.hasOwnProperty.call(cell.dataset, 'jcnOriginalDisplay')) return;
+          cell.style.display = cell.dataset.jcnOriginalDisplay;
+          delete cell.dataset.jcnOriginalDisplay;
+        });
+      }).catch(() => {});
+    }
+  }
+};
+
 const crawlScreenshots = async ({
   page,
   todayString,
@@ -123,7 +220,10 @@ const crawlScreenshots = async ({
   allowedPublishersNormalized,
   normalize,
   url = SCREENSHOTS_URL,
-  title = 'screenshots'
+  title = 'screenshots',
+  captureFollowUpEvidence = false,
+  evidenceFolder = '',
+  evidenceBaseUrl = ''
 }) => {
   const resourceName = getResourceNameFromUrl(url);
 
@@ -268,6 +368,18 @@ const crawlScreenshots = async ({
   });
 
   const result = await extractCurrentScreenshotTable();
+  if (captureFollowUpEvidence) {
+    await captureCurrentPageEvidence({
+      page,
+      pageResult: result,
+      todayString,
+      allowedPublishersNormalized,
+      normalize,
+      evidenceFolder,
+      evidenceBaseUrl,
+      title
+    });
+  }
   const seenRows = new Set(
     result.rows.map(row => row.detailUrl || row.cellsText.join('|||'))
   );
@@ -303,6 +415,18 @@ const crawlScreenshots = async ({
     }
 
     const pageResult = await extractCurrentScreenshotTable();
+    if (captureFollowUpEvidence) {
+      await captureCurrentPageEvidence({
+        page,
+        pageResult,
+        todayString,
+        allowedPublishersNormalized,
+        normalize,
+        evidenceFolder,
+        evidenceBaseUrl,
+        title
+      });
+    }
     let newRowsOnPage = 0;
 
     pageResult.rows.forEach(row => {
@@ -392,6 +516,7 @@ const crawlScreenshots = async ({
       screenshot: screenshotIndex >= 0 ? row.assetsByCell[screenshotIndex] : emptyAsset(),
       screenshotTwo: screenshotTwoIndex >= 0 ? row.assetsByCell[screenshotTwoIndex] : emptyAsset(),
       detailUrl: row.detailUrl,
+      followUpEvidenceUrl: row.followUpEvidenceUrl || '',
       rawCells: row.cellsText
     };
   });
@@ -490,5 +615,6 @@ module.exports = {
   SCREENSHOTS_URL,
   SCREENSHOTS_TWOS_URL,
   APPROVED_SCREENSHOTS_URL,
+  captureCurrentPageEvidence,
   crawlScreenshots
 };

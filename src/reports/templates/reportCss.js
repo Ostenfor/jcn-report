@@ -2485,6 +2485,80 @@ const buildReportCss = () => {
       font-weight: 800;
     }
 
+    .follow-up-grid {
+      display: grid;
+      gap: 20px;
+    }
+
+    .follow-up-card {
+      padding: 18px;
+      border: 1px solid #334155;
+      border-radius: 14px;
+      background: #111827;
+    }
+
+    .follow-up-card-header,
+    .follow-up-message-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .follow-up-card-header div {
+      display: grid;
+      gap: 5px;
+    }
+
+    .follow-up-card-header span,
+    .follow-up-help {
+      color: #94a3b8;
+      font-size: 12px;
+    }
+
+    .follow-up-evidence-link {
+      display: block;
+      margin: 16px 0;
+      overflow: auto;
+      border: 1px solid #475569;
+      border-radius: 10px;
+      background: #0f172a;
+    }
+
+    .follow-up-evidence-image {
+      display: block;
+      width: 100%;
+      height: auto;
+      min-width: 720px;
+    }
+
+    .follow-up-message-row textarea {
+      flex: 1;
+      min-height: 48px;
+      padding: 12px;
+      resize: vertical;
+      color: #f8fafc;
+      background: #0f172a;
+      border: 1px solid #475569;
+      border-radius: 9px;
+      font: inherit;
+    }
+
+    .follow-up-message-row button {
+      padding: 12px 16px;
+      border: 0;
+      border-radius: 9px;
+      color: #052e16;
+      background: #4ade80;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .follow-up-message-row .copy-image-btn {
+      color: #082f49;
+      background: #38bdf8;
+    }
+
     .tracking-highlight {
       animation: trackingPulse 0.7s ease-in-out 3;
     }

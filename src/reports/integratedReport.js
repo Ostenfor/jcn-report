@@ -116,6 +116,9 @@ const generateIntegratedHtmlReportByPublisher = ({
 
   const filteredDeliveryMatcher = filterDeliveryMatcherByPublisherList(deliveryMatcher);
   const filteredYesterdayDeliveryMatcher = filterDeliveryMatcherByPublisherList(yesterdayDeliveryMatcher);
+  const followUpEvidenceRows = (filteredDeliveryMatcher?.deliveries || [])
+    .filter(row => row.followUpEvidenceUrl)
+    .sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
 
   const automaticClosedStatuses = new Set(['APPROVED', 'NO_SCREENSHOT_REQUIRED']);
   const automaticInterruptedStatuses = new Set([
@@ -1133,6 +1136,50 @@ const generateIntegratedHtmlReportByPublisher = ({
     `;
   };
 
+  const renderFollowUpEvidenceSection = () => {
+    const cards = followUpEvidenceRows.map((row, index) => {
+      const message = 'hello @ did this went?';
+
+      return `
+        <article class="follow-up-card">
+          <div class="follow-up-card-header">
+            <div>
+              <strong>${escapeHtml(row.website)}</strong>
+              <span>${escapeHtml(row.scheduled)} · ${escapeHtml(row.type)} · ${escapeHtml(row.user)}</span>
+            </div>
+            ${row.detailUrl ? `<a href="${escapeHtml(row.detailUrl)}" target="_blank" rel="noopener noreferrer">Open original</a>` : ''}
+          </div>
+          <a class="follow-up-evidence-link" href="${escapeHtml(row.followUpEvidenceUrl)}" target="_blank" rel="noopener noreferrer">
+            <img class="follow-up-evidence-image" src="${escapeHtml(row.followUpEvidenceUrl)}" alt="Original dashboard row for ${escapeHtml(row.website)}">
+          </a>
+          <div class="follow-up-message-row">
+            <textarea id="follow-up-message-${index}" readonly>${escapeHtml(message)}</textarea>
+            <button type="button" class="copy-image-btn" onclick="copyFollowUpImage('${escapeHtml(row.followUpEvidenceUrl)}', this)">Copy image</button>
+            <button type="button" onclick="copyFollowUpMessage('follow-up-message-${index}', this)">Copy message</button>
+          </div>
+          <p class="follow-up-help">Pega el mensaje en WhatsApp, reemplaza @ por la mención activa y adjunta la captura.</p>
+        </article>
+      `;
+    }).join('');
+
+    return `
+      <section class="report-section follow-up-evidence-section" id="follow-up-evidence">
+        <div class="section-title-row">
+          <div>
+            <h2>7. Did this went?</h2>
+            <p class="section-description">Capturas originales preparadas para seguimiento manual en WhatsApp.</p>
+          </div>
+          <button class="collapse-btn" onclick="toggleSectionBody('follow-up-evidence')">Colapsar / Expandir</button>
+        </div>
+        <div class="section-body" id="section-body-follow-up-evidence">
+          <div class="follow-up-grid">
+            ${cards || '<div class="empty">No hay capturas de seguimiento para hoy.</div>'}
+          </div>
+        </div>
+      </section>
+    `;
+  };
+
   const renderWorkQueueSection = ({
     sectionId,
     title,
@@ -1423,6 +1470,9 @@ const generateIntegratedHtmlReportByPublisher = ({
       <button class="tab-button" onclick="showTab('delivery', this)">Screenshot Today (${filteredDeliveryMatcher ? filteredDeliveryMatcher.summary.pendingTotal : 0} pending)</button>
       <button class="tab-button" onclick="showTab('delivery-yesterday', this)">Screenshot Yesterday (${filteredYesterdayDeliveryMatcher ? filteredYesterdayDeliveryMatcher.summary.pendingTotal : 0} pending)</button>
     </div>
+    <div class="tab-group tab-group-follow-up" aria-label="Evidencias para seguimiento">
+      <button class="tab-button" onclick="showTab('follow-up-evidence', this)">Did this went? (${followUpEvidenceRows.length})</button>
+    </div>
     <div class="tab-group tab-group-clients" aria-label="Referencias de clientes">
       <button class="tab-button" onclick="showTab('important-clients', this)">Client List (${publisherConfigRows.length})</button>
     </div>
@@ -1488,6 +1538,8 @@ const generateIntegratedHtmlReportByPublisher = ({
     displayDate: yesterdayString,
     label: 'Yesterday'
   })}
+
+  ${renderFollowUpEvidenceSection()}
 
   ${renderImportantClientsSection()}
 

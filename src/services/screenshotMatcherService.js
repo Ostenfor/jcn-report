@@ -222,6 +222,11 @@ const buildDeliveryMatcher = ({
       history
     );
 
+    const followUpEvidenceUrl = screenshotsTwos?.followUpEvidenceUrl ||
+      screenshots?.followUpEvidenceUrl ||
+      history?.followUpEvidenceUrl ||
+      '';
+
     return {
       key: item.key,
       scheduled: item.scheduled,
@@ -234,6 +239,7 @@ const buildDeliveryMatcher = ({
       screenshot,
       screenshotTwo,
       detailUrl,
+      followUpEvidenceUrl,
 
       existsInPosts: Boolean(posts),
       existsInScreenshots: Boolean(screenshots),

@@ -3,6 +3,7 @@
 // ==================================================
 require('dotenv').config();
 
+const path = require('path');
 const { chromium } = require('playwright');
 const {
   normalize,
@@ -212,7 +213,10 @@ const printDeliverySummaryBlock = (title, matcher) => {
       allowedPublishersNormalized,
       normalize,
       url: SCREENSHOTS_TWOS_URL,
-      title: 'screenshots-twos'
+      title: 'screenshots-twos',
+      captureFollowUpEvidence: true,
+      evidenceFolder: path.join(reportsFolder, 'follow-up-evidence', reportDate),
+      evidenceBaseUrl: `follow-up-evidence/${reportDate}`
     });
 
     // ------------------------------

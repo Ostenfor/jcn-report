@@ -218,6 +218,58 @@ const buildReportScripts = ({
       }, 3500);
     }
 
+    async function copyFollowUpMessage(textareaId, button) {
+      const textarea = document.getElementById(textareaId);
+      if (!textarea) return;
+
+      await copyTextToClipboard(textarea.value);
+      const originalText = button?.innerText || 'Copy message';
+      if (button) button.innerText = 'Copied';
+      showToast('Mensaje copiado');
+      window.setTimeout(() => {
+        if (button) button.innerText = originalText;
+      }, 1600);
+    }
+
+    async function copyFollowUpImage(imageUrl, button) {
+      const originalText = button?.innerText || 'Copy image';
+
+      try {
+        if (!window.isSecureContext || !navigator.clipboard?.write || typeof ClipboardItem === 'undefined') {
+          throw new Error('IMAGE_CLIPBOARD_UNAVAILABLE');
+        }
+
+        const image = await new Promise((resolve, reject) => {
+          const candidate = new Image();
+          if (/^https?:/i.test(imageUrl)) candidate.crossOrigin = 'anonymous';
+          candidate.onload = () => resolve(candidate);
+          candidate.onerror = () => reject(new Error('IMAGE_LOAD_FAILED'));
+          candidate.src = imageUrl;
+        });
+        const canvas = document.createElement('canvas');
+        canvas.width = image.naturalWidth;
+        canvas.height = image.naturalHeight;
+        canvas.getContext('2d').drawImage(image, 0, 0);
+
+        const pngBlob = await new Promise((resolve, reject) => {
+          canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('PNG_CONVERSION_FAILED')), 'image/png');
+        });
+
+        await navigator.clipboard.write([
+          new ClipboardItem({ 'image/png': pngBlob })
+        ]);
+
+        if (button) button.innerText = 'Image copied';
+        showToast('Imagen copiada. Ve a WhatsApp y usa Ctrl+V.');
+        window.setTimeout(() => {
+          if (button) button.innerText = originalText;
+        }, 1800);
+      } catch (error) {
+        showToast('El navegador bloqueó la copia. Se abrirá la imagen para copiarla manualmente.');
+        window.open(imageUrl, '_blank', 'noopener,noreferrer');
+      }
+    }
+
     function getDeliveryOverride(deliveryKey) {
       if (!deliveryKey) return null;
 
