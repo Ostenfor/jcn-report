@@ -149,9 +149,10 @@ const captureCurrentPageEvidence = async ({
   const headerMap = buildHeaderMap(pageResult.headers);
   const scheduledIndex = findHeaderIndex(headerMap, ['Scheduled Time', 'Scheduled', 'Scheduled At']);
   const publisherIndex = findHeaderIndex(headerMap, ['Website', 'Publisher', 'Publisher / Website']);
+  const typeIndex = findHeaderIndex(headerMap, ['Content Type', 'Type', 'Delivery Type']);
   const clientIndex = findHeaderIndex(headerMap, ['User', 'Client', 'Campaign', 'Advertiser']);
 
-  if (scheduledIndex < 0 || publisherIndex < 0 || clientIndex < 0) {
+  if (scheduledIndex < 0 || publisherIndex < 0 || typeIndex < 0 || clientIndex < 0) {
     console.log(`${title}: no se pudo detectar el rango de columnas para evidencia.`);
     return;
   }
@@ -172,7 +173,7 @@ const captureCurrentPageEvidence = async ({
     const evidenceRow = {
       scheduled,
       website,
-      type: '',
+      type: sourceRow.cellsText[typeIndex] || '',
       user: sourceRow.cellsText[clientIndex] || ''
     };
     const fileName = buildEvidenceFileName(evidenceRow);

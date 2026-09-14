@@ -14,6 +14,7 @@
 - `screenshots-twos` captura cada fila válida de hoy y ayer para los publishers permitidos.
 - El PNG conserva desde `Scheduled Time` hasta `User` y excluye el checkbox y las columnas posteriores de screenshots.
 - Los archivos se guardan en `reporte/follow-up-evidence/YYYY-MM-DD/` con nombres deterministas para actualizarlos sin duplicarlos.
+- El nombre identifica también `Content Type`, evitando que filas `whatsapp` y `whatsapp-group` del mismo cliente se sobrescriban.
 - La evidencia queda asociada a su publicación mediante el delivery matcher.
 - El reporte integrado tiene un tab `Did this went?` con las evidencias de hoy y ayer, etiqueta del día, imagen, enlace al registro original y botones `Copy image` y `Copy message`.
 - `Copy image` copia un PNG real al portapapeles en la versión HTTPS del reporte; si el navegador lo bloquea, abre la imagen para copiarla manualmente.
