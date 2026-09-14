@@ -120,7 +120,7 @@ const printMissingScreenshots = (title, rowsMissingScreenshot) => {
 };
 
 const buildEvidenceFileName = (row) => {
-  const source = [row.scheduled, row.website, row.type, row.user].join('|');
+  const source = [row.scheduled, row.website, row.type, row.user, row.detailUrl].join('|');
   const hash = crypto.createHash('sha1').update(source).digest('hex').slice(0, 10);
   const slug = String(row.website || row.user || 'publication')
     .normalize('NFKD')
@@ -152,7 +152,7 @@ const captureCurrentPageEvidence = async ({
   const typeIndex = findHeaderIndex(headerMap, ['Content Type', 'Type', 'Delivery Type']);
   const clientIndex = findHeaderIndex(headerMap, ['User', 'Client', 'Campaign', 'Advertiser']);
 
-  if (scheduledIndex < 0 || publisherIndex < 0 || typeIndex < 0 || clientIndex < 0) {
+  if (scheduledIndex < 0 || publisherIndex < 0 || clientIndex < 0) {
     console.log(`${title}: no se pudo detectar el rango de columnas para evidencia.`);
     return;
   }
@@ -173,8 +173,9 @@ const captureCurrentPageEvidence = async ({
     const evidenceRow = {
       scheduled,
       website,
-      type: sourceRow.cellsText[typeIndex] || '',
-      user: sourceRow.cellsText[clientIndex] || ''
+      type: typeIndex >= 0 ? (sourceRow.cellsText[typeIndex] || '') : '',
+      user: sourceRow.cellsText[clientIndex] || '',
+      detailUrl: sourceRow.detailUrl || ''
     };
     const fileName = buildEvidenceFileName(evidenceRow);
     const filePath = path.join(evidenceFolder, fileName);
