@@ -139,6 +139,7 @@ const captureCurrentPageEvidence = async ({
   todayString,
   allowedPublishersNormalized,
   normalize,
+  evidenceDates,
   evidenceFolder,
   evidenceBaseUrl,
   title
@@ -162,7 +163,8 @@ const captureCurrentPageEvidence = async ({
     const sourceRow = pageResult.rows[rowIndex];
     const scheduled = sourceRow.cellsText[scheduledIndex] || '';
     const website = sourceRow.cellsText[publisherIndex] || '';
-    const shouldCapture = getScheduledDatePart({ scheduled }) === todayString &&
+    const captureDates = new Set(evidenceDates?.length ? evidenceDates : [todayString]);
+    const shouldCapture = captureDates.has(getScheduledDatePart({ scheduled })) &&
       allowedPublishersNormalized.has(normalize(website));
 
     if (!shouldCapture) continue;
@@ -222,6 +224,7 @@ const crawlScreenshots = async ({
   url = SCREENSHOTS_URL,
   title = 'screenshots',
   captureFollowUpEvidence = false,
+  evidenceDates = [],
   evidenceFolder = '',
   evidenceBaseUrl = ''
 }) => {
@@ -375,6 +378,7 @@ const crawlScreenshots = async ({
       todayString,
       allowedPublishersNormalized,
       normalize,
+      evidenceDates,
       evidenceFolder,
       evidenceBaseUrl,
       title
@@ -422,6 +426,7 @@ const crawlScreenshots = async ({
         todayString,
         allowedPublishersNormalized,
         normalize,
+        evidenceDates,
         evidenceFolder,
         evidenceBaseUrl,
         title

@@ -143,7 +143,8 @@ assert.strictEqual(shouldStopAfterPage({
     const yesterdayPending = createDelivery({
       scheduled: '08/19/2026, 10:00 PM EDT',
       user: 'Client Overnight',
-      status: 'PENDING_SCREENSHOT'
+      status: 'PENDING_SCREENSHOT',
+      followUpEvidenceUrl: 'follow-up-evidence/2026-08-20/client-yesterday.png'
     });
 
     const todayRow = {
@@ -237,12 +238,19 @@ assert.strictEqual(shouldStopAfterPage({
     assert.strictEqual(await page.locator('.tab-group-reminders .tab-button').count(), 2);
     assert.strictEqual(await page.locator('.tab-group-screenshots .tab-button').count(), 2);
     assert.strictEqual(await page.locator('.tab-group-follow-up .tab-button').count(), 1);
-    await page.getByRole('button', { name: 'Did this went? (1)' }).click();
+    await page.getByRole('button', { name: 'Did this went? (2)' }).click();
     await page.locator('#follow-up-evidence.active').waitFor();
-    assert.strictEqual(await page.locator('#follow-up-evidence .follow-up-card').count(), 1);
-    assert.strictEqual(await page.locator('#follow-up-evidence .follow-up-evidence-image').getAttribute('src'), 'follow-up-evidence/2026-08-20/client-today.png');
+    assert.strictEqual(await page.locator('#follow-up-evidence .follow-up-card').count(), 2);
+    assert.deepStrictEqual(
+      await page.locator('#follow-up-evidence .follow-up-evidence-image').evaluateAll(images => images.map(image => image.getAttribute('src'))),
+      [
+        'follow-up-evidence/2026-08-20/client-yesterday.png',
+        'follow-up-evidence/2026-08-20/client-today.png'
+      ]
+    );
     assert.strictEqual(await page.locator('#follow-up-message-0').inputValue(), 'hello @ did this went?');
-    assert.strictEqual(await page.getByRole('button', { name: 'Copy image' }).count(), 1);
+    assert.match(await page.locator('#follow-up-evidence').innerText(), /Yesterday/);
+    assert.strictEqual(await page.getByRole('button', { name: 'Copy image' }).count(), 2);
     await page.getByRole('button', { name: /Master Dashboard/ }).click();
     assert.strictEqual(await page.locator('#master .delivery-card').count(), 6);
     assert.strictEqual(await page.locator('#master [data-master-group="today"] .delivery-card').count(), 3);

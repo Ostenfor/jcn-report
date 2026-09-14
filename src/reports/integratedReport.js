@@ -116,7 +116,10 @@ const generateIntegratedHtmlReportByPublisher = ({
 
   const filteredDeliveryMatcher = filterDeliveryMatcherByPublisherList(deliveryMatcher);
   const filteredYesterdayDeliveryMatcher = filterDeliveryMatcherByPublisherList(yesterdayDeliveryMatcher);
-  const followUpEvidenceRows = (filteredDeliveryMatcher?.deliveries || [])
+  const followUpEvidenceRows = [
+    ...(filteredDeliveryMatcher?.deliveries || []).map(row => ({ ...row, followUpDay: 'Today' })),
+    ...(filteredYesterdayDeliveryMatcher?.deliveries || []).map(row => ({ ...row, followUpDay: 'Yesterday' }))
+  ]
     .filter(row => row.followUpEvidenceUrl)
     .sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
 
@@ -1145,7 +1148,7 @@ const generateIntegratedHtmlReportByPublisher = ({
           <div class="follow-up-card-header">
             <div>
               <strong>${escapeHtml(row.website)}</strong>
-              <span>${escapeHtml(row.scheduled)} · ${escapeHtml(row.type)} · ${escapeHtml(row.user)}</span>
+              <span>${escapeHtml(row.followUpDay)} · ${escapeHtml(row.scheduled)} · ${escapeHtml(row.type)} · ${escapeHtml(row.user)}</span>
             </div>
             ${row.detailUrl ? `<a href="${escapeHtml(row.detailUrl)}" target="_blank" rel="noopener noreferrer">Open original</a>` : ''}
           </div>
@@ -1167,7 +1170,7 @@ const generateIntegratedHtmlReportByPublisher = ({
         <div class="section-title-row">
           <div>
             <h2>7. Did this went?</h2>
-            <p class="section-description">Capturas originales preparadas para seguimiento manual en WhatsApp.</p>
+            <p class="section-description">Capturas originales de hoy y ayer preparadas para seguimiento manual en WhatsApp.</p>
           </div>
           <button class="collapse-btn" onclick="toggleSectionBody('follow-up-evidence')">Colapsar / Expandir</button>
         </div>

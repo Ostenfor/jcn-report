@@ -215,6 +215,7 @@ const printDeliverySummaryBlock = (title, matcher) => {
       url: SCREENSHOTS_TWOS_URL,
       title: 'screenshots-twos',
       captureFollowUpEvidence: true,
+      evidenceDates: [todayString, yesterdayString],
       evidenceFolder: path.join(reportsFolder, 'follow-up-evidence', reportDate),
       evidenceBaseUrl: `follow-up-evidence/${reportDate}`
     });
