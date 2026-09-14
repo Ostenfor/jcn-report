@@ -192,41 +192,12 @@ const captureCurrentPageEvidence = async ({
         });
       })));
 
-      await rowLocator.evaluate((tr, bounds) => {
-        const table = tr.closest('table');
-        table.dataset.jcnOriginalStyle = table.getAttribute('style') || '';
-        table.style.setProperty('width', 'max-content', 'important');
-        table.style.setProperty('min-width', '0', 'important');
-        table.style.setProperty('max-width', 'none', 'important');
-        table.style.setProperty('table-layout', 'auto', 'important');
-
-        [...tr.querySelectorAll('td')].forEach((cell, index) => {
-          cell.dataset.jcnOriginalStyle = cell.getAttribute('style') || '';
-          if (index < bounds.start || index > bounds.end) {
-            cell.style.setProperty('display', 'none', 'important');
-          }
-        });
-      }, { start: scheduledIndex, end: clientIndex });
-
       await rowLocator.screenshot({ path: filePath, animations: 'disabled' });
       sourceRow.followUpEvidenceUrl = `${String(evidenceBaseUrl || '').replace(/\\/g, '/')}/${fileName}`
         .replace(/^\//, '');
       console.log(`${title}: evidencia guardada ${fileName}`);
     } catch (error) {
       console.log(`${title}: no se pudo capturar evidencia de ${website}: ${error.message}`);
-    } finally {
-      await rowLocator.evaluate(tr => {
-        const table = tr.closest('table');
-        if (table?.dataset.jcnOriginalStyle !== undefined) {
-          table.setAttribute('style', table.dataset.jcnOriginalStyle);
-          delete table.dataset.jcnOriginalStyle;
-        }
-        [...tr.querySelectorAll('td')].forEach(cell => {
-          if (cell.dataset.jcnOriginalStyle === undefined) return;
-          cell.setAttribute('style', cell.dataset.jcnOriginalStyle);
-          delete cell.dataset.jcnOriginalStyle;
-        });
-      }).catch(() => {});
     }
   }
 };
