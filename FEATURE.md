@@ -12,7 +12,7 @@
 
 - Se integró en el ciclo horario existente de `testa.js`; no se creó otro cron job.
 - `screenshots-twos` captura cada fila válida de hoy y ayer para los publishers permitidos.
-- El PNG captura directamente la fila original de `Glen Screenshots`, con la apariencia real del dashboard y sin alterar estilos o columnas.
+- El PNG recorta la página original de `Glen Screenshots` desde `Scheduled Time` hasta el borde derecho de `User`, conservando el fondo y la apariencia real del dashboard.
 - Los archivos se guardan en `reporte/follow-up-evidence/YYYY-MM-DD/` con nombres deterministas para actualizarlos sin duplicarlos.
 - El nombre identifica también `Content Type`, evitando que filas `whatsapp` y `whatsapp-group` del mismo cliente se sobrescriban.
 - La evidencia queda asociada a su publicación mediante el delivery matcher.

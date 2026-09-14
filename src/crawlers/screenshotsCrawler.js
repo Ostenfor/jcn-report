@@ -192,7 +192,32 @@ const captureCurrentPageEvidence = async ({
         });
       })));
 
-      await rowLocator.screenshot({ path: filePath, animations: 'disabled' });
+      const cells = rowLocator.locator('td');
+      const scheduledBox = await cells.nth(scheduledIndex).boundingBox();
+      const clientBox = await cells.nth(clientIndex).boundingBox();
+      const rowBox = await rowLocator.boundingBox();
+
+      if (!scheduledBox || !clientBox || !rowBox) {
+        throw new Error('No se pudo calcular el rango Scheduled Time → User');
+      }
+
+      const clip = {
+        x: Math.max(0, scheduledBox.x),
+        y: Math.max(0, rowBox.y),
+        width: clientBox.x + clientBox.width - Math.max(0, scheduledBox.x),
+        height: rowBox.height
+      };
+
+      if (clip.width <= 0 || clip.height <= 0) {
+        throw new Error('El rango Scheduled Time → User no es válido');
+      }
+
+      await page.screenshot({
+        path: filePath,
+        clip,
+        animations: 'disabled',
+        caret: 'hide'
+      });
       sourceRow.followUpEvidenceUrl = `${String(evidenceBaseUrl || '').replace(/\\/g, '/')}/${fileName}`
         .replace(/^\//, '');
       console.log(`${title}: evidencia guardada ${fileName}`);
