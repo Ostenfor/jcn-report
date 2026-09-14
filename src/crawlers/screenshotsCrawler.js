@@ -179,6 +179,7 @@ const captureCurrentPageEvidence = async ({
     const fileName = buildEvidenceFileName(evidenceRow);
     const filePath = path.join(evidenceFolder, fileName);
     const rowLocator = tableRows.nth(rowIndex);
+    const evidenceId = `jcn-evidence-${rowIndex}-${Date.now()}`;
 
     try {
       await rowLocator.scrollIntoViewIfNeeded();
@@ -191,27 +192,51 @@ const captureCurrentPageEvidence = async ({
         });
       })));
 
-      await rowLocator.evaluate((tr, bounds) => {
-        [...tr.querySelectorAll('td')].forEach((cell, index) => {
-          cell.dataset.jcnOriginalDisplay = cell.style.display || '';
-          if (index < bounds.start || index > bounds.end) cell.style.display = 'none';
-        });
-      }, { start: scheduledIndex, end: clientIndex });
+      await rowLocator.evaluate((tr, options) => {
+        const sourceTable = tr.closest('table');
+        const table = sourceTable.cloneNode(false);
+        const body = document.createElement('tbody');
+        const row = tr.cloneNode(true);
 
-      await rowLocator.screenshot({ path: filePath, animations: 'disabled' });
+        [...row.querySelectorAll('td')].forEach((cell, index) => {
+          if (index < options.start || index > options.end) cell.remove();
+        });
+
+        const wrapper = document.createElement('div');
+        wrapper.dataset.jcnEvidenceId = options.evidenceId;
+        wrapper.style.position = 'absolute';
+        wrapper.style.left = '0';
+        wrapper.style.top = `${Math.max(0, window.scrollY)}px`;
+        wrapper.style.zIndex = '2147483647';
+        wrapper.style.width = 'max-content';
+        wrapper.style.maxWidth = 'none';
+        wrapper.style.background = getComputedStyle(sourceTable).backgroundColor || getComputedStyle(document.body).backgroundColor;
+
+        table.style.width = 'max-content';
+        table.style.minWidth = '0';
+        table.style.maxWidth = 'none';
+        table.style.tableLayout = 'auto';
+        row.style.width = 'max-content';
+        [...row.querySelectorAll('td')].forEach(cell => {
+          cell.style.display = 'table-cell';
+          cell.style.visibility = 'visible';
+        });
+
+        body.appendChild(row);
+        table.appendChild(body);
+        wrapper.appendChild(table);
+        document.body.appendChild(wrapper);
+      }, { start: scheduledIndex, end: clientIndex, evidenceId });
+
+      const evidenceLocator = page.locator(`[data-jcn-evidence-id="${evidenceId}"]`);
+      await evidenceLocator.screenshot({ path: filePath, animations: 'disabled' });
       sourceRow.followUpEvidenceUrl = `${String(evidenceBaseUrl || '').replace(/\\/g, '/')}/${fileName}`
         .replace(/^\//, '');
       console.log(`${title}: evidencia guardada ${fileName}`);
     } catch (error) {
       console.log(`${title}: no se pudo capturar evidencia de ${website}: ${error.message}`);
     } finally {
-      await rowLocator.evaluate(tr => {
-        [...tr.querySelectorAll('td')].forEach(cell => {
-          if (!Object.prototype.hasOwnProperty.call(cell.dataset, 'jcnOriginalDisplay')) return;
-          cell.style.display = cell.dataset.jcnOriginalDisplay;
-          delete cell.dataset.jcnOriginalDisplay;
-        });
-      }).catch(() => {});
+      await page.locator(`[data-jcn-evidence-id="${evidenceId}"]`).evaluate(element => element.remove()).catch(() => {});
     }
   }
 };
