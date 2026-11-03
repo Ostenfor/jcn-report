@@ -23,7 +23,8 @@ concurrency:
 
 jobs:
   generate-report:
-    runs-on: ubuntu-latest
+    # Playwright 1.57 does not support Ubuntu 26.04; keep the runner compatible.
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Debug workflow trigger
