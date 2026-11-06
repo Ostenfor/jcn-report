@@ -43,7 +43,7 @@ const publisherConfigRows = [
   },
   {
     publisher: 'COL Live',
-    group: 'COLlive // JCN',
+    group: 'ColLive NEW Group x JCN',
     notes: 'No notes'
   },
   {
@@ -79,7 +79,7 @@ const publisherConfigRows = [
   {
     publisher: "N'shei News",
     aliases: ["N'Shei News", 'N’Shei News', 'N’shei News', "N’shei News"],
-    group: 'Updated N’shei News X JCN',
+    group: 'NEW N’shei x JCN Chat',
     notes: 'No notes'
   },
   {
