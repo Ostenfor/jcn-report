@@ -152,7 +152,8 @@ const publisherConfigRows = [
   {
     publisher: 'Efraim Feder in Lakewood Status',
     group: 'JCN Feder 2025',
-    notes: 'No notes'
+    notes: 'Send notification only / no photo follow-up',
+    requiresFollowUp: false
   },
   {
     publisher: 'Matzav',

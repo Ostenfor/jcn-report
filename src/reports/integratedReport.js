@@ -34,6 +34,7 @@ const {
   buildDeliveryKey
 } = require('../services/screenshotMatcherService');
 const {
+  isFollowUpRequired,
   isPublisherDeliveryAllowed
 } = require('../services/deliveryRules');
 
@@ -120,7 +121,7 @@ const generateIntegratedHtmlReportByPublisher = ({
     ...(filteredDeliveryMatcher?.deliveries || []).map(row => ({ ...row, followUpDay: 'Today' })),
     ...(filteredYesterdayDeliveryMatcher?.deliveries || []).map(row => ({ ...row, followUpDay: 'Yesterday' }))
   ]
-    .filter(row => row.followUpEvidenceUrl)
+    .filter(row => isFollowUpRequired(row) && row.followUpEvidenceUrl)
     .sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
 
   const automaticClosedStatuses = new Set(['APPROVED', 'NO_SCREENSHOT_REQUIRED']);

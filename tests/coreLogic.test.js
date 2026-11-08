@@ -78,6 +78,12 @@ assert.strictEqual(isFollowUpRequired(delivery({
   website: 'Addictive Ads',
   type: 'whatsapp-group'
 })), false, 'Addictive Ads is notified once and never requires follow-up');
+assert.strictEqual(getPublisherConfig('Efraim Feder in Lakewood Status').requiresNotification, true);
+assert.strictEqual(getPublisherConfig('Efraim Feder in Lakewood Status').requiresFollowUp, false);
+assert.strictEqual(isFollowUpRequired(delivery({
+  website: 'Efraim Feder in Lakewood Status',
+  type: 'whatsapp'
+})), false, 'Efraim Feder receives the notification but never enters photo follow-up');
 
 [
   'whatsapp',
@@ -183,6 +189,18 @@ assert.strictEqual(addictiveAdsMatcher.deliveries[0].status, 'NO_SCREENSHOT_REQU
 assert.strictEqual(addictiveAdsMatcher.pending.length, 0, 'Addictive Ads never enters reminders');
 assert.strictEqual(addictiveAdsMatcher.summary.totalExpected, 0, 'Addictive Ads is excluded from pending totals');
 assert.strictEqual(addictiveAdsMatcher.summary.noScreenshotRequired, 1);
+
+const efraimFederMatcher = buildDeliveryMatcher({
+  postsRows: [delivery({
+    website: 'Efraim Feder in Lakewood Status',
+    type: 'whatsapp'
+  })]
+});
+
+assert.strictEqual(efraimFederMatcher.deliveries[0].status, 'NO_SCREENSHOT_REQUIRED');
+assert.strictEqual(efraimFederMatcher.pending.length, 0, 'Efraim Feder never enters photo reminders');
+assert.strictEqual(efraimFederMatcher.summary.totalExpected, 0, 'Efraim Feder is excluded from photo totals');
+assert.strictEqual(efraimFederMatcher.summary.noScreenshotRequired, 1);
 
 assert.deepStrictEqual(
   buildHistorySummary(sponsoredArticleMatcher.deliveries),
