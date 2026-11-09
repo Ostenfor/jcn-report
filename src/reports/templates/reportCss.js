@@ -511,8 +511,7 @@ const buildReportCss = () => {
       backdrop-filter: blur(8px);
     }
 
-    .controls label,
-    .mention-switch {
+    .controls label {
       display: inline-flex;
       align-items: center;
       gap: 8px;
@@ -534,12 +533,32 @@ const buildReportCss = () => {
       outline: none;
     }
 
-    .mention-switch input {
-      width: 18px;
-      height: 18px;
+    .whatsapp-draft-controls {
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-left: auto;
+    }
+
+    .draft-all-btn {
+      appearance: none;
+      border-radius: 999px;
+      padding: 8px 13px;
+      min-height: 38px;
       cursor: pointer;
-      margin: 0;
-      accent-color: #38bdf8;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .draft-all-btn {
+      color: #fef3c7;
+      background: rgba(245, 158, 11, 0.14);
+      border: 1px solid rgba(245, 158, 11, 0.55);
+    }
+
+    .draft-all-btn:disabled {
+      opacity: 0.5;
+      cursor: wait;
     }
 
     .pending-confirm-box,

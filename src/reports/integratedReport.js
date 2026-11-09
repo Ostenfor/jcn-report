@@ -8,7 +8,6 @@ const {
   allowedPublishersNormalized,
   getPublisherConfig,
   getWhatsappGroupName,
-  getPublisherMention,
   publisherRequiresNotification,
 } = require('../config/publishers');
 const {
@@ -282,22 +281,22 @@ const generateIntegratedHtmlReportByPublisher = ({
         <label>
           Mensaje:
           <select id="message-select-${sectionKey}" onchange="updateSectionMessages('${sectionKey}')">
-            <option value="hello" ${defaultMessage === 'hello' ? 'selected' : ''}>hello @ for today we have</option>
-            <option value="reminder" ${defaultMessage === 'reminder' ? 'selected' : ''}>last friendly reminder for today @</option>
-            <option value="saturday" ${defaultMessage === 'saturday' ? 'selected' : ''}>Hello @ these are the Saturday publications. Sending this friendly reminder in advance.</option>
-            <option value="updated" ${defaultMessage === 'updated' ? 'selected' : ''}>List updated @</option>
+            <option value="hello" ${defaultMessage === 'hello' ? 'selected' : ''}>hello, for today we have</option>
+            <option value="reminder" ${defaultMessage === 'reminder' ? 'selected' : ''}>last friendly reminder for today</option>
+            <option value="saturday" ${defaultMessage === 'saturday' ? 'selected' : ''}>Hello, these are the Saturday publications. Sending this friendly reminder in advance.</option>
+            <option value="updated" ${defaultMessage === 'updated' ? 'selected' : ''}>List updated</option>
           </select>
         </label>
 
-        <label class="mention-switch">
-          <input
-            type="checkbox"
-            id="mention-switch-${sectionKey}"
-            onclick="event.stopPropagation()"
-            onchange="updateSectionMessages('${sectionKey}')"
+        <div class="whatsapp-draft-controls">
+          <button
+            type="button"
+            class="draft-all-btn"
+            onclick="prepareWhatsappDrafts('${sectionKey}')"
           >
-          <span>Double @</span>
-        </label>
+            Preparar todos (sin enviar)
+          </button>
+        </div>
       </div>
     `;
   };
@@ -384,7 +383,9 @@ const generateIntegratedHtmlReportByPublisher = ({
         const confirmKey = `${sectionKey}|||${publisher}`;
         const whatsappGroupName = getWhatsappGroupName(publisher);
         const publisherConfig = getPublisherConfig(publisher);
-        const publisherMention = getPublisherMention(publisher);
+        const publisherMention = '';
+        const publisherMentions = [];
+        const publisherMentionSearches = [];
         const requiresNotification = !options.noNotificationSection && !options.removedSection;
         const hasWhatsappGroup = Boolean(whatsappGroupName && String(whatsappGroupName).trim());
         const copyLines = items.map(item => formatRowLine(item));
@@ -491,8 +492,11 @@ const generateIntegratedHtmlReportByPublisher = ({
             data-card-index="${safeIndex}"
             data-sent-key="${escapeHtml(sentKey)}"
             data-confirm-key="${escapeHtml(confirmKey)}"
+            data-publisher="${escapeHtml(publisher)}"
             data-whatsapp-group="${escapeHtml(whatsappGroupName)}"
             data-mention="${escapeHtml(publisherMention || '')}"
+            data-mentions="${escapeHtml(publisherMentions.join('|||'))}"
+            data-mention-searches="${escapeHtml(publisherMentionSearches.join('|||'))}"
             data-requires-notification="${requiresNotification ? 'true' : 'false'}"
           >
             <div class="publisher-card-header">

@@ -17,6 +17,9 @@ const {
 } = require('../src/utils/validationUtils');
 const {
   getPublisherConfig,
+  getPublisherMention,
+  getPublisherMentions,
+  getPublisherMentionSearches,
   getPublisherNotes,
   getWhatsappGroupName
 } = require('../src/config/publishers');
@@ -52,6 +55,28 @@ const match = (sources) => buildDeliveryMatcher(sources).deliveries[0];
 assert.strictEqual(getWhatsappGroupName('Kosher.com'), 'NEW JCN x Kosher Group');
 assert.strictEqual(getWhatsappGroupName('COL Live'), 'ColLive NEW Group x JCN');
 assert.strictEqual(getWhatsappGroupName('Belaaz'), 'Belaaz x JCN Fall 2026');
+assert.strictEqual(getPublisherMention('Jewish Breaking News'), '+1 (773) 803-0841');
+assert.deepStrictEqual(getPublisherMentions('Meaningful Minute'), [
+  '+1 (516) 668-5853',
+  '+1 (516) 668-1152'
+]);
+assert.deepStrictEqual(getPublisherMentionSearches('Meaningful Minute'), [
+  '668-5853',
+  '668-1152'
+]);
+assert.strictEqual(
+  getPublisherMention('Meaningful Minute'),
+  '+1 (516) 668-5853 @+1 (516) 668-1152'
+);
+assert.deepStrictEqual(getPublisherMentions('Chez Chaya'), ['Chef Chaya Status']);
+assert.deepStrictEqual(getPublisherMentionSearches('Chez Chaya'), ['Chef']);
+assert.strictEqual(getPublisherConfig('Meaningful Minute').omitMentionInDraft, true);
+assert.strictEqual(getPublisherConfig('Chez Chaya').omitMentionInDraft, true);
+assert.strictEqual(getPublisherConfig('Jewish Breaking News').omitMentionInDraft, false);
+assert.strictEqual(getWhatsappGroupName('Zemel'), 'JD Media/Zemel/ Kremel');
+assert.strictEqual(getWhatsappGroupName('W365'), 'Klal Media - Jewish Content Network JDN');
+assert.strictEqual(getWhatsappGroupName('JDN'), 'Klal Media - Jewish Content Network JDN');
+assert.strictEqual(getWhatsappGroupName('Rockland Daily'), 'Klal Media - Jewish Content Network JDN');
 assert.strictEqual(getWhatsappGroupName("N'shei News"), 'NEW N’shei x JCN Chat');
 assert.ok(getPublisherNotes('Israel Breaking News').some(note => note.includes('NO STATUS')));
 assert.strictEqual(isPublisherDeliveryAllowed(delivery({

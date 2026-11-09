@@ -6,6 +6,18 @@
 - Última actualización: 2026-09-14
 - Zona horaria operativa: America/Santo_Domingo
 - Proyecto: JCN Report
+
+### Implementado: asistente local de borradores de WhatsApp
+
+- El reporte ofrece `Preparar todos (sin enviar)` en las secciones del día completo, 5PM y Saturday advance; conserva los borradores para revisión manual. Por ahora todos los borradores se generan sin tags.
+- `whatsapp-assistant.js` abre Microsoft Edge con un perfil local persistente y busca cada grupo por coincidencia exacta.
+- El asistente llena el cuadro de redacción, cambia de chat y nunca pulsa `Send` ni `Enter`.
+- Un borrador existente no se sobrescribe; el grupo pasa a `NEEDS_REVIEW`.
+- Los nombres de grupo ambiguos o ausentes se detienen para revisión manual.
+- La cola de Saturday advance solo puede prepararse los viernes.
+- Prueba supervisada completada el 2026-11-08 en `JBN X JCN NEW GROUP`: estado `PREPARED`, borrador visible y ningún envío.
+- Los números y nombres de contacto quedan guardados en la configuración para retomar la automatización de tags más adelante, pero no se insertan en los borradores actuales.
+- Los publishers que comparten el mismo grupo de WhatsApp se consolidan en un solo borrador con todas sus publicaciones; W365, JDN y Rockland Daily usan `Klal Media - Jewish Content Network JDN`.
 - Raíz: `C:\Users\glenn\playwright-scraper\JCN`
 
 ### Implementado: evidencia para “Did this went?”

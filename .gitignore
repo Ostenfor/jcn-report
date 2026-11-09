@@ -2,4 +2,6 @@ node_modules/
 .env
 creds.json
 reporte/
+.whatsapp-profile/
+debug.log
 testb.js

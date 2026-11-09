@@ -92,6 +92,13 @@ const getTomorrowStringRD = () => {
   return getDateStringRDByOffset(-1);
 };
 
+const isFridayRD = () => {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Santo_Domingo',
+    weekday: 'short'
+  }).format(new Date()) === 'Fri';
+};
+
 const getScheduledDatePart = (row) => {
   return row?.scheduled?.split(',')[0]?.trim() || '';
 };
@@ -321,10 +328,12 @@ const printDeliverySummaryBlock = (title, matcher) => {
     rowsWithStatus.sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
     removedRows.sort((a, b) => parseDate(a.scheduled) - parseDate(b.scheduled));
     const rowsFilteredAfter5PM = rowsWithStatus.filter(row => isAtOrAfter5PM(row.scheduled));
-    const saturdayRows = rowsFilteredTomorrow.map(row => ({
-      ...row,
-      isNew: false
-    }));
+    const saturdayRows = isFridayRD()
+      ? rowsFilteredTomorrow.map(row => ({
+        ...row,
+        isNew: false
+      }))
+      : [];
 
     // ------------------------------
     // 3.13 CONSOLE OUTPUT

@@ -238,6 +238,38 @@ assert.strictEqual(shouldStopAfterPage({
     assert.strictEqual(await page.locator('.tab-group-reminders .tab-button').count(), 2);
     assert.strictEqual(await page.locator('.tab-group-screenshots .tab-button').count(), 2);
     assert.strictEqual(await page.locator('.tab-group-follow-up .tab-button').count(), 1);
+    assert.strictEqual(await page.locator('.draft-test-btn').count(), 0);
+    assert.strictEqual(await page.locator('#todos .draft-all-btn').count(), 1);
+    assert.strictEqual(await page.locator('#after5pm .draft-all-btn').count(), 1);
+    assert.strictEqual(await page.locator('#saturday .draft-all-btn').count(), 1);
+    const mergedWhatsappDrafts = await page.evaluate(() => mergeWhatsappDraftItems([
+      {
+        publisher: 'W365',
+        group: 'Klal Media - Jewish Content Network JDN',
+        mentions: ['+1 (347) 581-1724'],
+        mentionSearches: ['581-1724'],
+        lines: 'W365 line'
+      },
+      {
+        publisher: 'JDN',
+        group: 'Klal Media - Jewish Content Network JDN',
+        mentions: ['+1 (347) 581-1724'],
+        mentionSearches: ['581-1724'],
+        lines: 'JDN line'
+      },
+      {
+        publisher: 'Rockland Daily',
+        group: 'Klal Media - Jewish Content Network JDN',
+        mentions: ['+1 (347) 581-1724'],
+        mentionSearches: ['581-1724'],
+        lines: 'Rockland line'
+      }
+    ], 'todos'));
+    assert.strictEqual(mergedWhatsappDrafts.length, 1, 'Publishers sharing a WhatsApp group must produce one draft');
+    assert.deepStrictEqual(mergedWhatsappDrafts[0].publishers, ['W365', 'JDN', 'Rockland Daily']);
+    assert.deepStrictEqual(mergedWhatsappDrafts[0].mentions, ['+1 (347) 581-1724']);
+    assert.deepStrictEqual(mergedWhatsappDrafts[0].mentionSearches, ['581-1724']);
+    assert.match(mergedWhatsappDrafts[0].message, /W365 line\nJDN line\nRockland line/);
     await page.getByRole('button', { name: 'Did this went? (2)' }).click();
     await page.locator('#follow-up-evidence.active').waitFor();
     assert.strictEqual(await page.locator('#follow-up-evidence .follow-up-card').count(), 2);

@@ -168,33 +168,27 @@ const buildReportScripts = ({
       'RESCHEDULED'
     ]);
 
-    function getMention(sectionKey) {
-      const checked = document.getElementById('mention-switch-' + sectionKey)?.checked;
-      return checked ? '@ @' : '@';
-    }
-
     function getMessage(sectionKey, mentionOverride = '') {
       const select = document.getElementById('message-select-' + sectionKey);
       const value = select ? select.value : 'hello';
-      const mention = mentionOverride ? '@' + mentionOverride : getMention(sectionKey);
 
       if (value === 'hello') {
-        return 'hello ' + mention + ' for today we have';
+        return 'hello, for today we have';
       }
 
       if (value === 'reminder') {
-        return 'last friendly reminder for today ' + mention;
+        return 'last friendly reminder for today';
       }
 
       if (value === 'saturday') {
-        return 'Hello ' + mention + ' these are the Saturday publications. Sending this friendly reminder in advance.';
+        return 'Hello, these are the Saturday publications. Sending this friendly reminder in advance.';
       }
 
       if (value === 'updated') {
-        return 'List updated ' + mention;
+        return 'List updated';
       }
 
-      return 'hello ' + mention + ' for today we have';
+      return 'hello, for today we have';
     }
 
     function updateSectionMessages(sectionKey) {
@@ -203,6 +197,136 @@ const buildReportScripts = ({
         const mentionOverride = card ? card.dataset.mention || '' : '';
         el.innerText = getMessage(sectionKey, mentionOverride);
       });
+    }
+
+    function isFridayReport() {
+      return new Date(REPORT_DATE + 'T12:00:00Z').getUTCDay() === 5;
+    }
+
+    function mergeWhatsappDraftItems(items, sectionKey) {
+      const groups = new Map();
+
+      items.forEach(item => {
+        if (!groups.has(item.group)) {
+          groups.set(item.group, {
+            group: item.group,
+            publishers: [],
+            mentions: [],
+            mentionSearches: [],
+            lines: []
+          });
+        }
+
+        const target = groups.get(item.group);
+        if (!target.publishers.includes(item.publisher)) target.publishers.push(item.publisher);
+        (item.mentions || []).forEach((mention, index) => {
+          if (!target.mentions.includes(mention)) {
+            target.mentions.push(mention);
+            target.mentionSearches.push((item.mentionSearches || [])[index] || '');
+          }
+        });
+        if (item.lines) target.lines.push(item.lines);
+      });
+
+      return Array.from(groups.values()).map(item => {
+        const mentionOverride = item.mentions.join(' @');
+        return {
+          publisher: item.publishers.join(' + '),
+          publishers: item.publishers,
+          group: item.group,
+          mentions: item.mentions,
+          mentionSearches: item.mentionSearches,
+          message: [
+            getMessage(sectionKey, mentionOverride),
+            item.lines.join('\\n')
+          ].filter(Boolean).join('\\n\\n')
+        };
+      });
+    }
+
+    function collectWhatsappDraftItems(sectionKey) {
+      const section = document.getElementById(sectionKey);
+      if (!section) return [];
+
+      const items = Array.from(section.querySelectorAll('.publisher-card[data-requires-notification="true"]'))
+        .map(card => {
+          const publisher = card.dataset.publisher || '';
+          const group = card.dataset.whatsappGroup || 'N/A';
+          const mentions = (card.dataset.mentions || '')
+            .split('|||')
+            .map(value => value.trim())
+            .filter(Boolean);
+          const mentionSearches = (card.dataset.mentionSearches || '')
+            .split('|||')
+            .map(value => value.trim());
+          const lines = card.querySelector('.copy-lines')?.innerText?.trim() || '';
+
+          return {
+            publisher,
+            group,
+            mentions,
+            mentionSearches,
+            lines
+          };
+        })
+        .filter(item => item.publisher && item.group && item.group !== 'N/A' && item.lines);
+
+      return mergeWhatsappDraftItems(items, sectionKey);
+    }
+
+    async function prepareWhatsappDrafts(sectionKey) {
+      if (sectionKey === 'saturday' && !isFridayReport()) {
+        showToast('La cola del sábado solo se puede preparar los viernes.');
+        return;
+      }
+
+      const items = collectWhatsappDraftItems(sectionKey);
+      if (!items.length) {
+        showToast('No hay mensajes válidos para preparar en esta sección.');
+        return;
+      }
+
+      const count = items.length;
+      const accepted = window.confirm(
+        'Se prepararán ' + count + ' borrador(es) en WhatsApp.\\n\\n' +
+        'El asistente NO pulsará Send ni Enter. ¿Continuar?'
+      );
+
+      if (!accepted) return;
+
+      const buttons = document.querySelectorAll('#' + sectionKey + ' .draft-all-btn');
+      buttons.forEach(button => { button.disabled = true; });
+      showToast('Preparando borradores. No cierres WhatsApp...');
+
+      try {
+        const response = await fetch('http://127.0.0.1:3210/prepare', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            section: sectionKey,
+            confirmNoSend: true,
+            isFriday: isFridayReport(),
+            items
+          })
+        });
+
+        const result = await response.json();
+        if (!response.ok || !result.ok) {
+          throw new Error(result.error || 'El asistente no pudo preparar los borradores.');
+        }
+
+        const prepared = result.results.filter(item => item.status === 'PREPARED').length;
+        const review = result.results.length - prepared;
+        showToast('Borradores preparados: <strong>' + prepared + '</strong>. Para revisar: <strong>' + review + '</strong>.');
+      } catch (error) {
+        alert(
+          'No se pudo conectar con el asistente local de WhatsApp.\\n\\n' +
+          'Primero ejecuta: npm run whatsapp-assistant\\n\\n' +
+          'Detalle: ' + error.message
+        );
+      } finally {
+        buttons.forEach(button => { button.disabled = false; });
+      }
     }
 
     function showToast(message) {
