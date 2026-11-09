@@ -51,6 +51,7 @@ const match = (sources) => buildDeliveryMatcher(sources).deliveries[0];
 
 assert.strictEqual(getWhatsappGroupName('Kosher.com'), 'NEW JCN x Kosher Group');
 assert.strictEqual(getWhatsappGroupName('COL Live'), 'ColLive NEW Group x JCN');
+assert.strictEqual(getWhatsappGroupName('Belaaz'), 'Belaaz x JCN Fall 2026');
 assert.strictEqual(getWhatsappGroupName("N'shei News"), 'NEW N’shei x JCN Chat');
 assert.ok(getPublisherNotes('Israel Breaking News').some(note => note.includes('NO STATUS')));
 assert.strictEqual(isPublisherDeliveryAllowed(delivery({

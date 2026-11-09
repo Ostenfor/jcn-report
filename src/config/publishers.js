@@ -84,7 +84,7 @@ const publisherConfigRows = [
   },
   {
     publisher: 'Belaaz',
-    group: 'Belaaz / JCN UPDATED',
+    group: 'Belaaz x JCN Fall 2026',
     notes: 'No notes'
   },
   {
